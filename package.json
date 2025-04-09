@@ -1,20 +1,53 @@
 {
-  "name": "hopper-xyz-sdk",
-  "module": "index.ts",
-  "version": "0.0.1",
-  "description": "Hopper XYZ SDK",
+  "name": "chainhopper-sdk",
+  "module": "src/index.ts",
+  "version": "0.1.7",
+  "description": "Chainhopper Protocol SDK",
+  "license": "MIT",
   "type": "module",
-  "devDependencies": {
-    "@types/bun": "latest"
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
   },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.23.0",
+    "@types/bun": "latest",
+    "eslint": "^9.23.0",
+    "eslint-plugin-prettier": "^5.2.4",
+    "eslint-plugin-security": "^3.0.1",
+    "eslint-plugin-unicorn": "^58.0.0",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.28.0"
   },
   "dependencies": {
     "@across-protocol/app-sdk": "^0.2.0",
-    "@uniswap/v3-sdk": "^3.24.0",
-    "@uniswap/v4-periphery": "^1.0.1",
-    "@uniswap/v4-sdk": "^1.21.0",
+    "@uniswap/sdk-core": "7.7.0",
+    "@uniswap/v3-sdk": "3.25.2",
+    "@uniswap/v4-periphery": "1.0.1",
+    "@uniswap/v4-sdk": "1.21.2",
+    "ethers": "^5.7.2",
     "viem": "^2.23.2"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{css,md}": "prettier --write --ignore-unknown"
+  },
+  "scripts": {
+    "lint": "eslint --fix",
+    "format": "prettier --write --ignore-unknown",
+    "build": "tsc",
+    "types": "tsc --emitDeclarationOnly --declaration --declarationDir ./dist",
+    "prepublishOnly": "npm run build && npm run types"
   }
 }
