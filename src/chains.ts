@@ -155,10 +155,10 @@ export const chainConfigs: Record<number, ChainConfig> = {
     permit2Address: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
     wethAddress: '0x4200000000000000000000000000000000000006',
     usdcAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-    UniswapV3AcrossMigrator: '0xDB87A6AB3720CB45857d0b3dA8f53089C918a42a',
-    UniswapV3AcrossSettler: '0xcFa559f1752090Ba1FC6bdaed7bB7eEB21c9D299',
-    UniswapV4AcrossMigrator: '0x4817139b45450482aD09a183Fd540126f2E124CC',
-    UniswapV4AcrossSettler: '0x76B40a7D409d5f63094583d0B6Fe9cc7610f0087',
+    UniswapV3AcrossMigrator: '0x5908ea13492a9cda1dc94feb273ffc0879ddedda',
+    UniswapV3AcrossSettler: '0xdd0cc2a9cc8121fe49cf1d33826989833a210cd9',
+    UniswapV4AcrossMigrator: '0x0801f681dadf6c56218438eefd02701f84648d47',
+    UniswapV4AcrossSettler: '0xe0a2098b45046446de278cc5093527fcf32f8b3e',
   },
   42161: {
     chainId: 42161,
@@ -193,9 +193,10 @@ export const chainConfigs: Record<number, ChainConfig> = {
     wethAddress: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
     usdcAddress: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
 
-    UniswapV3AcrossMigrator: '0xe2500623D1D89bdc233C4bBbcefaa61a6D8fdC96',
-    UniswapV3AcrossSettler: '0xD5C28d7932F44d2edD9fA6E62bc827B9aa543978',
-    UniswapV4AcrossMigrator: '0x4817139b45450482aD09a183Fd540126f2E124CC',
+    UniswapV3AcrossMigrator: '0x4be1860a0887e641d10b7e0e49e5d02053e02397',
+    UniswapV3AcrossSettler: '0xc29ff618aac50465fa9990a1edc424930caf8fbd',
+    UniswapV4AcrossMigrator: '0xb6A0eEa4f1130A537eCbc4Ca4147A82517365F78',
+    UniswapV4AcrossSettler: '0x57456eca3aa33570f5ac6e1dd3862591065c7518',
   },
 
   // testnets

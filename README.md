@@ -1,5 +1,17 @@
 # Chainhopper Protocol SDK
 
+## For development mode (internal use)
+
+```
+bun install
+bun link
+bun run build -- --watch
+```
+
+`bun link chainhopper-sdk` can be run in `chainhopper-fe` repo to link the two. 
+
+and replace `"chainhopper-sdk": ^0.1.7` with `"chainhopper-sdk": "link:chainhopper-sdk"`.
+
 ## Quick Start
 
 ### 1. Setup SDK
