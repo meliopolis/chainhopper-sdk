@@ -1,6 +1,6 @@
 import { zeroAddress, type Abi, type PublicClient } from 'viem';
 import type { Chain } from 'viem/chains';
-import { mainnet, base, arbitrum, unichain, sepolia, baseSepolia, arbitrumSepolia, unichainSepolia } from 'viem/chains';
+import { mainnet, base, arbitrum, unichain, sepolia, baseSepolia, arbitrumSepolia, unichainSepolia, optimism } from 'viem/chains';
 import QuoterV2 from '@uniswap/v3-periphery/artifacts/contracts/lens/QuoterV2.sol/QuoterV2.json';
 import NonfungiblePositionManager from '@uniswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json';
 import { v4PositionManagerAbi } from './abis/v4PositionManager';
@@ -86,6 +86,39 @@ export const chainConfigs: Record<number, ChainConfig> = {
     permit2Address: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
     wethAddress: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
     usdcAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+  },
+  10: {
+    chainId: 10,
+    testnet: false,
+    chain: optimism,
+    v3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+    v3NftPositionManagerContract: {
+      address: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
+      abi: NonfungiblePositionManager.abi as Abi,
+    },
+    quoterV2Contract: {
+      address: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e',
+      abi: QuoterV2.abi as Abi,
+    },
+    // v4
+    v4PositionManagerContract: {
+      address: '0x3c3ea4b57a46241e54610e5f022e5c45859a1017',
+      abi: v4PositionManagerAbi as Abi,
+    },
+    v4StateViewContract: {
+      address: '0xc18a3169788f4f75a170290584eca6395c75ecdb',
+      abi: stateViewAbi as Abi,
+    },
+    v4QuoterContract: {
+      address: '0x1f3131a13296fb91c90870043742c3cdbff1a8d7',
+      abi: v4QuoterAbi,
+    },
+    spokePoolAddress: '0xF383FD9A49282C9e1C99eB07a819e27E0d7B956c',
+    multicallAddress,
+    universalRouterAddress: '0x851116d9223fabed8e56c0e6b8ad0c31d98b3507',
+    permit2Address: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
+    wethAddress: '0x4200000000000000000000000000000000000006',
+    usdcAddress: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85',
   },
   130: {
     chainId: 130,
