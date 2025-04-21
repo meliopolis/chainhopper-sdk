@@ -155,7 +155,7 @@ export const chainConfigs: Record<number, ChainConfig> = {
     universalRouterAddress: '0xef740bf23acae26f6492b10de645d6b98dc8eaf3',
     permit2Address: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
     wethAddress: '0x4200000000000000000000000000000000000006',
-    usdcAddress: '0x078d782b760474a361dda0af3839290b0ef57ad6',
+    usdcAddress: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
     UniswapV3AcrossMigrator: '0x570711ffbc9711971818bcdc843e6758214c2c48',
     UniswapV3AcrossSettler: '0x04efac76263d0dd17c2acff3bf932c801d9ade78',
     UniswapV4AcrossMigrator: '0x6b19fdf76fc1eac6e10259855af85b7d5e1b5c6c',
