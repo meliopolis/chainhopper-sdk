@@ -4,6 +4,7 @@ import type { IV3PositionWithUncollectedFees } from '../actions/getV3Position';
 import type { IV4PositionWithUncollectedFees } from '../actions/getV4Position';
 import { nearestUsableTick, Position as V3Position, type Pool as V3Pool } from '@uniswap/v3-sdk';
 import { Position as V4Position, type Pool as V4Pool } from '@uniswap/v4-sdk';
+
 export const getBurnAmountsWithSlippage = (
   extendedPosition: IV3PositionWithUncollectedFees | IV4PositionWithUncollectedFees,
   slippageInBps: number | undefined
@@ -76,6 +77,14 @@ export const getMaxPositionV4 = (
   tickUpper: number
 ): V4Position => {
   const [amount0, amount1] = [currencyAmount0.asFraction.toFixed(0).toString(), currencyAmount1.asFraction.toFixed(0).toString()];
+  console.log('fromAmounts args', {
+    pool: pool,
+    tickLower: nearestUsableTick(tickLower, pool.tickSpacing),
+    tickUpper: nearestUsableTick(tickUpper, pool.tickSpacing),
+    amount0: amount0,
+    amount1: amount1,
+    useFullPrecision: true,
+  })
   // estimate max position possible given the ticks and both tokens maxed out
   const maxPosition = V4Position.fromAmounts({
     pool: pool,
@@ -85,6 +94,8 @@ export const getMaxPositionV4 = (
     amount1: amount1,
     useFullPrecision: true,
   });
+  console.log('getMaxPositionV4 maxPosition amount0', maxPosition.amount0.toFixed(6));
+  console.log('getMaxPositionV4 maxPosition amount1', maxPosition.amount1.toFixed(6));
   // now we need to proportionally reduce the position to fit within the max tokens available on the destination chain
   // if neither amount is 0, then we need to reduce both proportionally
   if (!maxPosition.amount0.equalTo(0) && !maxPosition.amount1.equalTo(0)) {

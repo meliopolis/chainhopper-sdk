@@ -85,11 +85,19 @@ export type RequestMigrationParams = RequestV3toV3MigrationParams | RequestV3toV
 //   };
 // };
 
-export type SlippageCalcs = {
-  routeMinAmountOut: bigint;
+type SlippageCalcsBase = {
   swapAmountInMilliBps: number;
   mintAmount0Min: bigint;
   mintAmount1Min: bigint;
+};
+
+export type SlippageCalcsSingleToken = SlippageCalcsBase & {
+  routeMinAmountOut: bigint;
+};
+
+export type SlippageCalcsDualToken = SlippageCalcsBase & {
+  routeMinAmountOut0: bigint;
+  routeMinAmountOut1: bigint;
 };
 
 export type Route = {
