@@ -7,7 +7,7 @@ export const getV3Quote = async (
   fee: number,
   amountIn: bigint,
   sqrtPriceLimitX96?: bigint
-): Promise<bigint> => {
+): Promise<{ amountOut: bigint; sqrtPriceX96After: bigint }> => {
   const quote = (await chainConfig.publicClient?.simulateContract({
     ...chainConfig.quoterV2Contract,
     functionName: 'quoteExactInputSingle',
@@ -23,5 +23,8 @@ export const getV3Quote = async (
   })) as {
     result: bigint[];
   };
-  return quote.result[0];
+  return {
+    amountOut: quote.result[0],
+    sqrtPriceX96After: quote.result[1],
+  };
 };
