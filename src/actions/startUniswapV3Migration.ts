@@ -45,7 +45,7 @@ export const startUniswapV3Migration = async ({
         0n
       );
       // calculate total amount of WETH available
-      amountOut = CurrencyAmount.fromRawAmount(isWethToken0 ? totalToken0.currency : totalToken1.currency, quote.toString());
+      amountOut = CurrencyAmount.fromRawAmount(isWethToken0 ? totalToken0.currency : totalToken1.currency, quote.amountOut.toString());
     }
     const totalWethAvailable = isWethToken0 ? totalToken0.add(amountOut) : totalToken1.add(amountOut);
 
