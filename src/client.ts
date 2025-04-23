@@ -28,12 +28,6 @@ export type ChainHopperClientOptions = {
   };
 };
 
-// rough plan:
-// TODO: create some kind of testing that tests all these public methods
-// maybe use a snapshot of a real position that could be migrated and hard code that data as a test fixture
-// TODO: add dual token route
-// TODO: use SDK generated transactions to simulate in frontend instead of hard-wired sims
-
 export class ChainHopperClient {
   private static instance: ChainHopperClient | null = null;
   public readonly chainConfigs: Record<number, ChainConfig>;
@@ -136,11 +130,6 @@ export class ChainHopperClient {
     ) {
       throw new Error('Position has no liquidity or fees');
     }
-
-    console.log('v3Position position.amount0', v3Position.position.amount0.toFixed(6));
-    console.log('v3Position position.amount1', v3Position.position.amount1.toFixed(6));
-    console.log('v3Position position.amount0', v3Position.uncollectedFees.amount0.toFixed(6));
-    console.log('v3Position position.amount1', v3Position.uncollectedFees.amount1.toFixed(6));
 
     // start migration on source chain
     const { routes, migrationId } = await startUniswapV3Migration({

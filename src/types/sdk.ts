@@ -91,14 +91,16 @@ type SlippageCalcsBase = {
   mintAmount1Min: bigint;
 };
 
-export type SlippageCalcsSingleToken = SlippageCalcsBase & {
+type SlippageCalcsSingleToken = SlippageCalcsBase & {
   routeMinAmountOut: bigint;
 };
 
-export type SlippageCalcsDualToken = SlippageCalcsBase & {
+type SlippageCalcsDualToken = SlippageCalcsBase & {
   routeMinAmountOut0: bigint;
   routeMinAmountOut1: bigint;
 };
+
+export type SlippageCalcs = SlippageCalcsSingleToken | SlippageCalcsDualToken;
 
 export type Route = {
   inputToken: `0x${string}`;

@@ -38,13 +38,9 @@ export const settleUniswapV4Migration = async ({
     const route = routes[0];
     const routeMinAmountOut = route.minOutputAmount;
 
-    console.log('routeOutputAmount', route.outputAmount);
-    console.log('routeMinAmountOut', routeMinAmountOut);
-
     // we need to create two potential LP positions on destination chain
     // 1. using the across quote output amount. This is the best position possible
     // 2. using the routeMinAmountOut. This helps us calculate the worst position given slippage
-
 
     // estimate max otherToken available if all baseToken was traded away
     // TODO need to handle weth (right now only handle native token pools)
@@ -132,52 +128,37 @@ export const settleUniswapV4Migration = async ({
       settlerMessage,
     };
   } else { // logically has to be (routes.length) === 2 but needs to look exhaustive for ts compiler
-    console.log('externalParams', externalParams);
 
-    // TODO: need to adjust amounts in for fees as above? how are fees taken in the dual token path? see contract maybe
-    console.log('routes', routes);
-    console.log('routes[0].outputAmount', routes[0].outputAmount);
-    console.log('routes[1].outputAmount', routes[1].outputAmount);
-    console.log('routes[0].minOutputAmount', routes[0].minOutputAmount);
-    console.log('routes[1].minOutputAmount', routes[1].minOutputAmount);
+    let token0Available = routes[0].outputAmount * (1n - settlerFeesInBps / 10_000n);
+    let token1Available = routes[1].outputAmount * (1n - settlerFeesInBps / 10_000n);
+    let minToken0Available = routes[0].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
+    let minToken1Available = routes[1].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
 
-
-    let routeAmountOut0, routeAmountOut1, routeMinAmountOut0, routeMinAmountOut1;
-    // these token amounts may need to be flipped if the tokens are in a different order on the destination chain
+    let settleAmountOut0, settleAmountOut1, settleMinAmountOut0, settleMinAmountOut1, tickLower, tickUpper;
     if (externalParams.token0 !== routes[0].outputToken) {
-      console.log('flipping 0 for 1 on destination chain');
-      routeAmountOut0 = CurrencyAmount.fromRawAmount(pool.token1, routes[1].outputAmount.toString());
-      routeAmountOut1 = CurrencyAmount.fromRawAmount(pool.token0, routes[0].outputAmount.toString());
-      routeMinAmountOut0 = CurrencyAmount.fromRawAmount(pool.token1, routes[1].minOutputAmount.toString());
-      routeMinAmountOut1 = CurrencyAmount.fromRawAmount(pool.token0, routes[0].minOutputAmount.toString());
+      // the token order must be flipped if the token addresses sort in a different order on the destination chain
+      tickLower = -1 * externalParams.tickUpper;
+      tickUpper = -1 * externalParams.tickLower;
+      settleAmountOut0 = CurrencyAmount.fromRawAmount(pool.token1, token1Available.toString());
+      settleAmountOut1 = CurrencyAmount.fromRawAmount(pool.token0, token0Available.toString());
+      settleMinAmountOut0 = CurrencyAmount.fromRawAmount(pool.token1, minToken1Available.toString());
+      settleMinAmountOut1 = CurrencyAmount.fromRawAmount(pool.token0, minToken0Available.toString());
     } else {
-      routeAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, routes[0].outputAmount.toString());
-      routeAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, routes[1].outputAmount.toString());
-      routeMinAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, routes[0].minOutputAmount.toString());
-      routeMinAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, routes[1].minOutputAmount.toString());
+      tickLower = externalParams.tickLower;
+      tickUpper = externalParams.tickUpper;
+      settleAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, token0Available.toString());
+      settleAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, token1Available.toString());
+      settleMinAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, minToken0Available.toString());
+      settleMinAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, minToken1Available.toString());
     }
 
-    // need:
-    // maxPosition
-    const maxPosition = getMaxPositionV4(pool, routeAmountOut0, routeAmountOut1, externalParams.tickLower, externalParams.tickUpper);
-    const maxPositionUsingRouteMinAmountsOut = getMaxPositionV4(pool, routeMinAmountOut0, routeMinAmountOut1, externalParams.tickLower, externalParams.tickUpper);
-    // console.log('maxPosition: ', maxPosition);
-    // console.log('maxPositionUsingRouteMinAmountsOut: ', maxPositionUsingRouteMinAmountsOut);
+    const maxPosition = getMaxPositionV4(pool, settleAmountOut0, settleAmountOut1, tickLower, tickUpper);
+    const maxPositionUsingSettleMinAmountsOut = getMaxPositionV4(pool, settleMinAmountOut0, settleMinAmountOut1, tickLower, tickUpper);
 
-    // route minAmountOut (need to change this to accommodate both tokens without breaking the single token usage)
-    // amount0Min / amount1Min
-    const { amount0: amount0Min, amount1: amount1Min } = maxPositionUsingRouteMinAmountsOut.burnAmountsWithSlippage(
+    const { amount0: amount0Min, amount1: amount1Min } = maxPositionUsingSettleMinAmountsOut.burnAmountsWithSlippage(
       new Percent(externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000)
     );
 
-    // swapAmountInMilliBps (TODO: what is the point of this? / why do we need this?)
-    const swapAmountInMilliBps =
-      externalParams.token0 === destinationChainConfig.wethAddress || externalParams.token0 === zeroAddress
-        ? maxPosition.amount0.asFraction.divide(routeAmountOut0.asFraction).multiply(10_000_000).add(new Fraction(1, 10_000_000)).toFixed(0)
-        : maxPosition.amount1.asFraction.divide(routeAmountOut1.asFraction).multiply(10_000_000).add(new Fraction(1, 10_000_000)).toFixed(0);
-
-    // migratorMessage
-    // settlerMessage
     const { migratorMessage, settlerMessage } = encodeMigrationParams(
       {
         chainId: destinationChainConfig.chainId,
@@ -215,11 +196,11 @@ export const settleUniswapV4Migration = async ({
           sqrtPriceX96: externalParams.sqrtPriceX96 || 0n,
           tickSpacing: tickSpacing,
           hooks: hooks,
-          tickLower: externalParams.tickLower,
-          tickUpper: externalParams.tickUpper,
+          tickLower: tickLower,
+          tickUpper: tickUpper,
           amount0Min: BigInt(amount0Min.toString()),
           amount1Min: BigInt(amount1Min.toString()),
-          swapAmountInMilliBps: 10_000_000 - Number(swapAmountInMilliBps),
+          swapAmountInMilliBps: 0,
         },
       },
       migrationId
@@ -228,9 +209,9 @@ export const settleUniswapV4Migration = async ({
     return {
       destPosition: maxPosition,
       slippageCalcs: {
-        routeMinAmountOut0,
-        routeMinAmountOut1,
-        swapAmountInMilliBps: 10_000_000 - Number(swapAmountInMilliBps),
+        routeMinAmountOut0: routes[0].minOutputAmount,
+        routeMinAmountOut1: routes[1].minOutputAmount,
+        swapAmountInMilliBps: 0,
         mintAmount0Min: BigInt(amount0Min.toString()),
         mintAmount1Min: BigInt(amount1Min.toString()),
       },

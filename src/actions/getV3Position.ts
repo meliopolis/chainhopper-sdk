@@ -77,7 +77,7 @@ export const getV3Position = async (chainConfig: ChainConfig, params: IUniswapPo
   //   data: rawFeeCallResponse as `0x${string}`,
   // }) as [bigint, bigint];
 
-  const LPFeeData: ILPFeeCallResult = (await publicClient?.simulateContract({
+  const LPFeeData: ILPFeeCallResult = (await publicClient!.simulateContract({
     address: chainConfig.v3NftPositionManagerContract.address as `0x${string}`,
     abi: chainConfig.v3NftPositionManagerContract.abi,
     functionName: 'collect',
