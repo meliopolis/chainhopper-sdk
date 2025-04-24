@@ -2,7 +2,7 @@
 import { ChainHopperClient } from './client';
 import { configurePublicClients } from './utils/configurePublicClients';
 import type { RequestV3toV4MigrationParams, RequestV3toV3MigrationParams, RequestV4toV3MigrationParams, RequestV4toV4MigrationParams } from '../src/types/sdk';
-import { Protocol, BridgeType, MigrationMethod } from './utils/constants';
+import { Protocol, BridgeType, MigrationMethod, NATIVE_ETH_ADDRESS } from './utils/constants';
 import type { InternalSettleMigrationResult } from './types/internal';
 
 const rpcUrls = {
@@ -68,8 +68,8 @@ const logMigrationResult = (result: InternalSettleMigrationResult) => {
     destinationProtocol: Protocol.UniswapV4,
     bridgeType: BridgeType.Across,
     migrationMethod: MigrationMethod.SingleToken,
-    token0: "0x0000000000000000000000000000000000000000",
-    token1: "0x078d782b760474a361dda0af3839290b0ef57ad6",
+    token0: NATIVE_ETH_ADDRESS,
+    token1: "0x078D782b760474a361dDA0AF3839290b0EF57AD6",
     tickLower: -1 * v3Response.position.tickUpper,
     tickUpper: -1 * v3Response.position.tickLower,
     fee: v3Response.position.pool.fee,

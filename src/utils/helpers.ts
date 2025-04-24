@@ -1,13 +1,13 @@
 import { CurrencyAmount, Fraction, Percent, Token, type Currency } from '@uniswap/sdk-core';
-import { DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, Protocol } from './constants';
+import { DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, Protocol } from './constants';
 import type { IV3PositionWithUncollectedFees } from '../actions/getV3Position';
 import type { IV4PositionWithUncollectedFees } from '../actions/getV4Position';
 import { nearestUsableTick, Pool, SqrtPriceMath, TickMath, Position as V3Position, type Pool as V3Pool } from '@uniswap/v3-sdk';
 import { Position as V4Position, type Pool as V4Pool } from '@uniswap/v4-sdk';
 import { acrossClient } from '../lib/acrossClient';
-import { encodeMintParamsForV3, encodeMintParamsForV4, encodeSettlementParams, encodeSettlementParamsForSettler } from '../actions/encode';
+import { encodeMigrationParams, encodeMintParamsForV3, encodeMintParamsForV4, encodeSettlementParams, encodeSettlementParamsForSettler } from '../actions/encode';
 import { zeroAddress } from 'viem';
-import type { RequestV3MigrationParams, RequestV4MigrationParams } from '../types/sdk';
+import type { RequestV3MigrationParams, RequestV4MigrationParams, Route } from '../types/sdk';
 import JSBI from 'jsbi';
 import { getV3Quote } from '../actions/getV3Quote';
 import type { ChainConfig } from '../chains';
@@ -81,26 +81,111 @@ export const generateMigration = (
   return { migrationId, interimMessageForSettler }
 }
 
+export const generateMigrationParams = async (
+  migrationId: `0x${string}`,
+  externalParams: RequestV3MigrationParams | RequestV4MigrationParams,
+  destinationChainConfig: ChainConfig,
+  routes: Route[],
+  maxPosition: V3Position | V4Position,
+  maxPositionUsingRouteMinAmountOut: V3Position | V4Position,
+  swapAmountInMilliBps?: number
+) => {
+
+  const { amount0: amount0Min, amount1: amount1Min } = maxPositionUsingRouteMinAmountOut.burnAmountsWithSlippage(
+    new Percent(externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000)
+  );
+
+  const { migratorMessage, settlerMessage } = encodeMigrationParams(
+    {
+      chainId: destinationChainConfig.chainId,
+      settler: resolveSettler(externalParams, destinationChainConfig),
+      tokenRoutes: await Promise.all(routes.map(async (route) => ({
+        ...route,
+        minAmountOut: route.minOutputAmount,
+        quoteTimestamp: Number((await destinationChainConfig.publicClient?.getBlock())?.timestamp || 0),
+        fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
+      }))),
+      settlementParams: {
+        recipient: externalParams.owner,
+        senderShareBps: externalParams.senderShareBps || 0,
+        senderFeeRecipient: externalParams.senderFeeRecipient || zeroAddress,
+        // mint params
+        token0: externalParams.token0,
+        token1: externalParams.token1,
+        fee: externalParams.fee,
+        sqrtPriceX96: externalParams.sqrtPriceX96 || 0n,
+        tickLower: externalParams.tickLower,
+        tickUpper: externalParams.tickUpper,
+        amount0Min: BigInt(amount0Min.toString()),
+        amount1Min: BigInt(amount1Min.toString()),
+        swapAmountInMilliBps: swapAmountInMilliBps ? swapAmountInMilliBps : 0,
+        ...(('tickSpacing' in externalParams) && { tickSpacing: externalParams.tickSpacing }),
+        ...(('hooks' in externalParams) && { hooks: externalParams.hooks }),
+      },
+    },
+    migrationId
+  );
+
+  return {
+    destPosition: maxPosition,
+    slippageCalcs: {
+      routeMinAmountOuts: routes.map((r) => r.minOutputAmount),
+      swapAmountInMilliBps: 0,
+      mintAmount0Min: BigInt(amount0Min.toString()),
+      mintAmount1Min: BigInt(amount1Min.toString()),
+    },
+    migratorMessage,
+    settlerMessage,
+  };
+}
+
 export const getAcrossQuote = async (
   sourceChainConfig: ChainConfig,
   destinationChainConfig: ChainConfig,
-  token: CurrencyAmount<Token>, tokenAmount: string,
-  settler: `0x${string}`,
+  tokenAddress: `0x${string}`,
+  tokenAmount: string,
+  externalParams: RequestV3MigrationParams | RequestV4MigrationParams,
   interimMessageForSettler: `0x${string}`) => {
   // initially just supporting (W)ETH/USDC pairs
   // TODO: add desired dual token pair address mappings to chain config or similar for address lookup
-  const isWethToken = token.currency.address === sourceChainConfig.wethAddress;
+  const isWethToken = tokenAddress === sourceChainConfig.wethAddress;
   return await acrossClient({ testnet: sourceChainConfig.testnet }).getQuote({
     route: {
       originChainId: sourceChainConfig.chainId,
       destinationChainId: destinationChainConfig.chainId,
-      inputToken: token.currency.address as `0x${string}`,
+      inputToken: tokenAddress,
       outputToken: isWethToken ? destinationChainConfig.wethAddress : destinationChainConfig.usdcAddress,
     },
     inputAmount: tokenAmount,
-    recipient: settler,
+    recipient: resolveSettler(externalParams, destinationChainConfig),
     crossChainMessage: interimMessageForSettler,
   })
+}
+
+const resolveSettler = (
+  externalParams: RequestV3MigrationParams | RequestV4MigrationParams,
+  destinationChainConfig: ChainConfig) => {
+  let settler: `0x${string}`;
+  switch (externalParams.destinationProtocol) {
+    case Protocol.UniswapV3:
+      if (destinationChainConfig.UniswapV3AcrossSettler) {
+        settler = destinationChainConfig.UniswapV3AcrossSettler
+        break;
+      } else {
+        throw new Error('UniswapV3AcrossSettler not provided for destination chain.');
+      }
+    case Protocol.UniswapV4:
+      if (destinationChainConfig.UniswapV4AcrossSettler) {
+        settler = destinationChainConfig.UniswapV4AcrossSettler
+        break;
+      } else {
+        throw new Error('UniswapV4AcrossSettler not provided for destination chain.');
+      }
+    default:
+      const _exhaustiveCheck: never = externalParams.destinationProtocol;
+      throw new Error(`Unhandled protocol: ${_exhaustiveCheck}`);
+  }
+  return settler;
 }
 
 export const generateMaxV3Position = (
@@ -303,3 +388,4 @@ export const generateMaxV3PositionWithSwapAllowed = async (
     useFullPrecision: true,
   });
 };
+

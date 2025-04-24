@@ -79,24 +79,13 @@ export const startUniswapV4Migration = async ({
         ),
         migrationId
       );
-      // get a quote from Across
-      const acrossQuote = await acrossClient({ testnet: sourceChainConfig.testnet }).getQuote({
-        route: {
-          originChainId: sourceChainConfig.chainId,
-          destinationChainId: destinationChainConfig.chainId,
-          inputToken: isToken0EthOrWeth
-            ? totalToken0.currency.isNative
-              ? sourceChainConfig.wethAddress
-              : (totalToken0.currency.address as `0x${string}`)
-            : totalToken1.currency.isNative
-              ? sourceChainConfig.wethAddress
-              : (totalToken1.currency.address as `0x${string}`),
-          outputToken: destinationChainConfig.wethAddress,
-        },
-        inputAmount: totalWethAvailable.asFraction.toFixed(0),
-        recipient: destinationChainConfig.UniswapV3AcrossSettler as `0x${string}`,
-        crossChainMessage: interimMessageForSettler,
-      });
+
+      const acrossQuote = await getAcrossQuote(sourceChainConfig,
+                                               destinationChainConfig,
+                                               sourceChainConfig.wethAddress,
+                                               totalWethAvailable.asFraction.toFixed(0),
+                                               externalParams,
+                                               interimMessageForSettler)
 
       return {
         acrossQuotes: [acrossQuote],
@@ -122,17 +111,21 @@ export const startUniswapV4Migration = async ({
 
     if (externalParams.bridgeType === BridgeType.Across) {
       const { migrationId, interimMessageForSettler } = generateMigration(sourceChainConfig, MigrationMethod.DualToken, externalParams);
+
+      const token0Address = totalToken0.currency.isNative ? sourceChainConfig.wethAddress : totalToken0.currency.address as `0x${string}`;
+      const token1Address = totalToken1.currency.isNative ? sourceChainConfig.wethAddress : totalToken1.currency.address as `0x${string}`;
+
       const acrossQuote0 = await getAcrossQuote(sourceChainConfig,
                                                 destinationChainConfig,
-                                                totalToken0.wrapped,
+                                                token0Address,
                                                 totalToken0.asFraction.toFixed(0),
-                                                destinationChainConfig.UniswapV4AcrossSettler as `0x${string}`,
+                                                externalParams,
                                                 interimMessageForSettler);
       const acrossQuote1 = await getAcrossQuote(sourceChainConfig,
                                                 destinationChainConfig,
-                                                totalToken1.wrapped,
+                                                token1Address,
                                                 totalToken1.asFraction.toFixed(0),
-                                                destinationChainConfig.UniswapV4AcrossSettler as `0x${string}`,
+                                                externalParams,
                                                 interimMessageForSettler);
 
       return {

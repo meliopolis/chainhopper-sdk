@@ -1,5 +1,5 @@
 import { type IV3PositionWithUncollectedFees } from './getV3Position';
-import { BridgeType, DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod } from '../utils/constants';
+import { BridgeType, DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, Protocol } from '../utils/constants';
 import { CurrencyAmount } from '@uniswap/sdk-core';
 import { getV3Quote } from './getV3Quote';
 import type { InternalStartMigrationParams, InternalStartMigrationResult } from '../types/internal';
@@ -53,12 +53,11 @@ export const startUniswapV3Migration = async ({
       // generate the message that will be passed to the settler on the destination chain
       // note that this is different than the message that is passed to Migrator on the source chain
       const { migrationId, interimMessageForSettler } = generateMigration(sourceChainConfig, MigrationMethod.DualToken, externalParams);
-      const wethToken = isWethToken0 ? totalToken0 : totalToken1
       const acrossQuote = await getAcrossQuote(sourceChainConfig,
                                                destinationChainConfig,
-                                               wethToken,
+                                               sourceChainConfig.wethAddress,
                                                totalWethAvailable.asFraction.toFixed(0),
-                                               destinationChainConfig.UniswapV3AcrossSettler as `0x${string}`,
+                                               externalParams,
                                                interimMessageForSettler);
 
       return {
@@ -88,15 +87,16 @@ export const startUniswapV3Migration = async ({
 
       const acrossQuote0 = await getAcrossQuote(sourceChainConfig,
                                                 destinationChainConfig,
-                                                totalToken0,
+                                                totalToken0.currency.address as `0x${string}`,
                                                 totalToken0.asFraction.toFixed(0),
-                                                destinationChainConfig.UniswapV3AcrossSettler as `0x${string}`,
+                                                externalParams,
                                                 interimMessageForSettler);
 
       const acrossQuote1 = await getAcrossQuote(sourceChainConfig,
                                                 destinationChainConfig,
-                                                totalToken1, totalToken1.asFraction.toFixed(0),
-                                                destinationChainConfig.UniswapV3AcrossSettler as `0x${string}`,
+                                                totalToken1.currency.address as `0x${string}`,
+                                                totalToken1.asFraction.toFixed(0),
+                                                externalParams,
                                                 interimMessageForSettler);
 
       return {
