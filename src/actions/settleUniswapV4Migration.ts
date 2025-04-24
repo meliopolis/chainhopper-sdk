@@ -1,7 +1,7 @@
 import { Token, CurrencyAmount, Fraction, Percent } from '@uniswap/sdk-core';
 import { encodeMigrationParams } from './encode';
 import { getV4Pool } from './getV4Pool';
-import { DEFAULT_SLIPPAGE_IN_BPS } from '../utils/constants';
+import { DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod } from '../utils/constants';
 import { zeroAddress } from 'viem';
 import { generateMaxV4Position } from '../utils/helpers';
 import { getV4Quote } from './getV4Quote';
@@ -51,7 +51,7 @@ export const settleUniswapV4Migration = async ({
     // if diff too high, find a communicate that in return bundle
     const baseTokenAvailable = CurrencyAmount.fromRawAmount(pool.token0, route.outputAmount.toString());
     const maxOtherTokenAvailable = CurrencyAmount.fromRawAmount(pool.token1, quoteOnDestChain.toString());
-    const maxPosition = generateMaxV4Position(pool, baseTokenAvailable, maxOtherTokenAvailable, externalParams.tickLower, externalParams.tickUpper);
+    const maxPosition = generateMaxV4Position(pool, baseTokenAvailable, maxOtherTokenAvailable, externalParams.tickLower, externalParams.tickUpper, MigrationMethod.SingleToken);
 
     // now we calculate the max position using the routeMinAmountOut
     const amountInUsingRouteMinAmountOut = routeMinAmountOut * (1n - settlerFeesInBps / 10_000n);
@@ -64,7 +64,8 @@ export const settleUniswapV4Migration = async ({
       baseTokenAvailableUsingRouteMinAmountOut,
       maxOtherTokenAvailableUsingRouteMinAmountOut,
       externalParams.tickLower,
-      externalParams.tickUpper
+      externalParams.tickUpper,
+      MigrationMethod.SingleToken
     );
 
     // calculate swapAmountInMilliBps
@@ -129,20 +130,13 @@ export const settleUniswapV4Migration = async ({
     };
   } else { // logically has to be (routes.length) === 2 but needs to look exhaustive for ts compiler
 
-    const isToken0EthOrWeth = pool.token0.isNative || pool.token0.address === destinationChainConfig.wethAddress;
-    const isRoute0Weth = routes[0].outputToken === destinationChainConfig.wethAddress;
-    const flippedTokenOrder = !(isRoute0Weth && isToken0EthOrWeth);
-
     let token0Available = routes[0].outputAmount * (1n - settlerFeesInBps / 10_000n);
     let token1Available = routes[1].outputAmount * (1n - settlerFeesInBps / 10_000n);
     let minToken0Available = routes[0].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
     let minToken1Available = routes[1].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
 
-    console.log('token0Available', token0Available)
-    console.log('token1Available', token1Available)
-
     let settleAmountOut0, settleAmountOut1, settleMinAmountOut0, settleMinAmountOut1;
-    if (flippedTokenOrder) {
+    if (externalParams.token0 !== routes[0].outputToken) {
       // the token order must be flipped if the token addresses sort in a different order on the destination chain
       settleAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, token1Available.toString());
       settleAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, token0Available.toString());
@@ -155,16 +149,8 @@ export const settleUniswapV4Migration = async ({
       settleMinAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, minToken1Available.toString());
     }
 
-    console.log('settleAmountOut0', settleAmountOut0.toFixed(6));
-    console.log('settleAmountOut1', settleAmountOut1.toFixed(6));
-    console.log('settleMinAmountOut0', settleMinAmountOut0.toFixed(6));
-    console.log('settleMinAmountOut1', settleMinAmountOut1.toFixed(6));
-
-    const maxPosition = generateMaxV4Position(pool, settleAmountOut0, settleAmountOut1, externalParams.tickLower, externalParams.tickUpper);
-    const maxPositionUsingSettleMinAmountsOut = generateMaxV4Position(pool, settleMinAmountOut0, settleMinAmountOut1, externalParams.tickLower, externalParams.tickUpper);
-
-    console.log('maxPositionUsingSettleMinAmountsOut', maxPositionUsingSettleMinAmountsOut.amount0.toFixed(6));
-    console.log('maxPositionUsingSettleMinAmountsOut', maxPositionUsingSettleMinAmountsOut.amount1.toFixed(6));
+    const maxPosition = generateMaxV4Position(pool, settleAmountOut0, settleAmountOut1, externalParams.tickLower, externalParams.tickUpper, MigrationMethod.DualToken);
+    const maxPositionUsingSettleMinAmountsOut = generateMaxV4Position(pool, settleMinAmountOut0, settleMinAmountOut1, externalParams.tickLower, externalParams.tickUpper, MigrationMethod.DualToken);
 
     const { amount0: amount0Min, amount1: amount1Min } = maxPositionUsingSettleMinAmountsOut.burnAmountsWithSlippage(
       new Percent(externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000)

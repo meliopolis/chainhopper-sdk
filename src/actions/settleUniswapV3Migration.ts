@@ -1,7 +1,7 @@
 import { CurrencyAmount, Fraction, Percent } from '@uniswap/sdk-core';
 import { encodeMigrationParams } from './encode';
 import { getV3Pool } from './getV3Pool';
-import { DEFAULT_SLIPPAGE_IN_BPS } from '../utils/constants';
+import { DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod } from '../utils/constants';
 import { zeroAddress } from 'viem';
 import { generateMaxV3Position, generateMaxV3PositionWithSwapAllowed } from '../utils/helpers';
 import { getV3Quote } from './getV3Quote';
@@ -130,24 +130,22 @@ export const settleUniswapV3Migration = async ({
     let minToken0Available = routes[0].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
     let minToken1Available = routes[1].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
 
-    let settleAmountOut0, settleAmountOut1, settleMinAmountOut0, settleMinAmountOut1, tickLower, tickUpper;
+    let settleAmountOut0, settleAmountOut1, settleMinAmountOut0, settleMinAmountOut1;
     if (externalParams.token0 !== routes[0].outputToken) {
       // the token order must be flipped if the token addresses sort in a different order on the destination chain
-      settleAmountOut0 = CurrencyAmount.fromRawAmount(pool.token1, token1Available.toString());
-      settleAmountOut1 = CurrencyAmount.fromRawAmount(pool.token0, token0Available.toString());
-      settleMinAmountOut0 = CurrencyAmount.fromRawAmount(pool.token1, minToken1Available.toString());
-      settleMinAmountOut1 = CurrencyAmount.fromRawAmount(pool.token0, minToken0Available.toString());
+      settleAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, token1Available.toString());
+      settleAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, token0Available.toString());
+      settleMinAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, minToken1Available.toString());
+      settleMinAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, minToken0Available.toString());
     } else {
-      tickLower = externalParams.tickLower;
-      tickUpper = externalParams.tickUpper;
       settleAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, token0Available.toString());
       settleAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, token1Available.toString());
       settleMinAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, minToken0Available.toString());
       settleMinAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, minToken1Available.toString());
     }
 
-    const maxPosition = generateMaxV3Position(pool, settleAmountOut0, settleAmountOut1, tickLower, tickUpper);
-    const maxPositionUsingSettleMinAmountsOut = generateMaxV3Position(pool, settleMinAmountOut0, settleMinAmountOut1, tickLower, tickUpper);
+    const maxPosition = generateMaxV3Position(pool, settleAmountOut0, settleAmountOut1, externalParams.tickLower, externalParams.tickUpper, MigrationMethod.DualToken);
+    const maxPositionUsingSettleMinAmountsOut = generateMaxV3Position(pool, settleMinAmountOut0, settleMinAmountOut1, externalParams.tickLower, externalParams.tickUpper, MigrationMethod.DualToken);
 
     const { amount0: amount0Min, amount1: amount1Min } = maxPositionUsingSettleMinAmountsOut.burnAmountsWithSlippage(
       new Percent(externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000)
@@ -188,8 +186,8 @@ export const settleUniswapV3Migration = async ({
           token1: externalParams.token1,
           fee: externalParams.fee,
           sqrtPriceX96: externalParams.sqrtPriceX96 || 0n,
-          tickLower: tickLower,
-          tickUpper: tickUpper,
+          tickLower: externalParams.tickLower,
+          tickUpper: externalParams.tickUpper,
           amount0Min: BigInt(amount0Min.toString()),
           amount1Min: BigInt(amount1Min.toString()),
           swapAmountInMilliBps: 0,

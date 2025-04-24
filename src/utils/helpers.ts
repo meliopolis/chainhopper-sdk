@@ -108,7 +108,8 @@ export const generateMaxV3Position = (
   currencyAmount0: CurrencyAmount<Currency>,
   currencyAmount1: CurrencyAmount<Currency>,
   tickLower: number,
-  tickUpper: number
+  tickUpper: number,
+  migrationMethod: MigrationMethod
 ): V3Position => {
   const [amount0, amount1] = [currencyAmount0.asFraction.toFixed(0).toString(), currencyAmount1.asFraction.toFixed(0).toString()];
   // estimate max position possible given the ticks and both tokens maxed out
@@ -123,7 +124,7 @@ export const generateMaxV3Position = (
 
   // now we need to proportionally reduce the position to fit within the max tokens available on the destination chain
   // if neither amount is 0, then we need to reduce both proportionally
-  if (!maxPosition.amount0.equalTo(0) && !maxPosition.amount1.equalTo(0)) {
+  if (migrationMethod == MigrationMethod.SingleToken && !maxPosition.amount0.equalTo(0) && !maxPosition.amount1.equalTo(0)) {
     const maxPositionValueInBaseToken = maxPosition.amount0.add(maxPosition.pool.token1Price.quote(maxPosition.amount1));
     const reductionFactor = currencyAmount0.asFraction.divide(maxPositionValueInBaseToken.asFraction);
 
@@ -144,9 +145,11 @@ export const generateMaxV4Position = (
   currencyAmount0: CurrencyAmount<Currency>,
   currencyAmount1: CurrencyAmount<Currency>,
   tickLower: number,
-  tickUpper: number
+  tickUpper: number,
+  migrationMethod: MigrationMethod
 ): V4Position => {
   const [amount0, amount1] = [currencyAmount0.asFraction.toFixed(0).toString(), currencyAmount1.asFraction.toFixed(0).toString()];
+
   // estimate max position possible given the ticks and both tokens maxed out
   const maxPosition = V4Position.fromAmounts({
     pool: pool,
@@ -159,7 +162,7 @@ export const generateMaxV4Position = (
 
   // now we need to proportionally reduce the position to fit within the max tokens available on the destination chain
   // if neither amount is 0, then we need to reduce both proportionally
-  if (!maxPosition.amount0.equalTo(0) && !maxPosition.amount1.equalTo(0)) {
+  if (migrationMethod === MigrationMethod.SingleToken && !maxPosition.amount0.equalTo(0) && !maxPosition.amount1.equalTo(0)) {
     const maxPositionValueInBaseToken = maxPosition.amount0.add(maxPosition.pool.token1Price.quote(maxPosition.amount1));
     const reductionFactor = currencyAmount0.asFraction.divide(maxPositionValueInBaseToken.asFraction);
 
