@@ -17,12 +17,15 @@ const blockNumbers: Record<number, bigint> = {
   8453: 29291900n
 };
 
+console.log('running cross-chain simulation as of block numbers: ');
+console.log('blockNumbers', blockNumbers);
+
 const logMigrationResult = (result: InternalSettleMigrationResult) => {
   console.log('amount0', result.destPosition.amount0.toFixed(6));
   console.log('amount1', result.destPosition.amount1.toFixed(6));
   console.log('tickLower', result.destPosition.tickLower);
   console.log('tickUpper', result.destPosition.tickUpper);
-  console.log('slippage: ', result.slippageCalcs);
+  console.log('tickCurrent', result.destPosition.pool.tickCurrent);
 }
 
 (async () => {
@@ -32,23 +35,30 @@ const logMigrationResult = (result: InternalSettleMigrationResult) => {
   configurePublicClients(client.chainConfigs, rpcUrls, blockNumbers);
 
   // v3 position for testing v3-> migrations
+  const v3ChainId = 1;
   const v3Owner = '0xbab7901210a28eef316744a713aed9036e2c5d21';
   const v3TokenId = 963499n;
   const v3Response = await client.getV3Position({
-    chainId: 1,
+    chainId: v3ChainId,
     tokenId: v3TokenId,
     owner: v3Owner,
   });
 
+  console.log('v3 pre-migration chainId:', v3ChainId);
+  console.log('v3 pre-migration owner:', v3Owner);
+  console.log('v3 pre-migration tokenId:', v3TokenId);
   console.log('v3 pre-migration position.amount0:', v3Response.position.amount0.toFixed(6));
   console.log('v3 pre-migration position.amount1:', v3Response.position.amount1.toFixed(6));
   console.log('v3 pre-migration uncollectedFees.amount0:', v3Response.uncollectedFees.amount0.toFixed(6));
   console.log('v3 pre-migration uncollectedFees.amount1:', v3Response.uncollectedFees.amount1.toFixed(6));
+  console.log('v3 pre-migration position.tickLower:', v3Response.position.tickLower);
+  console.log('v3 pre-migration position.tickUpper:', v3Response.position.tickUpper);
+  console.log('v3 pre-migration pool.tick:', v3Response.position.pool.tickCurrent);
 
-  console.log('\n--------- single token v3 to v4 migration ---------:')
+  console.log('\n------- single token v3 to v4 migration ------------:')
 
   const singleV3ToV4Params: RequestV3toV4MigrationParams = {
-    sourceChainId: 1,
+    sourceChainId: v3ChainId,
     destinationChainId: 130,
     tokenId: v3TokenId,
     owner: v3Owner,
@@ -68,7 +78,7 @@ const logMigrationResult = (result: InternalSettleMigrationResult) => {
   const singleV3ToV4Result = await client.requestMigration(singleV3ToV4Params);
   logMigrationResult(singleV3ToV4Result);
 
-  console.log('\n--------- dual token v3 to v4 migration ---------:')
+  console.log('\n--------- dual token v3 to v4 migration ------------:')
   const dualV3ToV4Params: RequestV3toV4MigrationParams = {
     ...singleV3ToV4Params,
     migrationMethod: MigrationMethod.DualToken,
@@ -77,10 +87,10 @@ const logMigrationResult = (result: InternalSettleMigrationResult) => {
   const dualV3ToV4Result = await client.requestMigration(dualV3ToV4Params);
   logMigrationResult(dualV3ToV4Result);
 
-  console.log('\n--------- single token v3 to v3 migration ---------:')
+  console.log('\n------- single token v3 to v3 migration -----------:')
 
   const singleV3ToV3Params: RequestV3toV3MigrationParams = {
-    sourceChainId: 1,
+    sourceChainId: v3ChainId,
     destinationChainId: 130,
     tokenId: v3TokenId,
     owner: v3Owner,
@@ -98,7 +108,7 @@ const logMigrationResult = (result: InternalSettleMigrationResult) => {
   const singleV3ToV3Result = await client.requestMigration(singleV3ToV4Params);
   logMigrationResult(singleV3ToV3Result);
 
-  console.log('\n--------- dual token v3 to v3 migration ---------:')
+  console.log('\n--------- dual token v3 to v3 migration -----------:')
   const dualV3ToV3Params: RequestV3toV3MigrationParams = {
     ...singleV3ToV3Params,
     token0: "0x078D782b760474a361dDA0AF3839290b0EF57AD6",
@@ -110,6 +120,7 @@ const logMigrationResult = (result: InternalSettleMigrationResult) => {
   logMigrationResult(dualV3ToV3Result);
 
   // v4 position for testing v4-> migrations
+  const v4ChainId = 130;
   const v4Owner = '0x29d8915a034d690ea4919fd9657cfdf6e6f679b1';
   const v4TokenId = 64594n;
   const v4Response = await client.getV4Position({
@@ -118,16 +129,22 @@ const logMigrationResult = (result: InternalSettleMigrationResult) => {
     owner: v4Owner,
   });
 
-  console.log('\nv4-> migrations -------------------------------------: ')
+  console.log('\nv4-> migrations -----------------------------------: ')
+  console.log('v4 pre-migration chainId:', v4ChainId);
+  console.log('v4 pre-migration owner:', v4Owner);
+  console.log('v4 pre-migration tokenId:', v4TokenId);
   console.log('v4 pre-migration position.amount0:', v4Response.position.amount0.toFixed(6));
   console.log('v4 pre-migration position.amount1:', v4Response.position.amount1.toFixed(6));
   console.log('v4 pre-migration uncollectedFees.amount0:', v4Response.uncollectedFees.amount0.toFixed(6));
   console.log('v4 pre-migration uncollectedFees.amount1:', v4Response.uncollectedFees.amount1.toFixed(6));
+  console.log('v4 pre-migration position.tickLower:', v4Response.position.tickLower);
+  console.log('v4 pre-migration position.tickUpper:', v4Response.position.tickUpper);
+  console.log('v4 pre-migration pool.tick:', v4Response.position.pool.tickCurrent);
 
   console.log('\n--------- single token v4 to v3 migration ---------:')
 
   const singleV4ToV3Params: RequestV4toV3MigrationParams = {
-    sourceChainId: 130,
+    sourceChainId: v4ChainId,
     destinationChainId: 8453,
     tokenId: v4TokenId,
     owner: v4Owner,
@@ -155,10 +172,10 @@ const logMigrationResult = (result: InternalSettleMigrationResult) => {
   const dualV4ToV3Result = await client.requestMigration(dualV4ToV3Params);
   logMigrationResult(dualV4ToV3Result);
 
-    console.log('\n--------- single token v4 to v4 migration ---------:')
+  console.log('\n------- single token v4 to v4 migration ---------:')
 
   const singleV4ToV4Params: RequestV4toV4MigrationParams = {
-    sourceChainId: 130,
+    sourceChainId: v4ChainId,
     destinationChainId: 8453,
     tokenId: v4TokenId,
     owner: v4Owner,
@@ -178,7 +195,7 @@ const logMigrationResult = (result: InternalSettleMigrationResult) => {
   const singleV4ToV4Result = await client.requestMigration(singleV4ToV4Params);
   logMigrationResult(singleV4ToV4Result);
 
-  console.log('\n--------- dual token v4 to v4 migration ---------:')
+  console.log('\n-------- dual token v4 to v4 migration ---------:')
 
   const dualV4ToV4Params: RequestV4toV4MigrationParams = {
     ...singleV4ToV4Params,
