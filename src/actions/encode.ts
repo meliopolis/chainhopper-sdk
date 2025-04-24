@@ -32,7 +32,7 @@ export const encodeMintParamsForV4 = (params: UniswapV4MintParams): `0x${string}
       tickUpper: params.tickUpper,
       amount0Min: params.amount0Min,
       amount1Min: params.amount1Min,
-      swapAmountInMilliBps: BigInt(params.swapAmountInMilliBps),
+      swapAmountInMilliBps: params.swapAmountInMilliBps,
     },
   ]);
 };

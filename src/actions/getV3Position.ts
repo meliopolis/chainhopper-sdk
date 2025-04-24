@@ -46,37 +46,6 @@ export const getV3Position = async (chainConfig: ChainConfig, params: IUniswapPo
     liquidity: positionsCallResult[7],
   } as IV3PositionsCallType;
 
-  // const encodedFeeCallData = encodeFunctionData({
-  //   abi: chainConfig.v3NftPositionManagerContract.abi as Abi,
-  //   functionName: 'collect',
-  //   args: [
-  //     {
-  //       tokenId: params.tokenId,
-  //       recipient: params.owner,
-  //       amount0Max: MAX_UINT128,
-  //       amount1Max: MAX_UINT128
-  //     },
-  //   ],
-  // });
-
-  // const rawFeeCallResponse = await publicClient!.request({
-  //   method: 'eth_call',
-  //   params: [
-  //     {
-  //       to: chainConfig.v3NftPositionManagerContract.address as `0x${string}`,
-  //       data: encodedFeeCallData,
-  //       from: params.owner,
-  //     },
-  //     'latest',
-  //   ],
-  // });
-
-  // const LPFeeData: ILPFeeCallResult = decodeFunctionResult({
-  //   abi: chainConfig.v3NftPositionManagerContract.abi as Abi,
-  //   functionName: 'collect',
-  //   data: rawFeeCallResponse as `0x${string}`,
-  // }) as [bigint, bigint];
-
   const LPFeeData: ILPFeeCallResult = (await publicClient!.simulateContract({
     address: chainConfig.v3NftPositionManagerContract.address as `0x${string}`,
     abi: chainConfig.v3NftPositionManagerContract.abi,
