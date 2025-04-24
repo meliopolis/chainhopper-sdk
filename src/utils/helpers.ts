@@ -232,3 +232,13 @@ export const generateMaxV3PositionWithSwapAllowed = async (
     useFullPrecision: true,
   });
 };
+
+export const subIn256 = (x: bigint, y: bigint): bigint => {
+  const difference = x - y;
+
+  if (x - y < 0n) {
+    return 2n ** 256n + difference;
+  } else {
+    return difference;
+  }
+};
