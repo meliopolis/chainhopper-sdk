@@ -51,6 +51,8 @@ const logMigrationResult = (result: InternalSettleMigrationResult) => {
   console.log('v3 pre-migration position.amount1:', v3Response.position.amount1.toFixed(6));
   console.log('v3 pre-migration uncollectedFees.amount0:', v3Response.uncollectedFees.amount0.toFixed(6));
   console.log('v3 pre-migration uncollectedFees.amount1:', v3Response.uncollectedFees.amount1.toFixed(6));
+  console.log('v3 pre-migration total amount0:', v3Response.position.amount0.add(v3Response.uncollectedFees.amount0).toFixed(6));
+  console.log('v3 pre-migration total amount1:', v3Response.position.amount1.add(v3Response.uncollectedFees.amount1).toFixed(6));
   console.log('v3 pre-migration position.tickLower:', v3Response.position.tickLower);
   console.log('v3 pre-migration position.tickUpper:', v3Response.position.tickUpper);
   console.log('v3 pre-migration pool.tick:', v3Response.position.pool.tickCurrent);
@@ -105,7 +107,7 @@ const logMigrationResult = (result: InternalSettleMigrationResult) => {
     fee: v3Response.position.pool.fee
   };
 
-  const singleV3ToV3Result = await client.requestMigration(singleV3ToV4Params);
+  const singleV3ToV3Result = await client.requestMigration(singleV3ToV3Params);
   logMigrationResult(singleV3ToV3Result);
 
   console.log('\n--------- dual token v3 to v3 migration -----------:')
@@ -137,6 +139,8 @@ const logMigrationResult = (result: InternalSettleMigrationResult) => {
   console.log('v4 pre-migration position.amount1:', v4Response.position.amount1.toFixed(6));
   console.log('v4 pre-migration uncollectedFees.amount0:', v4Response.uncollectedFees.amount0.toFixed(6));
   console.log('v4 pre-migration uncollectedFees.amount1:', v4Response.uncollectedFees.amount1.toFixed(6));
+  console.log('v4 pre-migration total amount0:', v4Response.position.amount0.add(v4Response.uncollectedFees.amount0).toFixed(6));
+  console.log('v4 pre-migration total amount1:', v4Response.position.amount1.add(v4Response.uncollectedFees.amount1).toFixed(6));
   console.log('v4 pre-migration position.tickLower:', v4Response.position.tickLower);
   console.log('v4 pre-migration position.tickUpper:', v4Response.position.tickUpper);
   console.log('v4 pre-migration pool.tick:', v4Response.position.pool.tickCurrent);
