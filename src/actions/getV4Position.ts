@@ -4,6 +4,7 @@ import type { ChainConfig } from '../chains';
 import type { IUniswapPositionParams } from '../types';
 import { getV4Pool } from './getV4Pool';
 import { encodePacked, keccak256, pad } from 'viem';
+import { subIn256 } from '../utils/helpers';
 
 export type IV4PositionWithUncollectedFees = {
   position: Position;
@@ -89,8 +90,8 @@ export const getV4Position = async (chainConfig: ChainConfig, params: IUniswapPo
   const feeGrowthInside1X128 = feeGrowthCallResult[0][1];
   const feeGrowthInside0LastX128 = feeGrowthCallResult[1][1];
   const feeGrowthInside1LastX128 = feeGrowthCallResult[1][2];
-  const feeGrowthDelta0: bigint = feeGrowthInside0X128 - feeGrowthInside0LastX128;
-  const feeGrowthDelta1: bigint = feeGrowthInside1X128 - feeGrowthInside1LastX128;
+  const feeGrowthDelta0: bigint = subIn256(feeGrowthInside0X128, feeGrowthInside0LastX128);
+  const feeGrowthDelta1: bigint = subIn256(feeGrowthInside1X128, feeGrowthInside1LastX128);
 
   const uncollectedFees0 = (liquidity * feeGrowthDelta0) / 2n ** 128n;
   const uncollectedFees1 = (liquidity * feeGrowthDelta1) / 2n ** 128n;
