@@ -141,8 +141,6 @@ export const settleUniswapV3Migration = async ({
     let settleAmountOut0, settleAmountOut1, settleMinAmountOut0, settleMinAmountOut1, tickLower, tickUpper;
     if (externalParams.token0 !== routes[0].outputToken) {
       // the token order must be flipped if the token addresses sort in a different order on the destination chain
-      tickLower = -1 * externalParams.tickUpper;
-      tickUpper = -1 * externalParams.tickLower;
       settleAmountOut0 = CurrencyAmount.fromRawAmount(pool.token1, token1Available.toString());
       settleAmountOut1 = CurrencyAmount.fromRawAmount(pool.token0, token0Available.toString());
       settleMinAmountOut0 = CurrencyAmount.fromRawAmount(pool.token1, minToken1Available.toString());

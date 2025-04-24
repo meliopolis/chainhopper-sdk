@@ -118,8 +118,6 @@ export const getMaxPositionV3 = (
     amount1: amount1,
     useFullPrecision: true,
   });
-  console.log('getMaxPositionV3 maxPosition amount0', maxPosition.amount0.toFixed(6));
-  console.log('getMaxPositionV3 maxPosition amount1', maxPosition.amount1.toFixed(6));
 
   // now we need to proportionally reduce the position to fit within the max tokens available on the destination chain
   // if neither amount is 0, then we need to reduce both proportionally
@@ -156,8 +154,7 @@ export const getMaxPositionV4 = (
     amount1: amount1,
     useFullPrecision: true,
   });
-  console.log('getMaxPositionV4 maxPosition amount0', maxPosition.amount0.toFixed(6));
-  console.log('getMaxPositionV4 maxPosition amount1', maxPosition.amount1.toFixed(6));
+
   // now we need to proportionally reduce the position to fit within the max tokens available on the destination chain
   // if neither amount is 0, then we need to reduce both proportionally
   if (!maxPosition.amount0.equalTo(0) && !maxPosition.amount1.equalTo(0)) {
