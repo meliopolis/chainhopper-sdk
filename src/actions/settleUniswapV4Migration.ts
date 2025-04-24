@@ -3,7 +3,7 @@ import { encodeMigrationParams } from './encode';
 import { getV4Pool } from './getV4Pool';
 import { DEFAULT_SLIPPAGE_IN_BPS } from '../utils/constants';
 import { zeroAddress } from 'viem';
-import { getMaxPositionV4 } from '../utils/helpers';
+import { generateMaxV4Position } from '../utils/helpers';
 import { getV4Quote } from './getV4Quote';
 import type { InternalSettleMigrationParams, InternalSettleMigrationResult } from '../types/internal';
 import { getSettlerFees } from './getSettlerFees';
@@ -51,7 +51,7 @@ export const settleUniswapV4Migration = async ({
     // if diff too high, find a communicate that in return bundle
     const baseTokenAvailable = CurrencyAmount.fromRawAmount(pool.token0, route.outputAmount.toString());
     const maxOtherTokenAvailable = CurrencyAmount.fromRawAmount(pool.token1, quoteOnDestChain.toString());
-    const maxPosition = getMaxPositionV4(pool, baseTokenAvailable, maxOtherTokenAvailable, externalParams.tickLower, externalParams.tickUpper);
+    const maxPosition = generateMaxV4Position(pool, baseTokenAvailable, maxOtherTokenAvailable, externalParams.tickLower, externalParams.tickUpper);
 
     // now we calculate the max position using the routeMinAmountOut
     const amountInUsingRouteMinAmountOut = routeMinAmountOut * (1n - settlerFeesInBps / 10_000n);
@@ -59,7 +59,7 @@ export const settleUniswapV4Migration = async ({
 
     const baseTokenAvailableUsingRouteMinAmountOut = CurrencyAmount.fromRawAmount(pool.token0, amountInUsingRouteMinAmountOut.toString());
     const maxOtherTokenAvailableUsingRouteMinAmountOut = CurrencyAmount.fromRawAmount(pool.token1, quoteOnDestChainUsingRouteMinAmountOut.toString());
-    const maxPositionUsingRouteMinAmountOut = getMaxPositionV4(
+    const maxPositionUsingRouteMinAmountOut = generateMaxV4Position(
       pool,
       baseTokenAvailableUsingRouteMinAmountOut,
       maxOtherTokenAvailableUsingRouteMinAmountOut,
@@ -160,8 +160,8 @@ export const settleUniswapV4Migration = async ({
     console.log('settleMinAmountOut0', settleMinAmountOut0.toFixed(6));
     console.log('settleMinAmountOut1', settleMinAmountOut1.toFixed(6));
 
-    const maxPosition = getMaxPositionV4(pool, settleAmountOut0, settleAmountOut1, externalParams.tickLower, externalParams.tickUpper);
-    const maxPositionUsingSettleMinAmountsOut = getMaxPositionV4(pool, settleMinAmountOut0, settleMinAmountOut1, externalParams.tickLower, externalParams.tickUpper);
+    const maxPosition = generateMaxV4Position(pool, settleAmountOut0, settleAmountOut1, externalParams.tickLower, externalParams.tickUpper);
+    const maxPositionUsingSettleMinAmountsOut = generateMaxV4Position(pool, settleMinAmountOut0, settleMinAmountOut1, externalParams.tickLower, externalParams.tickUpper);
 
     console.log('maxPositionUsingSettleMinAmountsOut', maxPositionUsingSettleMinAmountsOut.amount0.toFixed(6));
     console.log('maxPositionUsingSettleMinAmountsOut', maxPositionUsingSettleMinAmountsOut.amount1.toFixed(6));
