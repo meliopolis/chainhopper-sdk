@@ -130,7 +130,7 @@ export const generateMigrationParams = async (
     destPosition: maxPosition,
     slippageCalcs: {
       routeMinAmountOuts: routes.map((r) => r.minOutputAmount),
-      swapAmountInMilliBps: 0,
+      swapAmountInMilliBps: swapAmountInMilliBps ? swapAmountInMilliBps : 0,
       mintAmount0Min: BigInt(amount0Min.toString()),
       mintAmount1Min: BigInt(amount1Min.toString()),
     },

@@ -79,7 +79,7 @@ export const settleUniswapV3Migration = async ({
       routes,
       maxPositionWithSwap,
       maxPositionWithSwapUsingRouteMinAmountOut,
-      JSBI.toNumber(swapAmountInMilliBps)
+      10_000_000 - Number(swapAmountInMilliBps.toString())
     );
 
   } else { // logically has to be (routes.length) === 2 but needs to look exhaustive for ts compiler
