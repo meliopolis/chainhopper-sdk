@@ -115,6 +115,10 @@ export const chainConfigs: Record<number, ChainConfig> = {
       address: '0x1f3131a13296fb91c90870043742c3cdbff1a8d7',
       abi: v4QuoterAbi,
     },
+    v4DopplerQuoterContract: {
+      address: '0x543d49E9a2554704b0F0b150bb904fC1B06f8178',
+      abi: v4DopplerQuoterAbi,
+    },
     spokePoolAddress: '0xF383FD9A49282C9e1C99eB07a819e27E0d7B956c',
     multicallAddress,
     universalRouterAddress: '0x851116d9223fabed8e56c0e6b8ad0c31d98b3507',
@@ -194,6 +198,10 @@ export const chainConfigs: Record<number, ChainConfig> = {
       address: '0x0d5e0f971ed27fbff6c2837bf31316121532048d',
       abi: v4QuoterAbi,
     },
+    v4DopplerQuoterContract: {
+      address: '0x9fb6E4Cd3E52Ae6BBcedF32D6efFE8c26F894903',
+      abi: v4DopplerQuoterAbi,
+    },
     spokePoolAddress: '0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64',
     multicallAddress,
     universalRouterAddress: '0x6ff5693b99212da76ad316178a184ab56d299b43',
@@ -230,6 +238,10 @@ export const chainConfigs: Record<number, ChainConfig> = {
     v4QuoterContract: {
       address: '0x3972c00f7ed4885e145823eb7c655375d275a1c5',
       abi: v4QuoterAbi,
+    },
+    v4DopplerQuoterContract: {
+      address: '0x2F7770BCaf7833eF857790FB7bc186180bb49942',
+      abi: v4DopplerQuoterAbi,
     },
     spokePoolAddress: '0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A',
     multicallAddress,
