@@ -86,7 +86,7 @@ export const settleUniswapV4Migration = async ({
   } else { // logically has to be (routes.length) === 2 but needs to look exhaustive for ts compiler
     // make sure both tokens are found in routes
     let token0Address = externalParams.token0 === NATIVE_ETH_ADDRESS ? destinationChainConfig.wethAddress : externalParams.token0;
-    let token1Address = externalParams.token1 === NATIVE_ETH_ADDRESS ? destinationChainConfig.wethAddress : externalParams.token1;
+    let token1Address = externalParams.token1;
     if (token0Address != routes[0].outputToken && token0Address != routes[1].outputToken) throw new Error('Requested token0 not found in routes');
     if (token1Address != routes[0].outputToken && token1Address != routes[1].outputToken) throw new Error('Requested token1 not found in routes');
 

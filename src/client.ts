@@ -105,12 +105,12 @@ export class ChainHopperClient {
     this.validateAddress(params.token0);
     this.validateAddress(params.token1);
 
-    if (params.token0.toLowerCase() > params.token1.toLowerCase()) {
-      throw new Error('token0 and token1 must be in alphabetical order');
+    if (params.token0.toLowerCase() >= params.token1.toLowerCase()) {
+      throw new Error('token0 and token1 must be distinct addresses in alphabetical order');
     }
 
-    if (params.token0.toLowerCase() > params.token1.toLowerCase()) {
-      throw new Error('token0 and token1 must be in alphabetical order');
+    if (params.token0.toLowerCase() >= params.token1.toLowerCase()) {
+      throw new Error('token0 and token1 must be distinct addresses in alphabetical order');
     }
 
     if (params.tickLower > params.tickUpper) {
@@ -222,7 +222,7 @@ export class ChainHopperClient {
       sourceProtocol: Protocol.UniswapV4,
       sourcePosition: v4Position,
       sourceTokenId: tokenId,
-      destProtocol: Protocol.UniswapV3,
+      destProtocol: destinationProtocol,
       destChainId: destinationChainId,
       routes,
     };
