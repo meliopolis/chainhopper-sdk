@@ -6,6 +6,7 @@ import NonfungiblePositionManager from '@uniswap/v3-periphery/artifacts/contract
 import { v4PositionManagerAbi } from './abis/v4PositionManager';
 import { stateViewAbi } from './abis/v4StateView';
 import { v4QuoterAbi } from './abis/v4Quoter';
+import { v4DopplerQuoterAbi } from './abis/v4DopplerQuoter';
 
 type Contract = {
   address: `0x${string}`;
@@ -28,6 +29,7 @@ export type ChainConfig = {
   v4PositionManagerContract: Contract;
   v4StateViewContract: Contract;
   v4QuoterContract: Contract;
+  v4DopplerQuoterContract?: Contract;
 
   // other
   multicallAddress: `0x${string}`;
@@ -149,6 +151,10 @@ export const chainConfigs: Record<number, ChainConfig> = {
     v4QuoterContract: {
       address: '0x333e3c607b141b18ff6de9f258db6e77fe7491e0',
       abi: v4QuoterAbi,
+    },
+    v4DopplerQuoterContract: {
+      address: '0xB0230053e93d083BA4147B7c052485F096C52A91',
+      abi: v4DopplerQuoterAbi,
     },
     spokePoolAddress: '0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64',
     multicallAddress,

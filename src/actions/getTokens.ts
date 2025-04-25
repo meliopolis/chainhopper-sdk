@@ -1,7 +1,7 @@
 import { erc20Abi } from 'viem';
 import { type ChainConfig } from '../chains';
 import { Ether, Token, type Currency } from '@uniswap/sdk-core';
-import { NATIVE_ETH_ADDRESS } from '@/utils/constants';
+import { NATIVE_ETH_ADDRESS } from '../utils/constants';
 
 export const getTokens = async (chainConfig: ChainConfig, tokenAddresses: `0x${string}`[]): Promise<Currency[]> => {
   const tokens = await chainConfig.publicClient?.multicall({
