@@ -47,6 +47,7 @@
   "scripts": {
     "lint": "eslint --fix",
     "format": "prettier --write --ignore-unknown",
+    "test": "bun test",
     "build": "tsc",
     "types": "tsc --emitDeclarationOnly --declaration --declarationDir ./dist",
     "prepublishOnly": "npm run build && npm run types"

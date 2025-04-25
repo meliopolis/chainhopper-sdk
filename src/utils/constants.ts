@@ -15,3 +15,5 @@ export enum BridgeType {
 
 export const DEFAULT_SLIPPAGE_IN_BPS = 100; // 1%
 export const DEFAULT_FILL_DEADLINE_OFFSET = 3000; // in seconds
+
+export const NATIVE_ETH_ADDRESS = '0x0000000000000000000000000000000000000000'
