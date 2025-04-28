@@ -1,9 +1,8 @@
-import { CurrencyAmount, Fraction, Percent } from '@uniswap/sdk-core';
-import { encodeMigrationParams } from './encode';
+import { CurrencyAmount, Fraction } from '@uniswap/sdk-core';
 import { getV4Pool } from './getV4Pool';
-import { DEFAULT_SLIPPAGE_IN_BPS } from '../utils/constants';
+import { MigrationMethod, NATIVE_ETH_ADDRESS } from '../utils/constants';
 import { zeroAddress } from 'viem';
-import { generateMaxV4Position } from '../utils/helpers';
+import { generateMaxV4Position, generateMigrationParams } from '../utils/helpers';
 import { getV4Quote } from './getV4Quote';
 import type { InternalSettleMigrationParams, InternalSettleMigrationResult } from '../types/internal';
 import { getSettlerFees } from './getSettlerFees';
@@ -15,29 +14,31 @@ export const settleUniswapV4Migration = async ({
   routes,
   externalParams,
 }: InternalSettleMigrationParams): Promise<InternalSettleMigrationResult> => {
-  const { tickSpacing, hooks } = externalParams as RequestV3toV4MigrationParams | RequestV4toV4MigrationParams;
-  if (routes.length === 0) {
-    throw new Error('No routes found');
-  } else if (routes.length === 1) {
-    // now we need fetch the pool on the destination chain
-    const pool = await getV4Pool(destinationChainConfig, {
-      currency0: externalParams.token0,
-      currency1: externalParams.token1,
-      fee: externalParams.fee,
-      tickSpacing: tickSpacing,
-      hooks: hooks,
-    });
+  if (routes.length === 0) throw new Error('No routes found');
+  if (routes.length > 2) throw new Error('Invalid number of routes');
 
+  const { tickSpacing, hooks } = externalParams as RequestV3toV4MigrationParams | RequestV4toV4MigrationParams;
+
+  // now we need fetch the pool on the destination chain
+  const pool = await getV4Pool(destinationChainConfig, {
+    currency0: externalParams.token0,
+    currency1: externalParams.token1,
+    fee: externalParams.fee,
+    tickSpacing: tickSpacing,
+    hooks: hooks,
+  });
+
+  // get the settler fees
+  const { protocolShareBps } = await getSettlerFees(destinationChainConfig, destinationChainConfig.UniswapV4AcrossSettler);
+  const settlerFeesInBps = BigInt(protocolShareBps) + BigInt(externalParams.senderShareBps || 0);
+
+  if (routes.length === 1) {
     const route = routes[0];
     const routeMinAmountOut = route.minOutputAmount;
 
-    // get the settler fees
-    const { protocolShareBps } = await getSettlerFees(destinationChainConfig, destinationChainConfig.UniswapV4AcrossSettler);
-    const settlerFeesInBps = BigInt(protocolShareBps) + BigInt(externalParams.senderShareBps || 0);
     // we need to create two potential LP positions on destination chain
     // 1. using the across quote output amount. This is the best position possible
     // 2. using the routeMinAmountOut. This helps us calculate the worst position given slippage
-
 
     // estimate max otherToken available if all baseToken was traded away
     // TODO need to handle weth (right now only handle native token pools)
@@ -48,7 +49,7 @@ export const settleUniswapV4Migration = async ({
     // if diff too high, find a communicate that in return bundle
     const baseTokenAvailable = CurrencyAmount.fromRawAmount(pool.token0, route.outputAmount.toString());
     const maxOtherTokenAvailable = CurrencyAmount.fromRawAmount(pool.token1, quoteOnDestChain.toString());
-    const maxPosition = generateMaxV4Position(pool, baseTokenAvailable, maxOtherTokenAvailable, externalParams.tickLower, externalParams.tickUpper);
+    const maxPosition = generateMaxV4Position(pool, baseTokenAvailable, maxOtherTokenAvailable, externalParams.tickLower, externalParams.tickUpper, MigrationMethod.SingleToken);
 
     // now we calculate the max position using the routeMinAmountOut
     const amountInUsingRouteMinAmountOut = routeMinAmountOut * (1n - settlerFeesInBps / 10_000n);
@@ -61,7 +62,8 @@ export const settleUniswapV4Migration = async ({
       baseTokenAvailableUsingRouteMinAmountOut,
       maxOtherTokenAvailableUsingRouteMinAmountOut,
       externalParams.tickLower,
-      externalParams.tickUpper
+      externalParams.tickUpper,
+      MigrationMethod.SingleToken
     );
 
     // calculate swapAmountInMilliBps
@@ -70,63 +72,53 @@ export const settleUniswapV4Migration = async ({
         ? maxPosition.amount0.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).add(new Fraction(1, 10_000_000)).toFixed(0)
         : maxPosition.amount1.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).add(new Fraction(1, 10_000_000)).toFixed(0);
 
-    // we use burnAmountsWithSlippage instead of mintAmountsWithSlippage because v4-sdk
-    // produces max amounts (instead of min amounts) when using mintAmountsWithSlippage
-    const { amount0: amount0Min, amount1: amount1Min } = maxPositionUsingRouteMinAmountOut.burnAmountsWithSlippage(
-      new Percent(externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000)
+    return generateMigrationParams(
+      migrationId,
+      externalParams,
+      destinationChainConfig,
+      routes,
+      maxPosition,
+      maxPositionUsingRouteMinAmountOut,
+      10_000_000 - Number(swapAmountInMilliBps)
+    );
+  } else {
+    // logically has to be (routes.length) === 2 but needs to look exhaustive for ts compiler
+    // make sure both tokens are found in routes
+    const token0Address = externalParams.token0 === NATIVE_ETH_ADDRESS ? destinationChainConfig.wethAddress : externalParams.token0;
+    const token1Address = externalParams.token1;
+    if (token0Address != routes[0].outputToken && token0Address != routes[1].outputToken) throw new Error('Requested token0 not found in routes');
+    if (token1Address != routes[0].outputToken && token1Address != routes[1].outputToken) throw new Error('Requested token1 not found in routes');
+
+    const token0Available = routes[0].outputAmount * (1n - settlerFeesInBps / 10_000n);
+    const token1Available = routes[1].outputAmount * (1n - settlerFeesInBps / 10_000n);
+    const minToken0Available = routes[0].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
+    const minToken1Available = routes[1].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
+
+    let settleAmountOut0, settleAmountOut1, settleMinAmountOut0, settleMinAmountOut1;
+    if (externalParams.token0 !== routes[0].outputToken) {
+      // the token order must be flipped if the token addresses sort in a different order on the destination chain
+      settleAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, token1Available.toString());
+      settleAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, token0Available.toString());
+      settleMinAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, minToken1Available.toString());
+      settleMinAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, minToken0Available.toString());
+    } else {
+      settleAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, token0Available.toString());
+      settleAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, token1Available.toString());
+      settleMinAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, minToken0Available.toString());
+      settleMinAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, minToken1Available.toString());
+    }
+
+    const maxPosition = generateMaxV4Position(pool, settleAmountOut0, settleAmountOut1, externalParams.tickLower, externalParams.tickUpper, MigrationMethod.DualToken);
+
+    const maxPositionUsingSettleMinAmountsOut = generateMaxV4Position(
+      pool,
+      settleMinAmountOut0,
+      settleMinAmountOut1,
+      externalParams.tickLower,
+      externalParams.tickUpper,
+      MigrationMethod.DualToken
     );
 
-    // generate the final messages
-    const { migratorMessage, settlerMessage } = encodeMigrationParams(
-      {
-        chainId: destinationChainConfig.chainId,
-        settler: destinationChainConfig.UniswapV4AcrossSettler as `0x${string}`,
-        tokenRoutes: [
-          {
-            inputToken: route.inputToken,
-            outputToken: route.outputToken,
-            minAmountOut: routeMinAmountOut,
-            maxFees: route.maxFees,
-            quoteTimestamp: Number((await destinationChainConfig.publicClient?.getBlock())?.timestamp || 0),
-            fillDeadlineOffset: 3000, // hardcoded for now; taken from spokePool contract
-            exclusiveRelayer: route.exclusiveRelayer,
-            exclusivityDeadline: route.exclusivityDeadline,
-          },
-        ],
-        settlementParams: {
-          recipient: externalParams.owner,
-          senderShareBps: externalParams.senderShareBps || 0,
-          senderFeeRecipient: externalParams.senderFeeRecipient || zeroAddress,
-          // mint params
-          token0: externalParams.token0,
-          token1: externalParams.token1,
-          fee: externalParams.fee,
-          sqrtPriceX96: externalParams.sqrtPriceX96 || 0n,
-          tickSpacing: tickSpacing,
-          hooks: hooks,
-          tickLower: externalParams.tickLower,
-          tickUpper: externalParams.tickUpper,
-          amount0Min: BigInt(amount0Min.toString()),
-          amount1Min: BigInt(amount1Min.toString()),
-          swapAmountInMilliBps: 10_000_000 - Number(swapAmountInMilliBps),
-        },
-      },
-      migrationId
-    );
-    return {
-      destPosition: maxPosition,
-      slippageCalcs: {
-        routeMinAmountOut,
-        swapAmountInMilliBps: 10_000_000 - Number(swapAmountInMilliBps),
-        mintAmount0Min: BigInt(amount0Min.toString()),
-        mintAmount1Min: BigInt(amount1Min.toString()),
-      },
-      migratorMessage,
-      settlerMessage,
-    };
-  } else if (routes.length === 2) {
-    throw new Error('Dual token migration not implemented');
-  } else {
-    throw new Error('Invalid number of routes');
+    return generateMigrationParams(migrationId, externalParams, destinationChainConfig, routes, maxPosition, maxPositionUsingSettleMinAmountsOut);
   }
 };

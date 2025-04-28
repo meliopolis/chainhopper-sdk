@@ -86,10 +86,10 @@ export type RequestMigrationParams = RequestV3toV3MigrationParams | RequestV3toV
 // };
 
 export type SlippageCalcs = {
-  routeMinAmountOut: bigint;
   swapAmountInMilliBps: number;
   mintAmount0Min: bigint;
   mintAmount1Min: bigint;
+  routeMinAmountOuts: bigint[];
 };
 
 export type Route = {

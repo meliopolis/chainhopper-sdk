@@ -18,6 +18,7 @@ import { startUniswapV3Migration, settleUniswapV3Migration } from './actions';
 import { getV4Position, type IV4PositionWithUncollectedFees } from './actions/getV4Position';
 import { startUniswapV4Migration } from './actions/startUniswapV4Migration';
 import { settleUniswapV4Migration } from './actions/settleUniswapV4Migration';
+import { isAddress, checksumAddress } from 'viem';
 
 export type ChainHopperClientOptions = {
   /**
@@ -49,6 +50,11 @@ export class ChainHopperClient {
 
   public getSupportedChainIds(): number[] {
     return Object.values(chainConfigs).map((chainConfig) => chainConfig.chain.id);
+  }
+
+  public validateAddress(address: string) {
+    if (!isAddress(address)) throw new Error(`${address} is not a valid address`);
+    if (address !== checksumAddress(address)) throw new Error(`${address} is not a checksummed address`);
   }
 
   public getV3Position(params: IUniswapPositionParams): Promise<IV3PositionWithUncollectedFees> {
@@ -95,8 +101,16 @@ export class ChainHopperClient {
       throw new Error('owner is not valid');
     }
 
-    if (params.token0.toLowerCase() > params.token1.toLowerCase()) {
-      throw new Error('token0 and token1 must be in alphabetical order');
+    // validate token addresses
+    this.validateAddress(params.token0);
+    this.validateAddress(params.token1);
+
+    if (params.token0.toLowerCase() >= params.token1.toLowerCase()) {
+      throw new Error('token0 and token1 must be distinct addresses in alphabetical order');
+    }
+
+    if (params.token0.toLowerCase() >= params.token1.toLowerCase()) {
+      throw new Error('token0 and token1 must be distinct addresses in alphabetical order');
     }
 
     if (params.tickLower > params.tickUpper) {
@@ -208,7 +222,7 @@ export class ChainHopperClient {
       sourceProtocol: Protocol.UniswapV4,
       sourcePosition: v4Position,
       sourceTokenId: tokenId,
-      destProtocol: Protocol.UniswapV3,
+      destProtocol: destinationProtocol,
       destChainId: destinationChainId,
       routes,
     };
