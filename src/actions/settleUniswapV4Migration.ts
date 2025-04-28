@@ -48,6 +48,7 @@ export const settleUniswapV4Migration = async ({
     const maxPosition = (await generateMaxV3orV4PositionWithSwapAllowed(
       destinationChainConfig,
       pool,
+      externalParams,
       baseTokenAvailable,
       maxOtherTokenAvailable,
       externalParams.tickLower,
@@ -63,6 +64,7 @@ export const settleUniswapV4Migration = async ({
     const maxPositionUsingRouteMinAmountOut = (await generateMaxV3orV4PositionWithSwapAllowed(
       destinationChainConfig,
       pool,
+      externalParams,
       baseTokenAvailableUsingRouteMinAmountOut,
       maxOtherTokenAvailableUsingRouteMinAmountOut,
       externalParams.tickLower,

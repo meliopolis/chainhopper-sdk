@@ -7,7 +7,7 @@ import { Position as V4Position, Pool as V4Pool } from '@uniswap/v4-sdk';
 import { acrossClient } from '../lib/acrossClient';
 import { encodeMigrationParams, encodeMintParamsForV3, encodeMintParamsForV4, encodeSettlementParams, encodeSettlementParamsForSettler } from '../actions/encode';
 import { zeroAddress } from 'viem';
-import type { RequestV3MigrationParams, RequestV4MigrationParams, Route } from '../types/sdk';
+import type { RequestMigrationParams, Route } from '../types/sdk';
 
 import JSBI from 'jsbi';
 import { getV3Quote } from '../actions/getV3Quote';
@@ -47,7 +47,7 @@ export const genMigrationId = (chainId: number, migrator: string, method: Migrat
 export const generateMigration = (
   sourceChainConfig: ChainConfig,
   migrationMethod: MigrationMethod,
-  externalParams: RequestV3MigrationParams | RequestV4MigrationParams
+  externalParams: RequestMigrationParams,
 ): { migrationId: `0x${string}`; interimMessageForSettler: `0x${string}` } => {
   const migrationId = genMigrationId(externalParams.sourceChainId, sourceChainConfig.UniswapV3AcrossMigrator || zeroAddress, migrationMethod, BigInt(0));
   let mintParams: `0x${string}`;
@@ -87,7 +87,7 @@ export const generateMigration = (
 
 export const generateMigrationParams = async (
   migrationId: `0x${string}`,
-  externalParams: RequestV3MigrationParams | RequestV4MigrationParams,
+  externalParams: RequestMigrationParams,
   destinationChainConfig: ChainConfig,
   routes: Route[],
   maxPosition: V3Position | V4Position,
@@ -154,7 +154,7 @@ export const getAcrossQuote = async (
   destinationChainConfig: ChainConfig,
   tokenAddress: `0x${string}`,
   tokenAmount: string,
-  externalParams: RequestV3MigrationParams | RequestV4MigrationParams,
+  externalParams: RequestMigrationParams,
   interimMessageForSettler: `0x${string}`
 ): Promise<Quote> => {
   // initially just supporting (W)ETH/USDC pairs
@@ -173,7 +173,7 @@ export const getAcrossQuote = async (
   });
 };
 
-const resolveSettler = (externalParams: RequestV3MigrationParams | RequestV4MigrationParams, destinationChainConfig: ChainConfig): `0x${string}` => {
+const resolveSettler = (externalParams: RequestMigrationParams, destinationChainConfig: ChainConfig): `0x${string}` => {
   let settler: `0x${string}`;
   switch (externalParams.destinationProtocol) {
     case Protocol.UniswapV3:
@@ -190,10 +190,6 @@ const resolveSettler = (externalParams: RequestV3MigrationParams | RequestV4Migr
       } else {
         throw new Error('UniswapV4AcrossSettler not provided for destination chain.');
       }
-    default: {
-      const _exhaustiveCheck: never = externalParams.destinationProtocol;
-      throw new Error(`Unhandled protocol: ${_exhaustiveCheck}`);
-    }
   }
   return settler;
 };
@@ -312,6 +308,7 @@ const calculateRatioAmountIn = (
 export const generateMaxV3orV4PositionWithSwapAllowed = async (
   chainConfig: ChainConfig,
   pool: V3Pool | V4Pool,
+  externalParams: RequestMigrationParams,
   token0Balance: CurrencyAmount<Currency>,
   token1Balance: CurrencyAmount<Currency>,
   tickLower: number,
@@ -319,7 +316,8 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
   slippageTolerance: Fraction,
   numIterations: number
 ): Promise<V3Position | V4Position> => {
-  if (token1Balance.currency.wrapped.sortsBefore(token0Balance.currency.wrapped)) {
+
+  if (externalParams.token1 < externalParams.token0) {
     [token0Balance, token1Balance] = [token1Balance, token0Balance];
   }
   const isV4 = 'hooks' in pool;

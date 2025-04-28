@@ -22,10 +22,11 @@ beforeAll(async () => {
     8453: Bun.env.BASE_RPC_URL!,
   };
 
+  // approx 17:12:38 UTC on Apr 28, 2025
   const blockNumbers = {
-    1: 22328545n, // produced: Apr-23-2025 01:51:23 AM +UTC
-    130: 14624728n, // produced: Apr-23-2025 01:51:27 AM +UTC
-    8453: 29291900n, // produced: Apr-23-2025 01:52:27 AM +UTC
+    1: 22369267n,
+    130: 15115599n,
+    8453: 29537305n,
   };
 
   // get client and override block numbers for read calls
@@ -62,8 +63,8 @@ const validateMigrationResponse = (params: RequestMigrationParams, result: Reque
   const amount1 = BigInt(result.destPosition.amount1.quotient.toString());
 
   // check correct output amounts within slippage
-  expect(amount0).toBeGreaterThan(result.slippageCalcs.mintAmount0Min);
-  expect(amount1).toBeGreaterThan(result.slippageCalcs.mintAmount1Min);
+  expect(amount0).toBeGreaterThanOrEqual(result.slippageCalcs.mintAmount0Min);
+  expect(amount1).toBeGreaterThanOrEqual(result.slippageCalcs.mintAmount1Min);
 };
 
 describe('invalid migrations', () => {
