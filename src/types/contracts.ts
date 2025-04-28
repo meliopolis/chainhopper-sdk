@@ -16,8 +16,6 @@ export type TokenRoute = AcrossRoute & {
   minAmountOut: bigint;
 };
 
-
-
 export type MigrationParams = {
   chainId: number;
   settler: `0x${string}`;

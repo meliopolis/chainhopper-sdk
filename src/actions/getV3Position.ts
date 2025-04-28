@@ -46,20 +46,22 @@ export const getV3Position = async (chainConfig: ChainConfig, params: IUniswapPo
     liquidity: positionsCallResult[7],
   } as IV3PositionsCallType;
 
-  const LPFeeData: ILPFeeCallResult = (await publicClient!.simulateContract({
-    address: chainConfig.v3NftPositionManagerContract.address as `0x${string}`,
-    abi: chainConfig.v3NftPositionManagerContract.abi,
-    functionName: 'collect',
-    args: [
-      {
-        tokenId: params.tokenId,
-        recipient: params.owner,
-        amount0Max: MAX_UINT128,
-        amount1Max: MAX_UINT128,
-      },
-    ] as const,
-    account: params.owner, // need to simulate the call as the owner
-  })).result as ILPFeeCallResult;
+  const LPFeeData: ILPFeeCallResult = (
+    await publicClient!.simulateContract({
+      address: chainConfig.v3NftPositionManagerContract.address as `0x${string}`,
+      abi: chainConfig.v3NftPositionManagerContract.abi,
+      functionName: 'collect',
+      args: [
+        {
+          tokenId: params.tokenId,
+          recipient: params.owner,
+          amount0Max: MAX_UINT128,
+          amount1Max: MAX_UINT128,
+        },
+      ] as const,
+      account: params.owner, // need to simulate the call as the owner
+    })
+  ).result as ILPFeeCallResult;
 
   // fetch pool data
   const poolAddress = computePoolAddress({

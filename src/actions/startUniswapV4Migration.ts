@@ -80,12 +80,14 @@ export const startUniswapV4Migration = async ({
         migrationId
       );
 
-      const acrossQuote = await getAcrossQuote(sourceChainConfig,
-                                               destinationChainConfig,
-                                               sourceChainConfig.wethAddress,
-                                               totalWethAvailable.asFraction.toFixed(0),
-                                               externalParams,
-                                               interimMessageForSettler)
+      const acrossQuote = await getAcrossQuote(
+        sourceChainConfig,
+        destinationChainConfig,
+        sourceChainConfig.wethAddress,
+        totalWethAvailable.asFraction.toFixed(0),
+        externalParams,
+        interimMessageForSettler
+      );
 
       return {
         acrossQuotes: [acrossQuote],
@@ -108,25 +110,28 @@ export const startUniswapV4Migration = async ({
       throw new Error('Bridge type not supported');
     }
   } else if (externalParams.migrationMethod === MigrationMethod.DualToken) {
-
     if (externalParams.bridgeType === BridgeType.Across) {
       const { migrationId, interimMessageForSettler } = generateMigration(sourceChainConfig, MigrationMethod.DualToken, externalParams);
 
-      const token0Address = totalToken0.currency.isNative ? sourceChainConfig.wethAddress : totalToken0.currency.address as `0x${string}`;
-      const token1Address = totalToken1.currency.isNative ? sourceChainConfig.wethAddress : totalToken1.currency.address as `0x${string}`;
+      const token0Address = totalToken0.currency.isNative ? sourceChainConfig.wethAddress : (totalToken0.currency.address as `0x${string}`);
+      const token1Address = totalToken1.currency.isNative ? sourceChainConfig.wethAddress : (totalToken1.currency.address as `0x${string}`);
 
-      const acrossQuote0 = await getAcrossQuote(sourceChainConfig,
-                                                destinationChainConfig,
-                                                token0Address,
-                                                totalToken0.asFraction.toFixed(0),
-                                                externalParams,
-                                                interimMessageForSettler);
-      const acrossQuote1 = await getAcrossQuote(sourceChainConfig,
-                                                destinationChainConfig,
-                                                token1Address,
-                                                totalToken1.asFraction.toFixed(0),
-                                                externalParams,
-                                                interimMessageForSettler);
+      const acrossQuote0 = await getAcrossQuote(
+        sourceChainConfig,
+        destinationChainConfig,
+        token0Address,
+        totalToken0.asFraction.toFixed(0),
+        externalParams,
+        interimMessageForSettler
+      );
+      const acrossQuote1 = await getAcrossQuote(
+        sourceChainConfig,
+        destinationChainConfig,
+        token1Address,
+        totalToken1.asFraction.toFixed(0),
+        externalParams,
+        interimMessageForSettler
+      );
 
       return {
         acrossQuotes: [acrossQuote0, acrossQuote1],
@@ -155,11 +160,10 @@ export const startUniswapV4Migration = async ({
           },
         ],
         migrationId,
-      }
+      };
     } else {
       throw new Error('Bridge type not supported');
-    };
-
+    }
   } else {
     throw new Error('Invalid migration method');
   }

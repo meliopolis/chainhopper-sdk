@@ -15,7 +15,6 @@ export const SettlementParamsAbi = [
   },
 ];
 
-
 export const V3MintParamsAbi = [
   {
     name: 'V3MintParams',
