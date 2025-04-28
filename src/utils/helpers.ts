@@ -69,7 +69,7 @@ export const generateMigration = (
       ...externalParams, // get the rest of the params from the request
     });
   } else {
-    throw new Error('Bridge type not supported');
+    throw new Error('Destination protocol not supported');
   }
   const interimMessageForSettler = encodeSettlementParamsForSettler(
     encodeSettlementParams(

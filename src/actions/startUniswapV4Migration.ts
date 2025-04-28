@@ -1,6 +1,5 @@
 import { BridgeType, DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, Protocol } from '../utils/constants';
 import { CurrencyAmount } from '@uniswap/sdk-core';
-import { acrossClient } from '../lib/acrossClient';
 import { encodeMintParamsForV3, encodeMintParamsForV4, encodeSettlementParams, encodeSettlementParamsForSettler } from './encode';
 import type { IV4PositionWithUncollectedFees } from './getV4Position';
 import { zeroAddress } from 'viem';

@@ -52,7 +52,7 @@ export const startUniswapV3Migration = async ({
     if (externalParams.bridgeType === BridgeType.Across) {
       // generate the message that will be passed to the settler on the destination chain
       // note that this is different than the message that is passed to Migrator on the source chain
-      const { migrationId, interimMessageForSettler } = generateMigration(sourceChainConfig, MigrationMethod.DualToken, externalParams);
+      const { migrationId, interimMessageForSettler } = generateMigration(sourceChainConfig, MigrationMethod.SingleToken, externalParams);
       const acrossQuote = await getAcrossQuote(
         sourceChainConfig,
         destinationChainConfig,

@@ -1,4 +1,4 @@
-import { type Abi, encodeFunctionData, decodeFunctionResult } from 'viem';
+import { type Abi } from 'viem';
 import { type ChainConfig } from '../chains';
 import PoolContract from '@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json';
 import { computePoolAddress, Pool, Position } from '@uniswap/v3-sdk';

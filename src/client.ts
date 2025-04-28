@@ -52,7 +52,7 @@ export class ChainHopperClient {
     return Object.values(chainConfigs).map((chainConfig) => chainConfig.chain.id);
   }
 
-  public validateAddress(address: string) {
+  public validateAddress(address: string): void {
     if (!isAddress(address)) throw new Error(`${address} is not a valid address`);
     if (address !== checksumAddress(address)) throw new Error(`${address} is not a checksummed address`);
   }
