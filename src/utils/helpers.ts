@@ -11,6 +11,7 @@ import type { RequestV3MigrationParams, RequestV4MigrationParams, Route } from '
 import JSBI from 'jsbi';
 import { getV3Quote } from '../actions/getV3Quote';
 import type { ChainConfig } from '../chains';
+import type { Quote } from '@across-protocol/app-sdk';
 
 export const getBurnAmountsWithSlippage = (
   extendedPosition: IV3PositionWithUncollectedFees | IV4PositionWithUncollectedFees,
@@ -41,10 +42,7 @@ export const genMigrationId = (chainId: number, migrator: string, method: Migrat
   return `0x${(shiftedChainId | shiftedMigrator | shiftedMode | nonceMasked).toString(16).padStart(64, '0')}` as `0x${string}`;
 };
 
-export const generateMigration = (
-  sourceChainConfig: ChainConfig,
-  migrationMethod: MigrationMethod,
-  externalParams: RequestV3MigrationParams | RequestV4MigrationParams) => {
+export const generateMigration = (sourceChainConfig: ChainConfig, migrationMethod: MigrationMethod, externalParams: RequestV3MigrationParams | RequestV4MigrationParams) => {
   const migrationId = genMigrationId(externalParams.sourceChainId, sourceChainConfig.UniswapV3AcrossMigrator || zeroAddress, migrationMethod, BigInt(0));
   let mintParams: `0x${string}`;
 
@@ -78,8 +76,8 @@ export const generateMigration = (
     ),
     migrationId
   );
-  return { migrationId, interimMessageForSettler }
-}
+  return { migrationId, interimMessageForSettler };
+};
 
 export const generateMigrationParams = async (
   migrationId: `0x${string}`,
@@ -90,7 +88,6 @@ export const generateMigrationParams = async (
   maxPositionUsingRouteMinAmountOut: V3Position | V4Position,
   swapAmountInMilliBps?: number
 ) => {
-
   const { amount0: amount0Min, amount1: amount1Min } = maxPositionUsingRouteMinAmountOut.burnAmountsWithSlippage(
     new Percent(externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000)
   );
@@ -99,12 +96,14 @@ export const generateMigrationParams = async (
     {
       chainId: destinationChainConfig.chainId,
       settler: resolveSettler(externalParams, destinationChainConfig),
-      tokenRoutes: await Promise.all(routes.map(async (route) => ({
-        ...route,
-        minAmountOut: route.minOutputAmount,
-        quoteTimestamp: Number((await destinationChainConfig.publicClient?.getBlock())?.timestamp || 0),
-        fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
-      }))),
+      tokenRoutes: await Promise.all(
+        routes.map(async (route) => ({
+          ...route,
+          minAmountOut: route.minOutputAmount,
+          quoteTimestamp: Number((await destinationChainConfig.publicClient?.getBlock())?.timestamp || 0),
+          fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
+        }))
+      ),
       settlementParams: {
         recipient: externalParams.owner,
         senderShareBps: externalParams.senderShareBps || 0,
@@ -119,8 +118,8 @@ export const generateMigrationParams = async (
         amount0Min: BigInt(amount0Min.toString()),
         amount1Min: BigInt(amount1Min.toString()),
         swapAmountInMilliBps: swapAmountInMilliBps ? swapAmountInMilliBps : 0,
-        ...(('tickSpacing' in externalParams) && { tickSpacing: externalParams.tickSpacing }),
-        ...(('hooks' in externalParams) && { hooks: externalParams.hooks }),
+        ...('tickSpacing' in externalParams && { tickSpacing: externalParams.tickSpacing }),
+        ...('hooks' in externalParams && { hooks: externalParams.hooks }),
       },
     },
     migrationId
@@ -137,7 +136,7 @@ export const generateMigrationParams = async (
     migratorMessage,
     settlerMessage,
   };
-}
+};
 
 export const getAcrossQuote = async (
   sourceChainConfig: ChainConfig,
@@ -145,7 +144,8 @@ export const getAcrossQuote = async (
   tokenAddress: `0x${string}`,
   tokenAmount: string,
   externalParams: RequestV3MigrationParams | RequestV4MigrationParams,
-  interimMessageForSettler: `0x${string}`) => {
+  interimMessageForSettler: `0x${string}`
+): Promise<Quote> => {
   // initially just supporting (W)ETH/USDC pairs
   // TODO: add desired dual token pair address mappings to chain config or similar for address lookup
   const isWethToken = tokenAddress === sourceChainConfig.wethAddress;
@@ -159,24 +159,22 @@ export const getAcrossQuote = async (
     inputAmount: tokenAmount,
     recipient: resolveSettler(externalParams, destinationChainConfig),
     crossChainMessage: interimMessageForSettler,
-  })
-}
+  });
+};
 
-const resolveSettler = (
-  externalParams: RequestV3MigrationParams | RequestV4MigrationParams,
-  destinationChainConfig: ChainConfig) => {
+const resolveSettler = (externalParams: RequestV3MigrationParams | RequestV4MigrationParams, destinationChainConfig: ChainConfig) => {
   let settler: `0x${string}`;
   switch (externalParams.destinationProtocol) {
     case Protocol.UniswapV3:
       if (destinationChainConfig.UniswapV3AcrossSettler) {
-        settler = destinationChainConfig.UniswapV3AcrossSettler
+        settler = destinationChainConfig.UniswapV3AcrossSettler;
         break;
       } else {
         throw new Error('UniswapV3AcrossSettler not provided for destination chain.');
       }
     case Protocol.UniswapV4:
       if (destinationChainConfig.UniswapV4AcrossSettler) {
-        settler = destinationChainConfig.UniswapV4AcrossSettler
+        settler = destinationChainConfig.UniswapV4AcrossSettler;
         break;
       } else {
         throw new Error('UniswapV4AcrossSettler not provided for destination chain.');
@@ -186,7 +184,7 @@ const resolveSettler = (
       throw new Error(`Unhandled protocol: ${_exhaustiveCheck}`);
   }
   return settler;
-}
+};
 
 export const generateMaxV3Position = (
   pool: V3Pool,

@@ -1,4 +1,4 @@
-import { CurrencyAmount, Fraction, Percent } from '@uniswap/sdk-core';
+import { CurrencyAmount, Fraction } from '@uniswap/sdk-core';
 import { getV4Pool } from './getV4Pool';
 import { MigrationMethod, NATIVE_ETH_ADDRESS } from '../utils/constants';
 import { zeroAddress } from 'viem';
@@ -33,7 +33,6 @@ export const settleUniswapV4Migration = async ({
   const settlerFeesInBps = BigInt(protocolShareBps) + BigInt(externalParams.senderShareBps || 0);
 
   if (routes.length === 1) {
-
     const route = routes[0];
     const routeMinAmountOut = route.minOutputAmount;
 
@@ -70,8 +69,8 @@ export const settleUniswapV4Migration = async ({
     // calculate swapAmountInMilliBps
     const swapAmountInMilliBps =
       externalParams.token0 === destinationChainConfig.wethAddress || externalParams.token0 === zeroAddress
-      ? maxPosition.amount0.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).add(new Fraction(1, 10_000_000)).toFixed(0)
-      : maxPosition.amount1.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).add(new Fraction(1, 10_000_000)).toFixed(0);
+        ? maxPosition.amount0.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).add(new Fraction(1, 10_000_000)).toFixed(0)
+        : maxPosition.amount1.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).add(new Fraction(1, 10_000_000)).toFixed(0);
 
     return generateMigrationParams(
       migrationId,
@@ -82,18 +81,18 @@ export const settleUniswapV4Migration = async ({
       maxPositionUsingRouteMinAmountOut,
       10_000_000 - Number(swapAmountInMilliBps)
     );
-
-  } else { // logically has to be (routes.length) === 2 but needs to look exhaustive for ts compiler
+  } else {
+    // logically has to be (routes.length) === 2 but needs to look exhaustive for ts compiler
     // make sure both tokens are found in routes
-    let token0Address = externalParams.token0 === NATIVE_ETH_ADDRESS ? destinationChainConfig.wethAddress : externalParams.token0;
-    let token1Address = externalParams.token1;
+    const token0Address = externalParams.token0 === NATIVE_ETH_ADDRESS ? destinationChainConfig.wethAddress : externalParams.token0;
+    const token1Address = externalParams.token1;
     if (token0Address != routes[0].outputToken && token0Address != routes[1].outputToken) throw new Error('Requested token0 not found in routes');
     if (token1Address != routes[0].outputToken && token1Address != routes[1].outputToken) throw new Error('Requested token1 not found in routes');
 
-    let token0Available = routes[0].outputAmount * (1n - settlerFeesInBps / 10_000n);
-    let token1Available = routes[1].outputAmount * (1n - settlerFeesInBps / 10_000n);
-    let minToken0Available = routes[0].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
-    let minToken1Available = routes[1].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
+    const token0Available = routes[0].outputAmount * (1n - settlerFeesInBps / 10_000n);
+    const token1Available = routes[1].outputAmount * (1n - settlerFeesInBps / 10_000n);
+    const minToken0Available = routes[0].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
+    const minToken1Available = routes[1].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
 
     let settleAmountOut0, settleAmountOut1, settleMinAmountOut0, settleMinAmountOut1;
     if (externalParams.token0 !== routes[0].outputToken) {
@@ -109,14 +108,7 @@ export const settleUniswapV4Migration = async ({
       settleMinAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, minToken1Available.toString());
     }
 
-    const maxPosition = generateMaxV4Position(
-      pool,
-      settleAmountOut0,
-      settleAmountOut1,
-      externalParams.tickLower,
-      externalParams.tickUpper,
-      MigrationMethod.DualToken
-    );
+    const maxPosition = generateMaxV4Position(pool, settleAmountOut0, settleAmountOut1, externalParams.tickLower, externalParams.tickUpper, MigrationMethod.DualToken);
 
     const maxPositionUsingSettleMinAmountsOut = generateMaxV4Position(
       pool,
@@ -127,13 +119,6 @@ export const settleUniswapV4Migration = async ({
       MigrationMethod.DualToken
     );
 
-    return generateMigrationParams(
-      migrationId,
-      externalParams,
-      destinationChainConfig,
-      routes,
-      maxPosition,
-      maxPositionUsingSettleMinAmountsOut
-    );
+    return generateMigrationParams(migrationId, externalParams, destinationChainConfig, routes, maxPosition, maxPositionUsingSettleMinAmountsOut);
   }
 };

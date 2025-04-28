@@ -1,10 +1,9 @@
-import { CurrencyAmount, Fraction, Percent } from '@uniswap/sdk-core';
+import { CurrencyAmount, Fraction } from '@uniswap/sdk-core';
 import { getV3Pool } from './getV3Pool';
 import { DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod } from '../utils/constants';
 import { generateMaxV3Position, generateMaxV3PositionWithSwapAllowed, generateMigrationParams } from '../utils/helpers';
 import type { InternalSettleMigrationParams, InternalSettleMigrationResult } from '../types/internal';
 import { getSettlerFees } from './getSettlerFees';
-import JSBI from 'jsbi';
 
 export const settleUniswapV3Migration = async ({
   destinationChainConfig,
@@ -23,14 +22,12 @@ export const settleUniswapV3Migration = async ({
   const settlerFeesInBps = BigInt(protocolShareBps) + BigInt(externalParams.senderShareBps || 0);
 
   if (routes.length === 1) {
-
     const isWethToken0 = externalParams.token0 === destinationChainConfig.wethAddress;
     const route = routes[0];
     const routeMinAmountOut = route.minOutputAmount;
     const numIterations = 5; // number of iterations to calculate the max position with swap
 
     // we need to create two potential LP positions on destination chain:
-
     // 1. using the across quote output amount. This is the best position possible
     // 2. using the routeMinAmountOut. This helps us calculate the worst position given slippage
 
@@ -81,16 +78,16 @@ export const settleUniswapV3Migration = async ({
       maxPositionWithSwapUsingRouteMinAmountOut,
       10_000_000 - Number(swapAmountInMilliBps.toString())
     );
-
-  } else { // logically has to be (routes.length) === 2 but needs to look exhaustive for ts compiler
+  } else {
+    // logically has to be (routes.length) === 2 but needs to look exhaustive for ts compiler
     // make sure both tokens are found in routes
     if (externalParams.token0 != routes[0].outputToken && externalParams.token0 != routes[1].outputToken) throw new Error('Requested token0 not found in routes');
     if (externalParams.token1 != routes[0].outputToken && externalParams.token1 != routes[1].outputToken) throw new Error('Requested token1 not found in routes');
 
-    let token0Available = routes[0].outputAmount * (1n - settlerFeesInBps / 10_000n);
-    let token1Available = routes[1].outputAmount * (1n - settlerFeesInBps / 10_000n);
-    let minToken0Available = routes[0].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
-    let minToken1Available = routes[1].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
+    const token0Available = routes[0].outputAmount * (1n - settlerFeesInBps / 10_000n);
+    const token1Available = routes[1].outputAmount * (1n - settlerFeesInBps / 10_000n);
+    const minToken0Available = routes[0].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
+    const minToken1Available = routes[1].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
 
     let settleAmountOut0, settleAmountOut1, settleMinAmountOut0, settleMinAmountOut1;
     if (externalParams.token0 !== routes[0].outputToken) {
@@ -106,14 +103,7 @@ export const settleUniswapV3Migration = async ({
       settleMinAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, minToken1Available.toString());
     }
 
-    const maxPosition = generateMaxV3Position(
-      pool,
-      settleAmountOut0,
-      settleAmountOut1,
-      externalParams.tickLower,
-      externalParams.tickUpper,
-      MigrationMethod.DualToken
-    );
+    const maxPosition = generateMaxV3Position(pool, settleAmountOut0, settleAmountOut1, externalParams.tickLower, externalParams.tickUpper, MigrationMethod.DualToken);
 
     const maxPositionUsingSettleMinAmountsOut = generateMaxV3Position(
       pool,
@@ -124,13 +114,6 @@ export const settleUniswapV3Migration = async ({
       MigrationMethod.DualToken
     );
 
-    return generateMigrationParams(
-      migrationId,
-      externalParams,
-      destinationChainConfig,
-      routes,
-      maxPosition,
-      maxPositionUsingSettleMinAmountsOut
-    );
+    return generateMigrationParams(migrationId, externalParams, destinationChainConfig, routes, maxPosition, maxPositionUsingSettleMinAmountsOut);
   }
 };
