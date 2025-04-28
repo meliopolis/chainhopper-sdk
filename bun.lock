@@ -5,11 +5,12 @@
       "name": "chainhopper-sdk",
       "dependencies": {
         "@across-protocol/app-sdk": "^0.2.0",
-        "@uniswap/sdk-core": "7.7.0",
+        "@uniswap/sdk-core": "7.7.1",
         "@uniswap/v3-sdk": "3.25.2",
         "@uniswap/v4-periphery": "1.0.1",
         "@uniswap/v4-sdk": "1.21.2",
         "ethers": "^5.7.2",
+        "jsbi": "3.1.4",
         "viem": "^2.23.2",
       },
       "devDependencies": {
@@ -237,7 +238,7 @@
 
     "@uniswap/lib": ["@uniswap/lib@4.0.1-alpha", "", {}, "sha512-f6UIliwBbRsgVLxIaBANF6w09tYqc6Y/qXdsrbEmXHyFA7ILiKrIwRFXe1yOg8M3cksgVsO9N7yuL2DdCGQKBA=="],
 
-    "@uniswap/sdk-core": ["@uniswap/sdk-core@7.7.0", "", { "dependencies": { "@ethersproject/address": "^5.0.2", "@ethersproject/bytes": "^5.7.0", "@ethersproject/keccak256": "5.7.0", "@ethersproject/strings": "5.7.0", "big.js": "^5.2.2", "decimal.js-light": "^2.5.0", "jsbi": "^3.1.4", "tiny-invariant": "^1.1.0", "toformat": "^2.0.0" } }, "sha512-0XqE8wb/kdk36j4/Ya27PPknSxPt1kdzGeGBw969wqz2AIaVvWpnheBd3YBKrvijaw9O3f7TaaaXjNPBSS1Y3Q=="],
+    "@uniswap/sdk-core": ["@uniswap/sdk-core@7.7.1", "", { "dependencies": { "@ethersproject/address": "^5.0.2", "@ethersproject/bytes": "^5.7.0", "@ethersproject/keccak256": "5.7.0", "@ethersproject/strings": "5.7.0", "big.js": "^5.2.2", "decimal.js-light": "^2.5.0", "jsbi": "^3.1.4", "tiny-invariant": "^1.1.0", "toformat": "^2.0.0" } }, "sha512-nLOhuU7gZeoAwQ3ooA4cWQWg71tfrBSEAbHSCp4f7+zLBCKQLKRHgDRH7ggxdD5leUl9GpiKqxT5wvQ920ejDw=="],
 
     "@uniswap/swap-router-contracts": ["@uniswap/swap-router-contracts@1.3.1", "", { "dependencies": { "@openzeppelin/contracts": "3.4.2-solc-0.7", "@uniswap/v2-core": "^1.0.1", "@uniswap/v3-core": "^1.0.0", "@uniswap/v3-periphery": "^1.4.4", "dotenv": "^14.2.0", "hardhat-watcher": "^2.1.1" } }, "sha512-mh/YNbwKb7Mut96VuEtL+Z5bRe0xVIbjjiryn+iMMrK2sFKhR4duk/86mEz0UO5gSx4pQIw9G5276P5heY/7Rg=="],
 
@@ -553,7 +554,7 @@
 
     "js-yaml": ["js-yaml@4.1.0", "", { "dependencies": { "argparse": "^2.0.1" }, "bin": { "js-yaml": "bin/js-yaml.js" } }, "sha512-wpxZs9NoxZaJESJGIZTyDEaYpl0FKSA+FB9aJiyemKhMwkxQg63h4T1KJgUGHpTqPDNRcmmYLugrRjJlBtWvRA=="],
 
-    "jsbi": ["jsbi@3.2.5", "", {}, "sha512-aBE4n43IPvjaddScbvWRA2YlTzKEynHzu7MqOyTipdHucf/VxS63ViCjxYRg86M8Rxwbt/GfzHl1kKERkt45fQ=="],
+    "jsbi": ["jsbi@3.1.4", "", {}, "sha512-52QRRFSsi9impURE8ZUbzAMCLjPm4THO7H2fcuIvaaeFTbSysvkodbQQXIVsNgq/ypDbq6dJiuGKL0vZ/i9hUg=="],
 
     "jsesc": ["jsesc@3.1.0", "", { "bin": { "jsesc": "bin/jsesc" } }, "sha512-/sM3dO2FOzXjKQhJuo0Q173wf2KOo8t4I8vHy6lF9poUp7bKT0/NHE8fPX23PwfhnykfqnC2xRxOnVw5XuGIaA=="],
 
@@ -887,6 +888,8 @@
 
     "@typescript-eslint/typescript-estree/minimatch": ["minimatch@9.0.5", "", { "dependencies": { "brace-expansion": "^2.0.1" } }, "sha512-G6T0ZX48xgozx7587koeX9Ys2NYy6Gmv//P89sEte9V9whIapMNF4idKxnW2QtCcLiTWlb/wfCabAtAFWhhBow=="],
 
+    "@uniswap/sdk-core/jsbi": ["jsbi@3.2.5", "", {}, "sha512-aBE4n43IPvjaddScbvWRA2YlTzKEynHzu7MqOyTipdHucf/VxS63ViCjxYRg86M8Rxwbt/GfzHl1kKERkt45fQ=="],
+
     "@uniswap/v3-sdk/@uniswap/sdk-core": ["@uniswap/sdk-core@7.7.2", "", { "dependencies": { "@ethersproject/address": "^5.0.2", "@ethersproject/bytes": "^5.7.0", "@ethersproject/keccak256": "5.7.0", "@ethersproject/strings": "5.7.0", "big.js": "^5.2.2", "decimal.js-light": "^2.5.0", "jsbi": "^3.1.4", "tiny-invariant": "^1.1.0", "toformat": "^2.0.0" } }, "sha512-0KqXw+y0opBo6eoPAEoLHEkNpOu0NG9gEk7GAYIGok+SHX89WlykWsRYeJKTg9tOwhLpcG9oHg8xZgQ390iOrA=="],
 
     "@uniswap/v3-staker/@openzeppelin/contracts": ["@openzeppelin/contracts@3.4.1-solc-0.7-2", "", {}, "sha512-tAG9LWg8+M2CMu7hIsqHPaTyG4uDzjr6mhvH96LvOpLZZj6tgzTluBt+LsCf1/QaYrlis6pITvpIaIhE+iZB+Q=="],
@@ -950,6 +953,10 @@
     "tinyglobby/picomatch": ["picomatch@4.0.2", "", {}, "sha512-M7BAV6Rlcy5u+m6oPhAPFgJTzAioX/6B0DxyvDlo9l8+T3nLKbrczg2WLUyzd45L8RqfUMyGPzekbMvX2Ldkwg=="],
 
     "@typescript-eslint/typescript-estree/minimatch/brace-expansion": ["brace-expansion@2.0.1", "", { "dependencies": { "balanced-match": "^1.0.0" } }, "sha512-XnAIvQ8eM+kC6aULx6wuQiwVsnzsi9d3WxzV3FpWTGA19F621kwdbsAcFKXgKUHZWsy+mY6iL1sHTxWEFCytDA=="],
+
+    "@uniswap/v3-sdk/@uniswap/sdk-core/jsbi": ["jsbi@3.2.5", "", {}, "sha512-aBE4n43IPvjaddScbvWRA2YlTzKEynHzu7MqOyTipdHucf/VxS63ViCjxYRg86M8Rxwbt/GfzHl1kKERkt45fQ=="],
+
+    "@uniswap/v4-sdk/@uniswap/sdk-core/jsbi": ["jsbi@3.2.5", "", {}, "sha512-aBE4n43IPvjaddScbvWRA2YlTzKEynHzu7MqOyTipdHucf/VxS63ViCjxYRg86M8Rxwbt/GfzHl1kKERkt45fQ=="],
 
     "ethereum-cryptography/@scure/bip32/@scure/base": ["@scure/base@1.1.9", "", {}, "sha512-8YKhl8GHiNI/pU2VMaofa2Tor7PJRAjwQLBBuilkJ9L5+13yVbC7JO/wS7piioAvPSwR3JKM1IJ/u4xQzbcXKg=="],
 
