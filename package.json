@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "@across-protocol/app-sdk": "^0.2.0",
-    "@uniswap/sdk-core": "7.7.0",
+    "@uniswap/sdk-core": "7.7.1",
     "@uniswap/v3-sdk": "3.25.2",
     "@uniswap/v4-periphery": "1.0.1",
     "@uniswap/v4-sdk": "1.21.2",

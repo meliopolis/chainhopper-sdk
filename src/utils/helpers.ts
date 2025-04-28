@@ -222,5 +222,13 @@ export const generateMaxV3PositionWithSwapAllowed = async (
   const [token0BalanceUpdated, token1BalanceUpdated] = inputBalanceUpdated.currency.wrapped.sortsBefore(outputBalanceUpdated.currency.wrapped)
     ? [inputBalanceUpdated, outputBalanceUpdated]
     : [outputBalanceUpdated, inputBalanceUpdated];
-  return generateMaxV3Position(postSwapPool, token0BalanceUpdated, token1BalanceUpdated, tickLower, tickUpper);
+
+  return V3Position.fromAmounts({
+    pool: postSwapPool,
+    tickLower: nearestUsableTick(tickLower, pool.tickSpacing),
+    tickUpper: nearestUsableTick(tickUpper, pool.tickSpacing),
+    amount0: token0BalanceUpdated.quotient.toString(),
+    amount1: token1BalanceUpdated.quotient.toString(),
+    useFullPrecision: true,
+  });
 };
