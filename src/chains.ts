@@ -81,6 +81,10 @@ export const chainConfigs: Record<number, ChainConfig> = {
       address: '0x52f0e24d1c21c8a0cb1e5a5dd6198556bd9e1203',
       abi: v4QuoterAbi,
     },
+    v4DopplerQuoterContract: {
+      address: '0x56b5E12AFbbBA6dbCB20eD6001009Ffb8d96bD1e',
+      abi: v4DopplerQuoterAbi,
+    },
     // other
     spokePoolAddress: '0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5',
     multicallAddress,
