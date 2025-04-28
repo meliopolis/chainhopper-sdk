@@ -57,7 +57,7 @@ export const encodeMigrationParams = (params: MigrationParams, migrationId: `0x$
     'hooks' in params.settlementParams
       ? encodeMintParamsForV4(params.settlementParams as SettlementParams & UniswapV4MintParams)
       : encodeMintParamsForV3(params.settlementParams as SettlementParams & UniswapV3MintParams);
-  
+
   const settlementParams = encodeSettlementParams(params.settlementParams, mintParams);
   const routes = params.tokenRoutes.map((route) =>
     encodeAbiParameters(RouteAbi, [
@@ -87,18 +87,3 @@ export const encodeMigrationParams = (params: MigrationParams, migrationId: `0x$
     settlerMessage: encodeSettlementParamsForSettler(settlementParams, migrationId),
   };
 };
-
-// export function encodeAcrossRoutes(routes: AcrossRoute[]) {
-//   return encodeAbiParameters(
-//     AcrossRoutesAbi,
-//     routes.map(route => ({
-//       inputToken: route.inputToken,
-//       outputToken: route.outputToken,
-//       maxFees: route.maxFees,
-//       quoteTimestamp: route.quoteTimestamp,
-//       fillDeadlineOffset: route.fillDeadlineOffset,
-//       exclusiveRelayer: route.exclusiveRelayer,
-//       exclusivityDeadline: route.exclusivityDeadline,
-//     }))
-//   );
-// }

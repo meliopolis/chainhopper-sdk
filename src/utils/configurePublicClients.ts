@@ -4,15 +4,7 @@ import type { ChainConfig } from '../chains';
 type ChainId = number;
 
 // wraps a viem publicClient to inject a blockNumber override on all read calls for integration testing
-function createBlockScopedClient({
-  transport,
-  chainConfig,
-  blockNumber,
-}: {
-  transport: HttpTransport;
-  chainConfig: ChainConfig;
-  blockNumber: bigint;
-}): PublicClient {
+function createBlockScopedClient({ transport, chainConfig, blockNumber }: { transport: HttpTransport; chainConfig: ChainConfig; blockNumber: bigint }): PublicClient {
   const baseClient = createPublicClient({
     transport: transport,
     chain: chainConfig.chain,
@@ -34,9 +26,7 @@ function createBlockScopedClient({
           overrides.blockNumber = blockNumber;
         }
 
-        const finalArgs = hasOverrides
-          ? [...args.slice(0, -1), overrides]
-          : [...args, overrides];
+        const finalArgs = hasOverrides ? [...args.slice(0, -1), overrides] : [...args, overrides];
 
         // @ts-ignore
         return original.apply(target, finalArgs);
@@ -52,7 +42,7 @@ export const configurePublicClients = (
 ): Record<ChainId, ChainConfig> => {
   for (const [key, chainConfig] of Object.entries(chainConfigs)) {
     const chainId = Number(key) as ChainId;
-    const rpcUrl = rpcUrls?.[chainId]
+    const rpcUrl = rpcUrls?.[chainId];
     const blockNumber = blockNumbers?.[chainId];
     const transport = http(rpcUrl);
 

@@ -172,7 +172,7 @@ export class ChainHopperClient {
         destProtocol: Protocol.UniswapV3,
         ...returnResponse,
         ...v3Settlement,
-      }
+      };
     } else if (destinationProtocol === Protocol.UniswapV4) {
       const v4Settlement = await settleUniswapV4Migration({
         destinationChainConfig: this.chainConfigs[destinationChainId],

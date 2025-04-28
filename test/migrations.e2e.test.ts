@@ -1,22 +1,17 @@
-import { test, describe, expect, beforeAll } from "bun:test";
-import { ChainHopperClient } from "../src/client";
-import { configurePublicClients } from "../src/utils/configurePublicClients";
-import {
-  Protocol,
-  BridgeType,
-  MigrationMethod,
-  NATIVE_ETH_ADDRESS
-} from "../src/utils/constants";
+import { test, describe, expect, beforeAll } from 'bun:test';
+import { ChainHopperClient } from '../src/client';
+import { configurePublicClients } from '../src/utils/configurePublicClients';
+import { Protocol, BridgeType, MigrationMethod, NATIVE_ETH_ADDRESS } from '../src/utils/constants';
 import type {
   RequestV3toV4MigrationParams,
   RequestV3toV3MigrationParams,
   RequestV4toV3MigrationParams,
   RequestV4toV4MigrationParams,
   RequestMigrationResponse,
-  RequestMigrationParams
-} from "../src/types/sdk";
-import { Pool as V4Pool } from "@uniswap/v4-sdk";
-import { IV3PositionWithUncollectedFees, IV4PositionWithUncollectedFees } from "../src/actions";
+  RequestMigrationParams,
+} from '../src/types/sdk';
+import { Pool as V4Pool } from '@uniswap/v4-sdk';
+import { IV3PositionWithUncollectedFees, IV4PositionWithUncollectedFees } from '../src/actions';
 
 let client: ReturnType<typeof ChainHopperClient.create>;
 
@@ -24,19 +19,18 @@ beforeAll(async () => {
   const rpcUrls = {
     1: Bun.env.MAINNET_RPC_URL!,
     130: Bun.env.UNICHAIN_RPC_URL!,
-    8453: Bun.env.BASE_RPC_URL!
+    8453: Bun.env.BASE_RPC_URL!,
   };
 
   const blockNumbers = {
-    1: 22328545n,    // produced: Apr-23-2025 01:51:23 AM +UTC
-    130: 14624728n,  // produced: Apr-23-2025 01:51:27 AM +UTC
-    8453: 29291900n  // produced: Apr-23-2025 01:52:27 AM +UTC
+    1: 22328545n, // produced: Apr-23-2025 01:51:23 AM +UTC
+    130: 14624728n, // produced: Apr-23-2025 01:51:27 AM +UTC
+    8453: 29291900n, // produced: Apr-23-2025 01:52:27 AM +UTC
   };
 
   // get client and override block numbers for read calls
   client = ChainHopperClient.create({ rpcUrls });
   configurePublicClients(client.chainConfigs, rpcUrls, blockNumbers);
-
 });
 
 const validateMigrationResponse = (params: RequestMigrationParams, result: RequestMigrationResponse) => {
@@ -72,8 +66,8 @@ const validateMigrationResponse = (params: RequestMigrationParams, result: Reque
   expect(amount1).toBeGreaterThan(result.slippageCalcs.mintAmount1Min);
 };
 
-describe("invalid migrations", () => {
-  test("reject migration that are too large for across", async () => {
+describe('invalid migrations', () => {
+  test('reject migration that are too large for across', async () => {
     const params: RequestV3toV4MigrationParams = {
       sourceChainId: 8453,
       destinationChainId: 130,
@@ -90,16 +84,13 @@ describe("invalid migrations", () => {
       fee: 10000,
       tickSpacing: 200,
       hooks: '0x0000000000000000000000000000000000000000',
-    }
+    };
     try {
-      await client.requestMigration(params)
+      await client.requestMigration(params);
     } catch (e) {
-      expect(
-        e.message.includes("doesn't have enough funds to support this deposit") ||
-        e.message.includes("Amount exceeds max. deposit limit")
-      ).toBe(true);
+      expect(e.message.includes("doesn't have enough funds to support this deposit") || e.message.includes('Amount exceeds max. deposit limit')).toBe(true);
     }
-  })
+  });
 
   test("reject migration where a token can't be found on the destination chain", async () => {
     const params: RequestV3toV4MigrationParams = {
@@ -118,15 +109,15 @@ describe("invalid migrations", () => {
       fee: 10000,
       tickSpacing: 200,
       hooks: '0x0000000000000000000000000000000000000000',
-    }
+    };
     try {
-      await client.requestMigration(params)
+      await client.requestMigration(params);
     } catch (e) {
-      expect(e.message).toContain("Failed to get token");
+      expect(e.message).toContain('Failed to get token');
     }
-  })
+  });
 
-    test("reject migration where a token can't be bridged", async () => {
+  test("reject migration where a token can't be bridged", async () => {
     const params: RequestV3toV4MigrationParams = {
       sourceChainId: 8453,
       destinationChainId: 130,
@@ -143,17 +134,16 @@ describe("invalid migrations", () => {
       fee: 10000,
       tickSpacing: 200,
       hooks: '0x0000000000000000000000000000000000000000',
-    }
+    };
     try {
-      params.migrationMethod = MigrationMethod.DualToken
-      await client.requestMigration(params)
+      params.migrationMethod = MigrationMethod.DualToken;
+      await client.requestMigration(params);
     } catch (e) {
-      expect(e.message).toContain("Unsupported token on given origin chain");
+      expect(e.message).toContain('Unsupported token on given origin chain');
     }
-  })
+  });
 
-
-  test("reject migration with an invalid token order", async () => {
+  test('reject migration with an invalid token order', async () => {
     const params: RequestV3toV4MigrationParams = {
       sourceChainId: 1,
       destinationChainId: 130,
@@ -163,22 +153,22 @@ describe("invalid migrations", () => {
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: BridgeType.Across,
       migrationMethod: MigrationMethod.SingleToken,
-      token0: "0x078D782b760474a361dDA0AF3839290b0EF57AD6",
+      token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
       token1: NATIVE_ETH_ADDRESS,
       tickLower: -203450,
       tickUpper: -193130,
       fee: 500,
       tickSpacing: 10,
       hooks: '0x0000000000000000000000000000000000000000',
-    }
+    };
     try {
-      await client.requestMigration(params)
+      await client.requestMigration(params);
     } catch (e) {
-      expect(e.message).toContain("token0 and token1 must be distinct addresses in alphabetical order");
+      expect(e.message).toContain('token0 and token1 must be distinct addresses in alphabetical order');
     }
-  })
+  });
 
-  test("reject migration with two of the same token", async () => {
+  test('reject migration with two of the same token', async () => {
     const params: RequestV3toV4MigrationParams = {
       sourceChainId: 1,
       destinationChainId: 130,
@@ -188,24 +178,23 @@ describe("invalid migrations", () => {
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: BridgeType.Across,
       migrationMethod: MigrationMethod.SingleToken,
-      token0: "0x078D782b760474a361dDA0AF3839290b0EF57AD6",
-      token1: "0x078D782b760474a361dDA0AF3839290b0EF57AD6",
+      token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+      token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
       tickLower: -203450,
       tickUpper: -193130,
       fee: 500,
       tickSpacing: 10,
       hooks: '0x0000000000000000000000000000000000000000',
-    }
+    };
     try {
-      await client.requestMigration(params)
+      await client.requestMigration(params);
     } catch (e) {
-      expect(e.message).toContain("token0 and token1 must be distinct addresses in alphabetical order");
+      expect(e.message).toContain('token0 and token1 must be distinct addresses in alphabetical order');
     }
-  })
-})
+  });
+});
 
-describe("v3→ migrations", () => {
-
+describe('v3→ migrations', () => {
   let v3ChainId: number;
   let v3Owner: `0x${string}`;
   let v3TokenId: bigint;
@@ -220,9 +209,9 @@ describe("v3→ migrations", () => {
       tokenId: v3TokenId,
       owner: v3Owner,
     });
-  })
+  });
 
-  test("generate valid mainnet v3 → unichain v4 single-token migration", async () => {
+  test('generate valid mainnet v3 → unichain v4 single-token migration', async () => {
     const params: RequestV3toV4MigrationParams = {
       sourceChainId: v3ChainId,
       destinationChainId: 130,
@@ -233,17 +222,17 @@ describe("v3→ migrations", () => {
       bridgeType: BridgeType.Across,
       migrationMethod: MigrationMethod.SingleToken,
       token0: NATIVE_ETH_ADDRESS,
-      token1: "0x078D782b760474a361dDA0AF3839290b0EF57AD6",
+      token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
       tickLower: -1 * v3Response.position.tickUpper,
       tickUpper: -1 * v3Response.position.tickLower,
       fee: v3Response.position.pool.fee,
       tickSpacing: v3Response.position.pool.tickSpacing,
       hooks: '0x0000000000000000000000000000000000000000',
-    }
+    };
     validateMigrationResponse(params, await client.requestMigration(params));
-  })
+  });
 
-  test("generate valid mainnet v3 → unichain v4 dual-token migration", async () => {
+  test('generate valid mainnet v3 → unichain v4 dual-token migration', async () => {
     const params: RequestV3toV4MigrationParams = {
       sourceChainId: v3ChainId,
       destinationChainId: 130,
@@ -254,17 +243,17 @@ describe("v3→ migrations", () => {
       bridgeType: BridgeType.Across,
       migrationMethod: MigrationMethod.DualToken,
       token0: NATIVE_ETH_ADDRESS,
-      token1: "0x078D782b760474a361dDA0AF3839290b0EF57AD6",
+      token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
       tickLower: -1 * v3Response.position.tickUpper,
       tickUpper: -1 * v3Response.position.tickLower,
       fee: v3Response.position.pool.fee,
       tickSpacing: v3Response.position.pool.tickSpacing,
       hooks: '0x0000000000000000000000000000000000000000',
-    }
+    };
     validateMigrationResponse(params, await client.requestMigration(params));
-  })
+  });
 
-  test("generate valid mainnet v3 → unichain v3 single-token migration", async () => {
+  test('generate valid mainnet v3 → unichain v3 single-token migration', async () => {
     const params: RequestV3toV3MigrationParams = {
       sourceChainId: v3ChainId,
       destinationChainId: 130,
@@ -274,16 +263,16 @@ describe("v3→ migrations", () => {
       destinationProtocol: Protocol.UniswapV3,
       bridgeType: BridgeType.Across,
       migrationMethod: MigrationMethod.SingleToken,
-      token0: "0x078D782b760474a361dDA0AF3839290b0EF57AD6",
-      token1: "0x4200000000000000000000000000000000000006",
+      token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+      token1: '0x4200000000000000000000000000000000000006',
       tickLower: v3Response.position.tickLower,
       tickUpper: v3Response.position.tickUpper,
-      fee: v3Response.position.pool.fee
+      fee: v3Response.position.pool.fee,
     };
     validateMigrationResponse(params, await client.requestMigration(params));
-  })
+  });
 
-  test("generate valid mainnet v3 → unichain v3 dual-token migration", async () => {
+  test('generate valid mainnet v3 → unichain v3 dual-token migration', async () => {
     const params: RequestV3toV3MigrationParams = {
       sourceChainId: v3ChainId,
       destinationChainId: 130,
@@ -293,14 +282,14 @@ describe("v3→ migrations", () => {
       destinationProtocol: Protocol.UniswapV3,
       bridgeType: BridgeType.Across,
       migrationMethod: MigrationMethod.DualToken,
-      token0: "0x078D782b760474a361dDA0AF3839290b0EF57AD6",
-      token1: "0x4200000000000000000000000000000000000006",
+      token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+      token1: '0x4200000000000000000000000000000000000006',
       tickLower: v3Response.position.tickLower,
       tickUpper: v3Response.position.tickUpper,
-      fee: v3Response.position.pool.fee
+      fee: v3Response.position.pool.fee,
     };
     validateMigrationResponse(params, await client.requestMigration(params));
-  })
+  });
 
   // TODO: this example actually be used to test pool creation path when needed
   //   const params: RequestV3toV4MigrationParams = {
@@ -320,11 +309,9 @@ describe("v3→ migrations", () => {
   //     tickSpacing: 200,
   //     hooks: '0x0000000000000000000000000000000000000000',
   //   }
+});
 
-})
-
-describe("v4→ migrations", () => {
-
+describe('v4→ migrations', () => {
   let v4ChainId: number;
   let v4Owner: `0x${string}`;
   let v4TokenId: bigint;
@@ -341,7 +328,7 @@ describe("v4→ migrations", () => {
     });
   });
 
-  test("generate valid unichain v4 → base v3 single-token migration", async () => {
+  test('generate valid unichain v4 → base v3 single-token migration', async () => {
     const params: RequestV4toV3MigrationParams = {
       sourceChainId: v4ChainId,
       destinationChainId: 8453,
@@ -351,16 +338,16 @@ describe("v4→ migrations", () => {
       destinationProtocol: Protocol.UniswapV3,
       bridgeType: BridgeType.Across,
       migrationMethod: MigrationMethod.SingleToken,
-      token0: "0x4200000000000000000000000000000000000006", // v4Response.position.pool.token0.address as `0x${string}`,
-      token1: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      token0: '0x4200000000000000000000000000000000000006', // v4Response.position.pool.token0.address as `0x${string}`,
+      token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
       tickLower: v4Response.position.tickLower,
       tickUpper: v4Response.position.tickUpper,
-      fee: v4Response.position.pool.fee
+      fee: v4Response.position.pool.fee,
     };
     validateMigrationResponse(params, await client.requestMigration(params));
-  })
+  });
 
-  test("generate valid unichain v4 → base v3 dual-token migration", async () => {
+  test('generate valid unichain v4 → base v3 dual-token migration', async () => {
     const params: RequestV4toV3MigrationParams = {
       sourceChainId: v4ChainId,
       destinationChainId: 8453,
@@ -370,16 +357,16 @@ describe("v4→ migrations", () => {
       destinationProtocol: Protocol.UniswapV3,
       bridgeType: BridgeType.Across,
       migrationMethod: MigrationMethod.DualToken,
-      token0: "0x4200000000000000000000000000000000000006", // v4Response.position.pool.token0.address as `0x${string}`,
-      token1: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      token0: '0x4200000000000000000000000000000000000006', // v4Response.position.pool.token0.address as `0x${string}`,
+      token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
       tickLower: v4Response.position.tickLower,
       tickUpper: v4Response.position.tickUpper,
-      fee: v4Response.position.pool.fee
+      fee: v4Response.position.pool.fee,
     };
     validateMigrationResponse(params, await client.requestMigration(params));
-  })
+  });
 
-    test("generate valid unichain v4 → base v4 single-token migration", async () => {
+  test('generate valid unichain v4 → base v4 single-token migration', async () => {
     const params: RequestV4toV4MigrationParams = {
       sourceChainId: v4ChainId,
       destinationChainId: 8453,
@@ -389,18 +376,18 @@ describe("v4→ migrations", () => {
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: BridgeType.Across,
       migrationMethod: MigrationMethod.SingleToken,
-      token0: "0x4200000000000000000000000000000000000006",
-      token1: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      token0: '0x4200000000000000000000000000000000000006',
+      token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
       tickLower: v4Response.position.tickLower,
       tickUpper: v4Response.position.tickUpper,
       fee: v4Response.position.pool.fee,
-      hooks: "0x0000000000000000000000000000000000000000",
-      tickSpacing: v4Response.position.pool.tickSpacing
+      hooks: '0x0000000000000000000000000000000000000000',
+      tickSpacing: v4Response.position.pool.tickSpacing,
     };
     validateMigrationResponse(params, await client.requestMigration(params));
-  })
+  });
 
-  test("generate valid unichain v4 → base v4 dual-token migration", async () => {
+  test('generate valid unichain v4 → base v4 dual-token migration', async () => {
     const params: RequestV4toV4MigrationParams = {
       sourceChainId: v4ChainId,
       destinationChainId: 8453,
@@ -410,15 +397,14 @@ describe("v4→ migrations", () => {
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: BridgeType.Across,
       migrationMethod: MigrationMethod.DualToken,
-      token0: "0x4200000000000000000000000000000000000006",
-      token1: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      token0: '0x4200000000000000000000000000000000000006',
+      token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
       tickLower: v4Response.position.tickLower,
       tickUpper: v4Response.position.tickUpper,
       fee: v4Response.position.pool.fee,
-      hooks: "0x0000000000000000000000000000000000000000",
-      tickSpacing: v4Response.position.pool.tickSpacing
+      hooks: '0x0000000000000000000000000000000000000000',
+      tickSpacing: v4Response.position.pool.tickSpacing,
     };
     validateMigrationResponse(params, await client.requestMigration(params));
-  })
-
+  });
 });

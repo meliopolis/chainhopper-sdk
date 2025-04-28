@@ -1,16 +1,18 @@
-import { CurrencyAmount, Fraction, Percent, Token, type Currency } from '@uniswap/sdk-core';
+import { CurrencyAmount, Fraction, Percent, Price, Token, type Currency } from '@uniswap/sdk-core';
 import { DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, Protocol } from './constants';
 import type { IV3PositionWithUncollectedFees } from '../actions/getV3Position';
 import type { IV4PositionWithUncollectedFees } from '../actions/getV4Position';
-import { nearestUsableTick, Pool, SqrtPriceMath, TickMath, Position as V3Position, type Pool as V3Pool } from '@uniswap/v3-sdk';
-import { Position as V4Position, type Pool as V4Pool } from '@uniswap/v4-sdk';
+import { nearestUsableTick, Pool as V3Pool, SqrtPriceMath, TickMath, Position as V3Position } from '@uniswap/v3-sdk';
+import { Position as V4Position, Pool as V4Pool } from '@uniswap/v4-sdk';
 import { acrossClient } from '../lib/acrossClient';
 import { encodeMigrationParams, encodeMintParamsForV3, encodeMintParamsForV4, encodeSettlementParams, encodeSettlementParamsForSettler } from '../actions/encode';
 import { zeroAddress } from 'viem';
 import type { RequestV3MigrationParams, RequestV4MigrationParams, Route } from '../types/sdk';
+
 import JSBI from 'jsbi';
 import { getV3Quote } from '../actions/getV3Quote';
 import type { ChainConfig } from '../chains';
+import { getV4CombinedQuote } from '../actions/getV4CombinedQuote';
 import type { Quote } from '@across-protocol/app-sdk';
 
 export const getBurnAmountsWithSlippage = (
@@ -42,7 +44,11 @@ export const genMigrationId = (chainId: number, migrator: string, method: Migrat
   return `0x${(shiftedChainId | shiftedMigrator | shiftedMode | nonceMasked).toString(16).padStart(64, '0')}` as `0x${string}`;
 };
 
-export const generateMigration = (sourceChainConfig: ChainConfig, migrationMethod: MigrationMethod, externalParams: RequestV3MigrationParams | RequestV4MigrationParams) => {
+export const generateMigration = (
+  sourceChainConfig: ChainConfig,
+  migrationMethod: MigrationMethod,
+  externalParams: RequestV3MigrationParams | RequestV4MigrationParams
+): { migrationId: `0x${string}`; interimMessageForSettler: `0x${string}` } => {
   const migrationId = genMigrationId(externalParams.sourceChainId, sourceChainConfig.UniswapV3AcrossMigrator || zeroAddress, migrationMethod, BigInt(0));
   let mintParams: `0x${string}`;
 
@@ -87,7 +93,12 @@ export const generateMigrationParams = async (
   maxPosition: V3Position | V4Position,
   maxPositionUsingRouteMinAmountOut: V3Position | V4Position,
   swapAmountInMilliBps?: number
-) => {
+): Promise<{
+  destPosition: V3Position | V4Position;
+  slippageCalcs: { routeMinAmountOuts: bigint[]; swapAmountInMilliBps: number; mintAmount0Min: bigint; mintAmount1Min: bigint };
+  migratorMessage: `0x${string}`;
+  settlerMessage: `0x${string}`;
+}> => {
   const { amount0: amount0Min, amount1: amount1Min } = maxPositionUsingRouteMinAmountOut.burnAmountsWithSlippage(
     new Percent(externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000)
   );
@@ -162,7 +173,7 @@ export const getAcrossQuote = async (
   });
 };
 
-const resolveSettler = (externalParams: RequestV3MigrationParams | RequestV4MigrationParams, destinationChainConfig: ChainConfig) => {
+const resolveSettler = (externalParams: RequestV3MigrationParams | RequestV4MigrationParams, destinationChainConfig: ChainConfig): `0x${string}` => {
   let settler: `0x${string}`;
   switch (externalParams.destinationProtocol) {
     case Protocol.UniswapV3:
@@ -179,9 +190,10 @@ const resolveSettler = (externalParams: RequestV3MigrationParams | RequestV4Migr
       } else {
         throw new Error('UniswapV4AcrossSettler not provided for destination chain.');
       }
-    default:
+    default: {
       const _exhaustiveCheck: never = externalParams.destinationProtocol;
       throw new Error(`Unhandled protocol: ${_exhaustiveCheck}`);
+    }
   }
   return settler;
 };
@@ -297,19 +309,20 @@ const calculateRatioAmountIn = (
   return CurrencyAmount.fromRawAmount(inputBalance.currency, amountToSwapRaw.quotient);
 };
 
-export const generateMaxV3PositionWithSwapAllowed = async (
+export const generateMaxV3orV4PositionWithSwapAllowed = async (
   chainConfig: ChainConfig,
-  pool: V3Pool,
-  token0Balance: CurrencyAmount<Token>,
-  token1Balance: CurrencyAmount<Token>,
+  pool: V3Pool | V4Pool,
+  token0Balance: CurrencyAmount<Currency>,
+  token1Balance: CurrencyAmount<Currency>,
   tickLower: number,
   tickUpper: number,
   slippageTolerance: Fraction,
   numIterations: number
-): Promise<V3Position> => {
+): Promise<V3Position | V4Position> => {
   if (token1Balance.currency.wrapped.sortsBefore(token0Balance.currency.wrapped)) {
     [token0Balance, token1Balance] = [token1Balance, token0Balance];
   }
+  const isV4 = 'hooks' in pool;
   // calculate optimal ratio returns 0 for out of range case
   let preSwapOptimalRatio = calculateOptimalRatio(tickLower, tickUpper, pool.sqrtRatioX96, true);
 
@@ -327,8 +340,8 @@ export const generateMaxV3PositionWithSwapAllowed = async (
   let n = 0;
   let optimalRatio = preSwapOptimalRatio;
   let ratioAchieved = false;
-  let postSwapPool: V3Pool = pool;
-  const exchangeRate = zeroForOne ? pool.token0Price : pool.token1Price;
+  let postSwapPool: V3Pool | V4Pool = pool;
+  let exchangeRate = zeroForOne ? pool.token0Price : pool.token1Price;
 
   let inputBalanceUpdated = inputBalance;
   let outputBalanceUpdated = outputBalance;
@@ -343,14 +356,24 @@ export const generateMaxV3PositionWithSwapAllowed = async (
       break;
     }
     // now fetch the quote on the destination chain
-    const { amountOut, sqrtPriceX96After } = await getV3Quote(
-      chainConfig,
-      inputBalance.currency.address as `0x${string}`,
-      outputBalance.currency.address as `0x${string}`,
-      pool.fee,
-      BigInt(currencyAmountToSwap.quotient.toString()),
-      0n
-    );
+    let amountOut: bigint;
+    let sqrtPriceX96After: bigint;
+    if (isV4) {
+      const quote = await getV4CombinedQuote(chainConfig, pool.poolKey, BigInt(currencyAmountToSwap.quotient.toString()), zeroForOne, '0x');
+      amountOut = quote.amountOut;
+      sqrtPriceX96After = quote.sqrtPriceX96After;
+    } else {
+      const quote = await getV3Quote(
+        chainConfig,
+        inputBalance.currency.wrapped.address as `0x${string}`,
+        outputBalance.currency.wrapped.address as `0x${string}`,
+        pool.fee,
+        BigInt(currencyAmountToSwap.quotient.toString()),
+        0n
+      );
+      amountOut = quote.amountOut;
+      sqrtPriceX96After = quote.sqrtPriceX96After;
+    }
     const currencyAmountOut = CurrencyAmount.fromRawAmount(outputBalance.currency, amountOut.toString());
     inputBalanceUpdated = inputBalance.subtract(currencyAmountToSwap);
     outputBalanceUpdated = outputBalance.add(currencyAmountOut);
@@ -361,30 +384,55 @@ export const generateMaxV3PositionWithSwapAllowed = async (
     ratioAchieved = newRatio.equalTo(optimalRatio) || newRatio.asFraction.divide(optimalRatio).subtract(1).lessThan(slippageTolerance);
     // if slippage is acceptable, break
     if (ratioAchieved) {
-      postSwapPool = new Pool(
-        pool.token0,
-        pool.token1,
-        pool.fee,
-        sqrtPriceX96After.toString(),
-        pool.liquidity.toString(),
-        TickMath.getTickAtSqrtRatio(JSBI.BigInt(sqrtPriceX96After.toString())),
-        pool.tickDataProvider
-      );
+      if (isV4) {
+        postSwapPool = new V4Pool(
+          pool.token0,
+          pool.token1,
+          pool.fee,
+          pool.tickSpacing,
+          pool.hooks,
+          sqrtPriceX96After.toString(),
+          pool.liquidity.toString(),
+          TickMath.getTickAtSqrtRatio(JSBI.BigInt(sqrtPriceX96After.toString())),
+          pool.tickDataProvider
+        );
+      } else {
+        postSwapPool = new V3Pool(
+          pool.token0,
+          pool.token1,
+          pool.fee,
+          sqrtPriceX96After.toString(),
+          pool.liquidity.toString(),
+          TickMath.getTickAtSqrtRatio(JSBI.BigInt(sqrtPriceX96After.toString())),
+          pool.tickDataProvider
+        );
+      }
       break;
     }
+    // @ts-expect-error - Types from different package versions conflict
+    exchangeRate = new Price({ baseAmount: inputBalance, quoteAmount: outputBalance });
   }
   const [token0BalanceUpdated, token1BalanceUpdated] = inputBalanceUpdated.currency.wrapped.sortsBefore(outputBalanceUpdated.currency.wrapped)
     ? [inputBalanceUpdated, outputBalanceUpdated]
     : [outputBalanceUpdated, inputBalanceUpdated];
 
-  return V3Position.fromAmounts({
-    pool: postSwapPool,
-    tickLower: nearestUsableTick(tickLower, pool.tickSpacing),
-    tickUpper: nearestUsableTick(tickUpper, pool.tickSpacing),
-    amount0: token0BalanceUpdated.quotient.toString(),
-    amount1: token1BalanceUpdated.quotient.toString(),
-    useFullPrecision: true,
-  });
+  return isV4 && 'hooks' in postSwapPool
+    ? V4Position.fromAmounts({
+        pool: postSwapPool,
+        tickLower: nearestUsableTick(tickLower, pool.tickSpacing),
+        tickUpper: nearestUsableTick(tickUpper, pool.tickSpacing),
+        amount0: token0BalanceUpdated.quotient.toString(),
+        amount1: token1BalanceUpdated.quotient.toString(),
+        useFullPrecision: true,
+      })
+    : V3Position.fromAmounts({
+        pool: postSwapPool as V3Pool,
+        tickLower: nearestUsableTick(tickLower, pool.tickSpacing),
+        tickUpper: nearestUsableTick(tickUpper, pool.tickSpacing),
+        amount0: token0BalanceUpdated.quotient.toString(),
+        amount1: token1BalanceUpdated.quotient.toString(),
+        useFullPrecision: true,
+      });
 };
 
 export const subIn256 = (x: bigint, y: bigint): bigint => {

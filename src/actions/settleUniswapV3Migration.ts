@@ -1,7 +1,7 @@
 import { CurrencyAmount, Fraction } from '@uniswap/sdk-core';
 import { getV3Pool } from './getV3Pool';
 import { DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod } from '../utils/constants';
-import { generateMaxV3Position, generateMaxV3PositionWithSwapAllowed, generateMigrationParams } from '../utils/helpers';
+import { generateMaxV3Position, generateMaxV3orV4PositionWithSwapAllowed, generateMigrationParams } from '../utils/helpers';
 import type { InternalSettleMigrationParams, InternalSettleMigrationResult } from '../types/internal';
 import { getSettlerFees } from './getSettlerFees';
 
@@ -28,6 +28,7 @@ export const settleUniswapV3Migration = async ({
     const numIterations = 5; // number of iterations to calculate the max position with swap
 
     // we need to create two potential LP positions on destination chain:
+
     // 1. using the across quote output amount. This is the best position possible
     // 2. using the routeMinAmountOut. This helps us calculate the worst position given slippage
 
@@ -35,7 +36,7 @@ export const settleUniswapV3Migration = async ({
     const amountIn = route.outputAmount * (1n - settlerFeesInBps / 10_000n);
     const baseTokenAvailable = CurrencyAmount.fromRawAmount(isWethToken0 ? pool.token0 : pool.token1, amountIn.toString());
     const otherTokenAvailable = isWethToken0 ? CurrencyAmount.fromRawAmount(pool.token1, 0) : CurrencyAmount.fromRawAmount(pool.token0, 0);
-    const maxPositionWithSwap = await generateMaxV3PositionWithSwapAllowed(
+    const maxPositionWithSwap = await generateMaxV3orV4PositionWithSwapAllowed(
       destinationChainConfig,
       pool,
       isWethToken0 ? baseTokenAvailable : otherTokenAvailable,
@@ -46,12 +47,11 @@ export const settleUniswapV3Migration = async ({
       numIterations
     );
     // TODO compare quote price vs pool price; if diff too high, alert somehow
-
     // 2. now we calculate the max position using the routeMinAmountOut
     const amountInUsingRouteMinAmountOut = routeMinAmountOut * (1n - settlerFeesInBps / 10_000n);
     const baseTokenAvailableUsingRouteMinAmountOut = CurrencyAmount.fromRawAmount(isWethToken0 ? pool.token0 : pool.token1, amountInUsingRouteMinAmountOut.toString());
     const otherTokenAvailableUsingRouteMinAmountOut = isWethToken0 ? CurrencyAmount.fromRawAmount(pool.token1, 0) : CurrencyAmount.fromRawAmount(pool.token0, 0);
-    const maxPositionWithSwapUsingRouteMinAmountOut = await generateMaxV3PositionWithSwapAllowed(
+    const maxPositionWithSwapUsingRouteMinAmountOut = await generateMaxV3orV4PositionWithSwapAllowed(
       destinationChainConfig,
       pool,
       isWethToken0 ? baseTokenAvailableUsingRouteMinAmountOut : otherTokenAvailableUsingRouteMinAmountOut,

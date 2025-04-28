@@ -1,9 +1,9 @@
 import { type IV3PositionWithUncollectedFees } from './getV3Position';
-import { BridgeType, DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, Protocol } from '../utils/constants';
+import { BridgeType, DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod } from '../utils/constants';
 import { CurrencyAmount } from '@uniswap/sdk-core';
 import { getV3Quote } from './getV3Quote';
 import type { InternalStartMigrationParams, InternalStartMigrationResult } from '../types/internal';
-import { genMigrationId, generateMigration, getAcrossQuote } from '../utils/helpers';
+import { generateMigration, getAcrossQuote } from '../utils/helpers';
 
 export const startUniswapV3Migration = async ({
   sourceChainConfig,
@@ -53,12 +53,14 @@ export const startUniswapV3Migration = async ({
       // generate the message that will be passed to the settler on the destination chain
       // note that this is different than the message that is passed to Migrator on the source chain
       const { migrationId, interimMessageForSettler } = generateMigration(sourceChainConfig, MigrationMethod.DualToken, externalParams);
-      const acrossQuote = await getAcrossQuote(sourceChainConfig,
-                                               destinationChainConfig,
-                                               sourceChainConfig.wethAddress,
-                                               totalWethAvailable.asFraction.toFixed(0),
-                                               externalParams,
-                                               interimMessageForSettler);
+      const acrossQuote = await getAcrossQuote(
+        sourceChainConfig,
+        destinationChainConfig,
+        sourceChainConfig.wethAddress,
+        totalWethAvailable.asFraction.toFixed(0),
+        externalParams,
+        interimMessageForSettler
+      );
 
       return {
         acrossQuotes: [acrossQuote],
@@ -81,23 +83,26 @@ export const startUniswapV3Migration = async ({
       throw new Error('Bridge type not supported');
     }
   } else if (externalParams.migrationMethod === MigrationMethod.DualToken) {
-
     if (externalParams.bridgeType === BridgeType.Across) {
       const { migrationId, interimMessageForSettler } = generateMigration(sourceChainConfig, MigrationMethod.DualToken, externalParams);
 
-      const acrossQuote0 = await getAcrossQuote(sourceChainConfig,
-                                                destinationChainConfig,
-                                                totalToken0.currency.address as `0x${string}`,
-                                                totalToken0.asFraction.toFixed(0),
-                                                externalParams,
-                                                interimMessageForSettler);
+      const acrossQuote0 = await getAcrossQuote(
+        sourceChainConfig,
+        destinationChainConfig,
+        totalToken0.currency.address as `0x${string}`,
+        totalToken0.asFraction.toFixed(0),
+        externalParams,
+        interimMessageForSettler
+      );
 
-      const acrossQuote1 = await getAcrossQuote(sourceChainConfig,
-                                                destinationChainConfig,
-                                                totalToken1.currency.address as `0x${string}`,
-                                                totalToken1.asFraction.toFixed(0),
-                                                externalParams,
-                                                interimMessageForSettler);
+      const acrossQuote1 = await getAcrossQuote(
+        sourceChainConfig,
+        destinationChainConfig,
+        totalToken1.currency.address as `0x${string}`,
+        totalToken1.asFraction.toFixed(0),
+        externalParams,
+        interimMessageForSettler
+      );
 
       return {
         acrossQuotes: [acrossQuote0, acrossQuote1],
