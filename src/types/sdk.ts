@@ -42,16 +42,6 @@ export type UniswapV4Params = UniswapV3Params & {
   tickSpacing: number;
 };
 
-export type RequestV3MigrationParams = BaseRequestMigrationParams &
-  (UniswapV3Params | UniswapV4Params) & {
-    sourceProtocol: Protocol.UniswapV3;
-  };
-
-export type RequestV4MigrationParams = BaseRequestMigrationParams &
-  (UniswapV3Params | UniswapV4Params) & {
-    sourceProtocol: Protocol.UniswapV4;
-  };
-
 export type RequestV3toV3MigrationParams = BaseRequestMigrationParams &
   UniswapV3Params & {
     sourceProtocol: Protocol.UniswapV3;
@@ -76,7 +66,11 @@ export type RequestV4toV3MigrationParams = BaseRequestMigrationParams &
     destinationProtocol: Protocol.UniswapV3;
   };
 
-export type RequestMigrationParams = RequestV3toV3MigrationParams | RequestV3toV4MigrationParams | RequestV4toV4MigrationParams | RequestV4toV3MigrationParams;
+export type RequestV3MigrationParams = RequestV3toV3MigrationParams | RequestV3toV4MigrationParams;
+
+export type RequestV4MigrationParams = RequestV4toV3MigrationParams | RequestV4toV4MigrationParams;
+
+export type RequestMigrationParams = RequestV3MigrationParams | RequestV4MigrationParams;
 
 // type AcrossFeeBreakdown = {
 //   [K in 'lpFee' | 'relayerGasFee' | 'relayerCapitalFee' | 'totalRelayFee']: {

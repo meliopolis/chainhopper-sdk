@@ -1,9 +1,10 @@
 import { type IV3PositionWithUncollectedFees } from './getV3Position';
-import { BridgeType, DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod } from '../utils/constants';
+import { BridgeType, DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, NATIVE_ETH_ADDRESS } from '../utils/constants';
 import { CurrencyAmount } from '@uniswap/sdk-core';
 import { getV3Quote } from './getV3Quote';
 import type { InternalStartMigrationParams, InternalStartMigrationResult } from '../types/internal';
-import { generateMigration, getAcrossQuote } from '../utils/helpers';
+import { generateMigration } from '../utils/helpers';
+import { getAcrossQuote } from '../lib/acrossClient';
 
 export const startUniswapV3Migration = async ({
   sourceChainConfig,
@@ -58,6 +59,7 @@ export const startUniswapV3Migration = async ({
         destinationChainConfig,
         sourceChainConfig.wethAddress,
         totalWethAvailable.asFraction.toFixed(0),
+        destinationChainConfig.wethAddress,
         externalParams,
         interimMessageForSettler
       );
@@ -86,11 +88,16 @@ export const startUniswapV3Migration = async ({
     if (externalParams.bridgeType === BridgeType.Across) {
       const { migrationId, interimMessageForSettler } = generateMigration(sourceChainConfig, MigrationMethod.DualToken, externalParams);
 
+      let flipTokens = false;
+      if (isWethToken0) flipTokens = externalParams.token0 != NATIVE_ETH_ADDRESS && externalParams.token0 != destinationChainConfig.wethAddress;
+      if (isWethToken1) flipTokens = externalParams.token1 != destinationChainConfig.wethAddress;
+
       const acrossQuote0 = await getAcrossQuote(
         sourceChainConfig,
         destinationChainConfig,
         totalToken0.currency.address as `0x${string}`,
         totalToken0.asFraction.toFixed(0),
+        isWethToken0 ? destinationChainConfig.wethAddress : flipTokens ? externalParams.token1 : externalParams.token0,
         externalParams,
         interimMessageForSettler
       );
@@ -100,6 +107,7 @@ export const startUniswapV3Migration = async ({
         destinationChainConfig,
         totalToken1.currency.address as `0x${string}`,
         totalToken1.asFraction.toFixed(0),
+        isWethToken1 ? destinationChainConfig.wethAddress : flipTokens ? externalParams.token0 : externalParams.token1,
         externalParams,
         interimMessageForSettler
       );

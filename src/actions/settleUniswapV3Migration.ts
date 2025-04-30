@@ -39,7 +39,6 @@ export const settleUniswapV3Migration = async ({
     const maxPositionWithSwap = await generateMaxV3orV4PositionWithSwapAllowed(
       destinationChainConfig,
       pool,
-      externalParams,
       isWethToken0 ? baseTokenAvailable : otherTokenAvailable,
       isWethToken0 ? otherTokenAvailable : baseTokenAvailable,
       externalParams.tickLower,
@@ -55,7 +54,6 @@ export const settleUniswapV3Migration = async ({
     const maxPositionWithSwapUsingRouteMinAmountOut = await generateMaxV3orV4PositionWithSwapAllowed(
       destinationChainConfig,
       pool,
-      externalParams,
       isWethToken0 ? baseTokenAvailableUsingRouteMinAmountOut : otherTokenAvailableUsingRouteMinAmountOut,
       isWethToken0 ? otherTokenAvailableUsingRouteMinAmountOut : baseTokenAvailableUsingRouteMinAmountOut,
       externalParams.tickLower,
@@ -105,15 +103,14 @@ export const settleUniswapV3Migration = async ({
       settleMinAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, minToken1Available.toString());
     }
 
-    const maxPosition = generateMaxV3Position(pool, settleAmountOut0, settleAmountOut1, externalParams.tickLower, externalParams.tickUpper, MigrationMethod.DualToken);
+    const maxPosition = generateMaxV3Position(pool, settleAmountOut0, settleAmountOut1, externalParams.tickLower, externalParams.tickUpper);
 
     const maxPositionUsingSettleMinAmountsOut = generateMaxV3Position(
       pool,
       settleMinAmountOut0,
       settleMinAmountOut1,
       externalParams.tickLower,
-      externalParams.tickUpper,
-      MigrationMethod.DualToken
+      externalParams.tickUpper
     );
 
     return generateMigrationParams(migrationId, externalParams, destinationChainConfig, routes, maxPosition, maxPositionUsingSettleMinAmountsOut);

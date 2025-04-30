@@ -1,10 +1,8 @@
 import { CurrencyAmount, Fraction, Percent, Price, Token, type Currency } from '@uniswap/sdk-core';
 import { DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, Protocol } from './constants';
-import type { IV3PositionWithUncollectedFees } from '../actions/getV3Position';
-import type { IV4PositionWithUncollectedFees } from '../actions/getV4Position';
 import { nearestUsableTick, Pool as V3Pool, SqrtPriceMath, TickMath, Position as V3Position } from '@uniswap/v3-sdk';
 import { Position as V4Position, Pool as V4Pool } from '@uniswap/v4-sdk';
-import { acrossClient } from '../lib/acrossClient';
+
 import { encodeMigrationParams, encodeMintParamsForV3, encodeMintParamsForV4, encodeSettlementParams, encodeSettlementParamsForSettler } from '../actions/encode';
 import { zeroAddress } from 'viem';
 import type { RequestMigrationParams, Route } from '../types/sdk';
@@ -13,19 +11,6 @@ import JSBI from 'jsbi';
 import { getV3Quote } from '../actions/getV3Quote';
 import type { ChainConfig } from '../chains';
 import { getV4CombinedQuote } from '../actions/getV4CombinedQuote';
-import type { Quote } from '@across-protocol/app-sdk';
-
-export const getBurnAmountsWithSlippage = (
-  extendedPosition: IV3PositionWithUncollectedFees | IV4PositionWithUncollectedFees,
-  slippageInBps: number | undefined
-): { amount0Min: bigint; amount1Min: bigint } => {
-  const position = extendedPosition.position;
-  const { amount0, amount1 } = position.burnAmountsWithSlippage(new Percent(slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000));
-  return {
-    amount0Min: BigInt(amount0.toString()) + BigInt(extendedPosition.uncollectedFees.amount0.quotient.toString()),
-    amount1Min: BigInt(amount1.toString()) + BigInt(extendedPosition.uncollectedFees.amount1.quotient.toString()),
-  };
-};
 
 export const genMigrationId = (chainId: number, migrator: string, method: MigrationMethod, nonce: bigint): `0x${string}` => {
   const mode = method === MigrationMethod.SingleToken ? 1 : 2;
@@ -149,31 +134,7 @@ export const generateMigrationParams = async (
   };
 };
 
-export const getAcrossQuote = async (
-  sourceChainConfig: ChainConfig,
-  destinationChainConfig: ChainConfig,
-  tokenAddress: `0x${string}`,
-  tokenAmount: string,
-  externalParams: RequestMigrationParams,
-  interimMessageForSettler: `0x${string}`
-): Promise<Quote> => {
-  // initially just supporting (W)ETH/USDC pairs
-  // TODO: add desired dual token pair address mappings to chain config or similar for address lookup
-  const isWethToken = tokenAddress === sourceChainConfig.wethAddress;
-  return await acrossClient({ testnet: sourceChainConfig.testnet }).getQuote({
-    route: {
-      originChainId: sourceChainConfig.chainId,
-      destinationChainId: destinationChainConfig.chainId,
-      inputToken: tokenAddress,
-      outputToken: isWethToken ? destinationChainConfig.wethAddress : destinationChainConfig.usdcAddress,
-    },
-    inputAmount: tokenAmount,
-    recipient: resolveSettler(externalParams, destinationChainConfig),
-    crossChainMessage: interimMessageForSettler,
-  });
-};
-
-const resolveSettler = (externalParams: RequestMigrationParams, destinationChainConfig: ChainConfig): `0x${string}` => {
+export const resolveSettler = (externalParams: RequestMigrationParams, destinationChainConfig: ChainConfig): `0x${string}` => {
   let settler: `0x${string}`;
   switch (externalParams.destinationProtocol) {
     case Protocol.UniswapV3:
@@ -199,8 +160,7 @@ export const generateMaxV3Position = (
   currencyAmount0: CurrencyAmount<Currency>,
   currencyAmount1: CurrencyAmount<Currency>,
   tickLower: number,
-  tickUpper: number,
-  migrationMethod: MigrationMethod
+  tickUpper: number
 ): V3Position => {
   const [amount0, amount1] = [currencyAmount0.asFraction.toFixed(0).toString(), currencyAmount1.asFraction.toFixed(0).toString()];
   // estimate max position possible given the ticks and both tokens maxed out
@@ -213,21 +173,6 @@ export const generateMaxV3Position = (
     useFullPrecision: true,
   });
 
-  // now we need to proportionally reduce the position to fit within the max tokens available on the destination chain
-  // if neither amount is 0, then we need to reduce both proportionally
-  if (migrationMethod == MigrationMethod.SingleToken && !maxPosition.amount0.equalTo(0) && !maxPosition.amount1.equalTo(0)) {
-    const maxPositionValueInBaseToken = maxPosition.amount0.add(maxPosition.pool.token1Price.quote(maxPosition.amount1));
-    const reductionFactor = currencyAmount0.asFraction.divide(maxPositionValueInBaseToken.asFraction);
-
-    return V3Position.fromAmounts({
-      pool: pool,
-      tickLower: nearestUsableTick(tickLower, pool.tickSpacing),
-      tickUpper: nearestUsableTick(tickUpper, pool.tickSpacing),
-      amount0: maxPosition.amount0.asFraction.multiply(reductionFactor).toFixed(0),
-      amount1: maxPosition.amount1.asFraction.multiply(reductionFactor).toFixed(0),
-      useFullPrecision: true,
-    });
-  }
   return maxPosition;
 };
 
@@ -236,8 +181,7 @@ export const generateMaxV4Position = (
   currencyAmount0: CurrencyAmount<Currency>,
   currencyAmount1: CurrencyAmount<Currency>,
   tickLower: number,
-  tickUpper: number,
-  migrationMethod: MigrationMethod
+  tickUpper: number
 ): V4Position => {
   const [amount0, amount1] = [currencyAmount0.asFraction.toFixed(0).toString(), currencyAmount1.asFraction.toFixed(0).toString()];
 
@@ -251,21 +195,6 @@ export const generateMaxV4Position = (
     useFullPrecision: true,
   });
 
-  // now we need to proportionally reduce the position to fit within the max tokens available on the destination chain
-  // if neither amount is 0, then we need to reduce both proportionally
-  if (migrationMethod === MigrationMethod.SingleToken && !maxPosition.amount0.equalTo(0) && !maxPosition.amount1.equalTo(0)) {
-    const maxPositionValueInBaseToken = maxPosition.amount0.add(maxPosition.pool.token1Price.quote(maxPosition.amount1));
-    const reductionFactor = currencyAmount0.asFraction.divide(maxPositionValueInBaseToken.asFraction);
-
-    return V4Position.fromAmounts({
-      pool: pool,
-      tickLower: nearestUsableTick(tickLower, pool.tickSpacing),
-      tickUpper: nearestUsableTick(tickUpper, pool.tickSpacing),
-      amount0: maxPosition.amount0.asFraction.multiply(reductionFactor).toFixed(0),
-      amount1: maxPosition.amount1.asFraction.multiply(reductionFactor).toFixed(0),
-      useFullPrecision: true,
-    });
-  }
   return maxPosition;
 };
 
@@ -308,7 +237,6 @@ const calculateRatioAmountIn = (
 export const generateMaxV3orV4PositionWithSwapAllowed = async (
   chainConfig: ChainConfig,
   pool: V3Pool | V4Pool,
-  externalParams: RequestMigrationParams,
   token0Balance: CurrencyAmount<Currency>,
   token1Balance: CurrencyAmount<Currency>,
   tickLower: number,
@@ -317,14 +245,12 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
   numIterations: number
 ): Promise<V3Position | V4Position> => {
 
-  if (externalParams.token1 < externalParams.token0) {
-    [token0Balance, token1Balance] = [token1Balance, token0Balance];
-  }
   const isV4 = 'hooks' in pool;
   // calculate optimal ratio returns 0 for out of range case
   let preSwapOptimalRatio = calculateOptimalRatio(tickLower, tickUpper, pool.sqrtRatioX96, true);
 
   let zeroForOne: boolean;
+
   if (pool.tickCurrent > tickUpper) {
     zeroForOne = true;
   } else if (pool.tickCurrent < tickLower) {

@@ -1,12 +1,12 @@
-import { BridgeType, DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, Protocol } from '../utils/constants';
+import { BridgeType, DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, NATIVE_ETH_ADDRESS, Protocol } from '../utils/constants';
 import { CurrencyAmount } from '@uniswap/sdk-core';
-import { acrossClient } from '../lib/acrossClient';
 import { encodeMintParamsForV3, encodeMintParamsForV4, encodeSettlementParams, encodeSettlementParamsForSettler } from './encode';
 import type { IV4PositionWithUncollectedFees } from './getV4Position';
 import { zeroAddress } from 'viem';
-import { genMigrationId, generateMigration, getAcrossQuote } from '../utils/helpers';
+import { genMigrationId, generateMigration } from '../utils/helpers';
 import { getV4Quote } from './getV4Quote';
 import type { InternalStartMigrationParams, InternalStartMigrationResult } from '../types/internal';
+import { getAcrossQuote } from '@/lib/acrossClient';
 
 export const startUniswapV4Migration = async ({
   sourceChainConfig,
@@ -85,6 +85,7 @@ export const startUniswapV4Migration = async ({
         destinationChainConfig,
         sourceChainConfig.wethAddress,
         totalWethAvailable.asFraction.toFixed(0),
+        destinationChainConfig.wethAddress,
         externalParams,
         interimMessageForSettler
       );
@@ -113,22 +114,26 @@ export const startUniswapV4Migration = async ({
     if (externalParams.bridgeType === BridgeType.Across) {
       const { migrationId, interimMessageForSettler } = generateMigration(sourceChainConfig, MigrationMethod.DualToken, externalParams);
 
-      const token0Address = totalToken0.currency.isNative ? sourceChainConfig.wethAddress : (totalToken0.currency.address as `0x${string}`);
-      const token1Address = totalToken1.currency.isNative ? sourceChainConfig.wethAddress : (totalToken1.currency.address as `0x${string}`);
+      let flipTokens = false;
+      if (isToken0EthOrWeth) flipTokens = externalParams.token0 != NATIVE_ETH_ADDRESS && externalParams.token0 != destinationChainConfig.wethAddress;
+      if (isToken1Weth) flipTokens = externalParams.token1 != destinationChainConfig.wethAddress;
 
       const acrossQuote0 = await getAcrossQuote(
         sourceChainConfig,
         destinationChainConfig,
-        token0Address,
+        totalToken0.currency.wrapped.address as `0x${string}`,
         totalToken0.asFraction.toFixed(0),
+        isToken0EthOrWeth ? destinationChainConfig.wethAddress : flipTokens ? externalParams.token1 : externalParams.token0,
         externalParams,
         interimMessageForSettler
       );
+
       const acrossQuote1 = await getAcrossQuote(
         sourceChainConfig,
         destinationChainConfig,
-        token1Address,
+        totalToken1.currency.wrapped.address as `0x${string}`,
         totalToken1.asFraction.toFixed(0),
+        isToken1Weth ? destinationChainConfig.wethAddress : flipTokens ? externalParams.token0 : externalParams.token1,
         externalParams,
         interimMessageForSettler
       );

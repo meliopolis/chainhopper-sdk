@@ -1,7 +1,9 @@
-import { AcrossClient } from '@across-protocol/app-sdk';
-import { chainConfigs } from '../chains';
+import { type Quote, AcrossClient } from '@across-protocol/app-sdk';
+import { type ChainConfig, chainConfigs } from '../chains';
+import type { RequestMigrationParams } from '../types/sdk';
+import { resolveSettler } from '../utils/helpers';
 
-export const acrossClient = ({ testnet }: { testnet: boolean }): AcrossClient => {
+const acrossClient = ({ testnet }: { testnet: boolean }): AcrossClient => {
   // fetch chains from chainConfigs
   const testnets = Object.values(chainConfigs)
     .map((chain) => chain)
@@ -26,4 +28,26 @@ export const acrossClient = ({ testnet }: { testnet: boolean }): AcrossClient =>
     // logLevel: "DEBUG",
   });
   return client;
+};
+
+export const getAcrossQuote = async (
+  sourceChainConfig: ChainConfig,
+  destinationChainConfig: ChainConfig,
+  inputTokenAddress: `0x${string}`,
+  inputTokenAmount: string,
+  outputTokenAddress: `0x${string}`,
+  externalParams: RequestMigrationParams,
+  interimMessageForSettler: `0x${string}`
+): Promise<Quote> => {
+  return await acrossClient({ testnet: sourceChainConfig.testnet }).getQuote({
+    route: {
+      originChainId: sourceChainConfig.chainId,
+      destinationChainId: destinationChainConfig.chainId,
+      inputToken: inputTokenAddress,
+      outputToken: outputTokenAddress,
+    },
+    inputAmount: inputTokenAmount,
+    recipient: resolveSettler(externalParams, destinationChainConfig),
+    crossChainMessage: interimMessageForSettler,
+  });
 };
