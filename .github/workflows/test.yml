@@ -1,0 +1,39 @@
+name: Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # Define environment variables that will be available to all steps
+    env:
+      NODE_ENV: test
+      # Add any non-sensitive environment variables here
+      API_URL: https://api.example.com
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v1
+      with:
+        bun-version: latest
+
+    - name: Install dependencies
+      run: bun install
+
+    - name: Run tests
+      env:
+        # Add sensitive environment variables here
+        # These should be set in GitHub repository secrets
+        MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
+        UNICHAIN_RPC_URL: ${{ secrets.UNICHAIN_RPC_URL }}
+        BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        ARBITRUM_RPC_URL: ${{ secrets.ARBITRUM_RPC_URL }}
+        OPTISM_RPC_URL: ${{ secrets.OPTMISM_RPC_URL }}
+      run: bun test 
