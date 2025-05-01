@@ -25,7 +25,7 @@ export const getSettlerFees = async (chainConfig: ChainConfig, settler: `0x${str
     throw new Error('Failed to get settler fees');
   }
   return {
-    protocolShareOfSenderFeePct: results?.[0].result as bigint,
-    protocolShareBps: results?.[1].result as bigint,
+    protocolShareOfSenderFeePct: BigInt(results?.[0].result as number),
+    protocolShareBps: BigInt(results?.[1].result as number),
   };
 };

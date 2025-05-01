@@ -113,15 +113,14 @@ export const settleUniswapV4Migration = async ({
       settleMinAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, minToken1Available.toString());
     }
 
-    const maxPosition = generateMaxV4Position(pool, settleAmountOut0, settleAmountOut1, externalParams.tickLower, externalParams.tickUpper, MigrationMethod.DualToken);
+    const maxPosition = generateMaxV4Position(pool, settleAmountOut0, settleAmountOut1, externalParams.tickLower, externalParams.tickUpper);
 
     const maxPositionUsingSettleMinAmountsOut = generateMaxV4Position(
       pool,
       settleMinAmountOut0,
       settleMinAmountOut1,
       externalParams.tickLower,
-      externalParams.tickUpper,
-      MigrationMethod.DualToken
+      externalParams.tickUpper
     );
 
     return generateMigrationParams(migrationId, externalParams, destinationChainConfig, routes, maxPosition, maxPositionUsingSettleMinAmountsOut);
