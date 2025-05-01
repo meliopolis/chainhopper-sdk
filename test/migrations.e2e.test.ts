@@ -331,7 +331,7 @@ describe('invalid migrations', () => {
         sourceProtocol: Protocol.UniswapV3,
         destinationProtocol: Protocol.UniswapV4,
         bridgeType: BridgeType.Across,
-        migrationMethod: MigrationMethod.SingleToken,
+        migrationMethod: MigrationMethod.DualToken,
         token0: '0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34',
         token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
         tickLower: -276352,
