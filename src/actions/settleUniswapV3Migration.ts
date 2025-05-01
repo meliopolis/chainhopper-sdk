@@ -1,6 +1,6 @@
 import { CurrencyAmount, Fraction } from '@uniswap/sdk-core';
 import { getV3Pool } from './getV3Pool';
-import { DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod } from '../utils/constants';
+import { DEFAULT_SLIPPAGE_IN_BPS } from '../utils/constants';
 import { generateMaxV3Position, generateMaxV3orV4PositionWithSwapAllowed, generateMigrationParams } from '../utils/helpers';
 import type { InternalSettleMigrationParams, InternalSettleMigrationResult } from '../types/internal';
 import { getSettlerFees } from './getSettlerFees';
@@ -105,13 +105,7 @@ export const settleUniswapV3Migration = async ({
 
     const maxPosition = generateMaxV3Position(pool, settleAmountOut0, settleAmountOut1, externalParams.tickLower, externalParams.tickUpper);
 
-    const maxPositionUsingSettleMinAmountsOut = generateMaxV3Position(
-      pool,
-      settleMinAmountOut0,
-      settleMinAmountOut1,
-      externalParams.tickLower,
-      externalParams.tickUpper
-    );
+    const maxPositionUsingSettleMinAmountsOut = generateMaxV3Position(pool, settleMinAmountOut0, settleMinAmountOut1, externalParams.tickLower, externalParams.tickUpper);
 
     return generateMigrationParams(migrationId, externalParams, destinationChainConfig, routes, maxPosition, maxPositionUsingSettleMinAmountsOut);
   }

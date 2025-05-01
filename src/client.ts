@@ -1,7 +1,7 @@
 import { configurePublicClients } from './utils/configurePublicClients';
 import { chainConfigs } from './chains';
 import { getV3Position, type IV3PositionWithUncollectedFees } from './actions/getV3Position';
-import { BridgeType, MigrationMethod, NATIVE_ETH_ADDRESS, Protocol } from './utils/constants';
+import { BridgeType, MigrationMethod, Protocol } from './utils/constants';
 import type { ChainConfig } from './chains';
 import type {
   RequestMigrationParams,

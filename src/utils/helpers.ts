@@ -32,7 +32,7 @@ export const genMigrationId = (chainId: number, migrator: string, method: Migrat
 export const generateMigration = (
   sourceChainConfig: ChainConfig,
   migrationMethod: MigrationMethod,
-  externalParams: RequestMigrationParams,
+  externalParams: RequestMigrationParams
 ): { migrationId: `0x${string}`; interimMessageForSettler: `0x${string}` } => {
   const migrationId = genMigrationId(externalParams.sourceChainId, sourceChainConfig.UniswapV3AcrossMigrator || zeroAddress, migrationMethod, BigInt(0));
   let mintParams: `0x${string}`;
@@ -244,7 +244,6 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
   slippageTolerance: Fraction,
   numIterations: number
 ): Promise<V3Position | V4Position> => {
-
   const isV4 = 'hooks' in pool;
   // calculate optimal ratio returns 0 for out of range case
   let preSwapOptimalRatio = calculateOptimalRatio(tickLower, tickUpper, pool.sqrtRatioX96, true);

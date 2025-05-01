@@ -1,4 +1,4 @@
-import { test, describe, expect, beforeAll, afterAll } from 'bun:test';
+import { test, describe, expect, beforeAll } from 'bun:test';
 import { ChainHopperClient } from '../src/client';
 import { configurePublicClients } from '../src/utils/configurePublicClients';
 import { Protocol, BridgeType, MigrationMethod, NATIVE_ETH_ADDRESS } from '../src/utils/constants';
@@ -38,7 +38,7 @@ beforeAll(() => {
   configurePublicClients(client.chainConfigs, rpcUrls, blockNumbers);
 });
 
-const validateMigrationResponse = (params: RequestMigrationParams, result: RequestMigrationResponse) => {
+const validateMigrationResponse = (params: RequestMigrationParams, result: RequestMigrationResponse): void => {
   // check correct output chain
   expect(result.destChainId).toBe(params.destinationChainId);
 

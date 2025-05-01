@@ -1,6 +1,6 @@
 import { CurrencyAmount, Fraction } from '@uniswap/sdk-core';
 import { getV4Pool } from './getV4Pool';
-import { DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, NATIVE_ETH_ADDRESS } from '../utils/constants';
+import { DEFAULT_SLIPPAGE_IN_BPS, NATIVE_ETH_ADDRESS } from '../utils/constants';
 import { zeroAddress } from 'viem';
 import { generateMaxV4Position, generateMigrationParams, generateMaxV3orV4PositionWithSwapAllowed } from '../utils/helpers';
 import type { InternalSettleMigrationParams, InternalSettleMigrationResult } from '../types/internal';
@@ -115,13 +115,7 @@ export const settleUniswapV4Migration = async ({
 
     const maxPosition = generateMaxV4Position(pool, settleAmountOut0, settleAmountOut1, externalParams.tickLower, externalParams.tickUpper);
 
-    const maxPositionUsingSettleMinAmountsOut = generateMaxV4Position(
-      pool,
-      settleMinAmountOut0,
-      settleMinAmountOut1,
-      externalParams.tickLower,
-      externalParams.tickUpper
-    );
+    const maxPositionUsingSettleMinAmountsOut = generateMaxV4Position(pool, settleMinAmountOut0, settleMinAmountOut1, externalParams.tickLower, externalParams.tickUpper);
 
     return generateMigrationParams(migrationId, externalParams, destinationChainConfig, routes, maxPosition, maxPositionUsingSettleMinAmountsOut);
   }

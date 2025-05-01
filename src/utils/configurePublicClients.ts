@@ -4,7 +4,7 @@ import type { ChainConfig } from '../chains';
 type ChainId = number;
 
 // wraps a viem publicClient to inject a blockNumber override on all read calls for integration testing
-function createBlockScopedClient({ transport, chainConfig, blockNumber }: { transport: HttpTransport; chainConfig: ChainConfig; blockNumber: bigint }): PublicClient {
+const createBlockScopedClient = ({ transport, chainConfig, blockNumber }: { transport: HttpTransport; chainConfig: ChainConfig; blockNumber: bigint }): PublicClient => {
   const baseClient = createPublicClient({
     transport: transport,
     chain: chainConfig.chain,
@@ -12,14 +12,14 @@ function createBlockScopedClient({ transport, chainConfig, blockNumber }: { tran
   });
 
   return new Proxy(baseClient, {
-    get(target, prop: keyof PublicClient) {
+    get(target, prop: keyof PublicClient): unknown {
       const original = target[prop];
       if (typeof original !== 'function') return original;
 
-      return (...args: any[]) => {
+      return (...args: unknown[]) => {
         const lastArg = args[args.length - 1];
         const hasOverrides = lastArg && typeof lastArg === 'object' && !Array.isArray(lastArg);
-        const overrides = hasOverrides ? { ...lastArg } : {};
+        const overrides = hasOverrides ? { ...lastArg } : ({} as { blockNumber?: bigint; blockTag?: 'latest' | 'earliest' | 'pending' });
 
         // Inject blockNumber if not already provided
         if (!('blockNumber' in overrides) && !('blockTag' in overrides)) {
@@ -28,12 +28,11 @@ function createBlockScopedClient({ transport, chainConfig, blockNumber }: { tran
 
         const finalArgs = hasOverrides ? [...args.slice(0, -1), overrides] : [...args, overrides];
 
-        // @ts-ignore
-        return original.apply(target, finalArgs);
+        return (original as (...args: unknown[]) => unknown).call(target, ...finalArgs);
       };
     },
   }) as PublicClient;
-}
+};
 
 export const configurePublicClients = (
   chainConfigs: Record<ChainId, ChainConfig>,

@@ -6,7 +6,7 @@ import { zeroAddress } from 'viem';
 import { genMigrationId, generateMigration } from '../utils/helpers';
 import { getV4Quote } from './getV4Quote';
 import type { InternalStartMigrationParams, InternalStartMigrationResult } from '../types/internal';
-import { getAcrossQuote } from '@/lib/acrossClient';
+import { getAcrossQuote } from '../lib/acrossClient';
 
 export const startUniswapV4Migration = async ({
   sourceChainConfig,
