@@ -5,12 +5,13 @@ import { Position as V4Position, Pool as V4Pool } from '@uniswap/v4-sdk';
 
 import { encodeMigrationParams, encodeMintParamsForV3, encodeMintParamsForV4, encodeSettlementParams, encodeSettlementParamsForSettler } from '../actions/encode';
 import { zeroAddress } from 'viem';
-import type { RequestMigrationParams, Route } from '../types/sdk';
+import type { ExecutionParams, RequestMigrationParams, Route } from '../types/sdk';
 
 import JSBI from 'jsbi';
 import { getV3Quote } from '../actions/getV3Quote';
-import type { ChainConfig } from '../chains';
+import { chainConfigs, type ChainConfig } from '../chains';
 import { getV4CombinedQuote } from '../actions/getV4CombinedQuote';
+import { NFTSafeTransferFrom } from '@/abis/NFTSafeTransferFrom';
 
 export const genMigrationId = (chainId: number, migrator: string, method: MigrationMethod, nonce: bigint): `0x${string}` => {
   const mode = method === MigrationMethod.SingleToken ? 1 : 2;
@@ -366,4 +367,38 @@ export const subIn256 = (x: bigint, y: bigint): bigint => {
   } else {
     return difference;
   }
+};
+
+export const generateExecutionParams = ({
+  sourceChainId,
+  owner,
+  protocol,
+  tokenId,
+  message,
+}: {
+  sourceChainId: number;
+  owner: `0x${string}`;
+  protocol: Protocol;
+  tokenId: bigint;
+  message: `0x${string}`;
+}): ExecutionParams => {
+  let positionManagerAddress: `0x${string}`;
+  let migratorAddress: `0x${string}` | undefined;
+  const sourceChainConfig = chainConfigs[sourceChainId];
+  if (protocol === Protocol.UniswapV3) {
+    positionManagerAddress = sourceChainConfig.v3NftPositionManagerContract.address;
+    migratorAddress = sourceChainConfig.UniswapV3AcrossMigrator;
+  } else {
+    positionManagerAddress = sourceChainConfig.v4PositionManagerContract.address;
+    migratorAddress = sourceChainConfig.UniswapV4AcrossMigrator;
+  }
+  if (!positionManagerAddress || !migratorAddress) {
+    throw new Error('Migrator or position manager not found');
+  }
+  return {
+    address: positionManagerAddress,
+    abi: NFTSafeTransferFrom,
+    functionName: 'safeTransferFrom',
+    args: [owner, migratorAddress, tokenId, message],
+  };
 };

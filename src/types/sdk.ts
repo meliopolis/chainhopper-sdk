@@ -1,3 +1,4 @@
+import type { Abi } from 'viem';
 import type { IV3PositionWithUncollectedFees } from '../actions/getV3Position';
 import type { IV4PositionWithUncollectedFees } from '../actions/getV4Position';
 import { BridgeType, MigrationMethod, Protocol } from '../utils/constants';
@@ -21,8 +22,8 @@ export type BaseRequestMigrationParams = {
   tokenId: bigint;
   owner: `0x${string}`; // needed for call data
   destinationProtocol: Protocol;
-  bridgeType: BridgeType;
-  migrationMethod: MigrationMethod;
+  bridgeType?: BridgeType;
+  migrationMethod?: MigrationMethod;
   senderShareBps?: number;
   senderFeeRecipient?: `0x${string}`;
   slippageInBps?: number;
@@ -98,6 +99,13 @@ export type Route = {
   exclusiveRelayer: `0x${string}`;
 };
 
+export type ExecutionParams = {
+  address: `0x${string}`;
+  abi: Abi;
+  functionName: string;
+  args: [`0x${string}`, `0x${string}`, bigint, `0x${string}`];
+};
+
 export type RequestMigrationResponse = {
   sourceProtocol: Protocol;
   sourcePosition: IV3PositionWithUncollectedFees | IV4PositionWithUncollectedFees;
@@ -109,4 +117,5 @@ export type RequestMigrationResponse = {
   settlerMessage: `0x${string}`;
   slippageCalcs: SlippageCalcs;
   routes: Route[];
+  executionParams: ExecutionParams;
 };

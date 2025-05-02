@@ -69,6 +69,21 @@ const validateMigrationResponse = (params: RequestMigrationParams, result: Reque
   // check correct output amounts within slippage
   expect(amount0).toBeGreaterThanOrEqual(result.slippageCalcs.mintAmount0Min);
   expect(amount1).toBeGreaterThanOrEqual(result.slippageCalcs.mintAmount1Min);
+
+  // check execution params
+  const executionParams = result.executionParams;
+  expect(executionParams.functionName).toBe('safeTransferFrom');
+  expect(executionParams.args[0]).toBe(params.owner);
+  expect(executionParams.args[1]).toBeDefined();
+  expect(executionParams.args[2]).toBe(params.tokenId);
+  expect(executionParams.args[3]).toBe(result.migratorMessage);
+  if (params.sourceProtocol === Protocol.UniswapV3) {
+    expect(executionParams.address).toBe(client.chainConfigs[params.sourceChainId].v3NftPositionManagerContract.address);
+    expect(executionParams.args[1]).toBe(client.chainConfigs[params.sourceChainId].UniswapV3AcrossMigrator as `0x${string}`);
+  } else {
+    expect(executionParams.address).toBe(client.chainConfigs[params.sourceChainId].v4PositionManagerContract.address);
+    expect(executionParams.args[1]).toBe(client.chainConfigs[params.sourceChainId].UniswapV4AcrossMigrator as `0x${string}`);
+  }
 };
 
 describe('invalid migrations', () => {

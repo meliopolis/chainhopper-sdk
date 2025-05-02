@@ -19,6 +19,7 @@ import { getV4Position, type IV4PositionWithUncollectedFees } from './actions/ge
 import { startUniswapV4Migration } from './actions/startUniswapV4Migration';
 import { settleUniswapV4Migration } from './actions/settleUniswapV4Migration';
 import { isAddress, checksumAddress } from 'viem';
+import { generateExecutionParams } from './utils/helpers';
 
 export type ChainHopperClientOptions = {
   /**
@@ -82,13 +83,15 @@ export class ChainHopperClient {
     }
 
     // make sure bridge type is supported
-    if (params.bridgeType !== BridgeType.Across) {
+    if (params.bridgeType === undefined) {
+      params.bridgeType = BridgeType.Across;
+    } else if (params.bridgeType !== BridgeType.Across) {
       throw new Error('bridge type not supported');
     }
 
-    // make sure migration method is supported
+    // check migration method
     if (params.migrationMethod !== MigrationMethod.SingleToken && params.migrationMethod !== MigrationMethod.DualToken) {
-      throw new Error('migration method not supported');
+      params.migrationMethod = MigrationMethod.SingleToken;
     }
 
     // make sure tokenId is valid
@@ -172,6 +175,13 @@ export class ChainHopperClient {
         destProtocol: Protocol.UniswapV3,
         ...returnResponse,
         ...v3Settlement,
+        executionParams: generateExecutionParams({
+          sourceChainId,
+          owner: params.owner,
+          protocol: Protocol.UniswapV3,
+          tokenId,
+          message: v3Settlement.migratorMessage,
+        }),
       };
     } else if (destinationProtocol === Protocol.UniswapV4) {
       const v4Settlement = await settleUniswapV4Migration({
@@ -184,6 +194,13 @@ export class ChainHopperClient {
         destProtocol: Protocol.UniswapV4,
         ...returnResponse,
         ...v4Settlement,
+        executionParams: generateExecutionParams({
+          sourceChainId,
+          owner: params.owner,
+          protocol: Protocol.UniswapV3,
+          tokenId,
+          message: v4Settlement.migratorMessage,
+        }),
       };
     } else {
       throw new Error('Destination protocol not supported');
@@ -236,6 +253,13 @@ export class ChainHopperClient {
       return {
         ...returnResponse,
         ...v3Settlement,
+        executionParams: generateExecutionParams({
+          sourceChainId,
+          owner: params.owner,
+          protocol: Protocol.UniswapV4,
+          tokenId,
+          message: v3Settlement.migratorMessage,
+        }),
       };
     } else if (destinationProtocol === Protocol.UniswapV4) {
       const v4Settlement = await settleUniswapV4Migration({
@@ -247,6 +271,13 @@ export class ChainHopperClient {
       return {
         ...returnResponse,
         ...v4Settlement,
+        executionParams: generateExecutionParams({
+          sourceChainId,
+          owner: params.owner,
+          protocol: Protocol.UniswapV4,
+          tokenId,
+          message: v4Settlement.migratorMessage,
+        }),
       };
     } else {
       throw new Error('Destination protocol not supported');
