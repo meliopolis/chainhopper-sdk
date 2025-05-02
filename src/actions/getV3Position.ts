@@ -21,6 +21,7 @@ export type IV3PositionsCallType = {
 };
 
 export type IV3PositionWithUncollectedFees = {
+  owner: `0x${string}`;
   position: Position;
   uncollectedFees: {
     amount0: CurrencyAmount<Token>;
@@ -30,12 +31,26 @@ export type IV3PositionWithUncollectedFees = {
 
 export const getV3Position = async (chainConfig: ChainConfig, params: IUniswapPositionParams): Promise<IV3PositionWithUncollectedFees> => {
   const publicClient = chainConfig.publicClient;
-  const positionsCallResult: IPositionsCallResult = (await publicClient?.readContract({
-    address: chainConfig.v3NftPositionManagerContract.address as `0x${string}`,
-    abi: chainConfig.v3NftPositionManagerContract.abi,
-    functionName: 'positions',
-    args: [params.tokenId],
-  })) as IPositionsCallResult;
+  const positionManagerResult = await publicClient?.multicall({
+    contracts: [
+      {
+        address: chainConfig.v3NftPositionManagerContract.address as `0x${string}`,
+        abi: chainConfig.v3NftPositionManagerContract.abi,
+        functionName: 'ownerOf',
+        args: [params.tokenId],
+      },
+      {
+        address: chainConfig.v3NftPositionManagerContract.address as `0x${string}`,
+        abi: chainConfig.v3NftPositionManagerContract.abi,
+        functionName: 'positions',
+        args: [params.tokenId],
+      },
+    ],
+    multicallAddress: chainConfig.multicallAddress,
+  });
+
+  const owner = positionManagerResult?.[0].result as `0x${string}`;
+  const positionsCallResult = positionManagerResult?.[1].result as IPositionsCallResult;
 
   const positionsCallData = {
     token0: positionsCallResult[2],
@@ -54,12 +69,12 @@ export const getV3Position = async (chainConfig: ChainConfig, params: IUniswapPo
       args: [
         {
           tokenId: params.tokenId,
-          recipient: params.owner,
+          recipient: owner,
           amount0Max: MAX_UINT128,
           amount1Max: MAX_UINT128,
         },
       ] as const,
-      account: params.owner, // need to simulate the call as the owner
+      account: owner, // need to simulate the call as the owner
     })
   ).result as ILPFeeCallResult;
 
@@ -152,6 +167,7 @@ export const getV3Position = async (chainConfig: ChainConfig, params: IUniswapPo
   );
 
   return {
+    owner,
     position: new Position({
       pool,
       liquidity: positionsCallData.liquidity.toString(),

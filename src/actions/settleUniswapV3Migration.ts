@@ -10,6 +10,7 @@ export const settleUniswapV3Migration = async ({
   migrationId,
   routes,
   externalParams,
+  owner,
 }: InternalSettleMigrationParams): Promise<InternalSettleMigrationResult> => {
   if (routes.length === 0) throw new Error('No routes found');
   if (routes.length > 2) throw new Error('Invalid number of routes');
@@ -76,6 +77,7 @@ export const settleUniswapV3Migration = async ({
       routes,
       maxPositionWithSwap,
       maxPositionWithSwapUsingRouteMinAmountOut,
+      owner,
       10_000_000 - Number(swapAmountInMilliBps.toString())
     );
   } else {
@@ -107,6 +109,6 @@ export const settleUniswapV3Migration = async ({
 
     const maxPositionUsingSettleMinAmountsOut = generateMaxV3Position(pool, settleMinAmountOut0, settleMinAmountOut1, externalParams.tickLower, externalParams.tickUpper);
 
-    return generateMigrationParams(migrationId, externalParams, destinationChainConfig, routes, maxPosition, maxPositionUsingSettleMinAmountsOut);
+    return generateMigrationParams(migrationId, externalParams, destinationChainConfig, routes, maxPosition, maxPositionUsingSettleMinAmountsOut, owner);
   }
 };

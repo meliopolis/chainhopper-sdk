@@ -24,6 +24,7 @@ export type InternalSettleMigrationParams = {
   migrationId: `0x${string}`;
   routes: Route[];
   externalParams: RequestMigrationParams;
+  owner: `0x${string}`;
 };
 
 export type InternalSettleMigrationResult = {

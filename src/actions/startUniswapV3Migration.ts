@@ -53,7 +53,7 @@ export const startUniswapV3Migration = async ({
     if (externalParams.bridgeType === BridgeType.Across) {
       // generate the message that will be passed to the settler on the destination chain
       // note that this is different than the message that is passed to Migrator on the source chain
-      const { migrationId, interimMessageForSettler } = generateMigration(sourceChainConfig, MigrationMethod.SingleToken, externalParams);
+      const { migrationId, interimMessageForSettler } = generateMigration(sourceChainConfig, MigrationMethod.SingleToken, externalParams, positionWithFees.owner);
       const acrossQuote = await getAcrossQuote(
         sourceChainConfig,
         destinationChainConfig,
@@ -86,7 +86,7 @@ export const startUniswapV3Migration = async ({
     }
   } else if (externalParams.migrationMethod === MigrationMethod.DualToken) {
     if (externalParams.bridgeType === BridgeType.Across) {
-      const { migrationId, interimMessageForSettler } = generateMigration(sourceChainConfig, MigrationMethod.DualToken, externalParams);
+      const { migrationId, interimMessageForSettler } = generateMigration(sourceChainConfig, MigrationMethod.DualToken, externalParams, positionWithFees.owner);
 
       let flipTokens = false;
       if (isWethToken0) flipTokens = externalParams.token0 != NATIVE_ETH_ADDRESS && externalParams.token0 != destinationChainConfig.wethAddress;

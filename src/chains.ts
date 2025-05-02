@@ -92,6 +92,8 @@ export const chainConfigs: Record<number, ChainConfig> = {
     permit2Address: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
     wethAddress: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
     usdcAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+    UniswapV3AcrossMigrator: '0x0000000000000000000000000000000000000000', // TODO: need to deploy and update
+    UniswapV4AcrossMigrator: '0x0000000000000000000000000000000000000000', // TODO: need to deploy and update
   },
   10: {
     chainId: 10,

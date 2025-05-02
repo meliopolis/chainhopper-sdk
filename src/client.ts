@@ -19,6 +19,7 @@ import { getV4Position, type IV4PositionWithUncollectedFees } from './actions/ge
 import { startUniswapV4Migration } from './actions/startUniswapV4Migration';
 import { settleUniswapV4Migration } from './actions/settleUniswapV4Migration';
 import { isAddress, checksumAddress } from 'viem';
+import { generateExecutionParams } from './utils/helpers';
 
 export type ChainHopperClientOptions = {
   /**
@@ -82,23 +83,20 @@ export class ChainHopperClient {
     }
 
     // make sure bridge type is supported
-    if (params.bridgeType !== BridgeType.Across) {
+    if (params.bridgeType === undefined) {
+      params.bridgeType = BridgeType.Across;
+    } else if (params.bridgeType !== BridgeType.Across) {
       throw new Error('bridge type not supported');
     }
 
-    // make sure migration method is supported
+    // check migration method
     if (params.migrationMethod !== MigrationMethod.SingleToken && params.migrationMethod !== MigrationMethod.DualToken) {
-      throw new Error('migration method not supported');
+      params.migrationMethod = MigrationMethod.SingleToken;
     }
 
     // make sure tokenId is valid
     if (params.tokenId === BigInt(0)) {
       throw new Error('tokenId is not valid');
-    }
-
-    // make sure owner is valid
-    if (params.owner.length !== 42 || !params.owner.startsWith('0x')) {
-      throw new Error('owner is not valid');
     }
 
     // validate token addresses
@@ -133,7 +131,6 @@ export class ChainHopperClient {
     const v3Position = await getV3Position(this.chainConfigs[sourceChainId], {
       chainId: sourceChainId,
       tokenId,
-      owner: params.owner,
     });
 
     // make sure position has liquidity or fees
@@ -167,11 +164,20 @@ export class ChainHopperClient {
         migrationId,
         routes,
         externalParams: params as RequestV3toV3MigrationParams,
+        owner: v3Position.owner,
       });
       return {
         destProtocol: Protocol.UniswapV3,
+        owner: v3Position.owner,
         ...returnResponse,
         ...v3Settlement,
+        executionParams: generateExecutionParams({
+          sourceChainId,
+          owner: v3Position.owner,
+          protocol: Protocol.UniswapV3,
+          tokenId,
+          message: v3Settlement.migratorMessage,
+        }),
       };
     } else if (destinationProtocol === Protocol.UniswapV4) {
       const v4Settlement = await settleUniswapV4Migration({
@@ -179,11 +185,20 @@ export class ChainHopperClient {
         migrationId,
         routes,
         externalParams: params as RequestV3toV4MigrationParams,
+        owner: v3Position.owner,
       });
       return {
         destProtocol: Protocol.UniswapV4,
+        owner: v3Position.owner,
         ...returnResponse,
         ...v4Settlement,
+        executionParams: generateExecutionParams({
+          sourceChainId,
+          owner: v3Position.owner,
+          protocol: Protocol.UniswapV3,
+          tokenId,
+          message: v4Settlement.migratorMessage,
+        }),
       };
     } else {
       throw new Error('Destination protocol not supported');
@@ -197,7 +212,6 @@ export class ChainHopperClient {
     const v4Position = await getV4Position(this.chainConfigs[sourceChainId], {
       chainId: sourceChainId,
       tokenId,
-      owner: params.owner,
     });
 
     // make sure position has liquidity or fees
@@ -232,10 +246,19 @@ export class ChainHopperClient {
         migrationId,
         routes,
         externalParams: params as RequestV4toV3MigrationParams,
+        owner: v4Position.owner,
       });
       return {
         ...returnResponse,
+        owner: v4Position.owner,
         ...v3Settlement,
+        executionParams: generateExecutionParams({
+          sourceChainId,
+          owner: v4Position.owner,
+          protocol: Protocol.UniswapV4,
+          tokenId,
+          message: v3Settlement.migratorMessage,
+        }),
       };
     } else if (destinationProtocol === Protocol.UniswapV4) {
       const v4Settlement = await settleUniswapV4Migration({
@@ -243,10 +266,19 @@ export class ChainHopperClient {
         migrationId,
         routes,
         externalParams: params as RequestV4toV4MigrationParams,
+        owner: v4Position.owner,
       });
       return {
         ...returnResponse,
+        owner: v4Position.owner,
         ...v4Settlement,
+        executionParams: generateExecutionParams({
+          sourceChainId,
+          owner: v4Position.owner,
+          protocol: Protocol.UniswapV4,
+          tokenId,
+          message: v4Settlement.migratorMessage,
+        }),
       };
     } else {
       throw new Error('Destination protocol not supported');

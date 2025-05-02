@@ -1,9 +1,7 @@
-import { BridgeType, DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, NATIVE_ETH_ADDRESS, Protocol } from '../utils/constants';
+import { BridgeType, DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, NATIVE_ETH_ADDRESS } from '../utils/constants';
 import { CurrencyAmount } from '@uniswap/sdk-core';
-import { encodeMintParamsForV3, encodeMintParamsForV4, encodeSettlementParams, encodeSettlementParamsForSettler } from './encode';
 import type { IV4PositionWithUncollectedFees } from './getV4Position';
-import { zeroAddress } from 'viem';
-import { genMigrationId, generateMigration } from '../utils/helpers';
+import { generateMigration } from '../utils/helpers';
 import { getV4Quote } from './getV4Quote';
 import type { InternalStartMigrationParams, InternalStartMigrationResult } from '../types/internal';
 import { getAcrossQuote } from '../lib/acrossClient';
@@ -44,41 +42,8 @@ export const startUniswapV4Migration = async ({
     // TODO check that quote price is not much worse than current price
     const totalWethAvailable = isToken0EthOrWeth ? totalToken0.add(amountOut) : totalToken1.add(amountOut);
 
-    // now we need to generate the message that will be passed to the settler on the destination chain
-    // note that this is different than the message that is passed to Migrator on the source chain
-    const migrationId = genMigrationId(externalParams.sourceChainId, sourceChainConfig.UniswapV4AcrossMigrator || zeroAddress, MigrationMethod.SingleToken, BigInt(0));
-    let mintParams: `0x${string}`;
     if (externalParams.bridgeType === BridgeType.Across) {
-      const additionalParams = {
-        amount0Min: 1000n,
-        amount1Min: 1000n,
-        swapAmountInMilliBps: 0,
-        sqrtPriceX96: externalParams.sqrtPriceX96 || 0n,
-      };
-      if (externalParams.destinationProtocol === Protocol.UniswapV3) {
-        mintParams = encodeMintParamsForV3({
-          ...additionalParams,
-          ...externalParams, // get the rest of the params from the request
-        });
-      } else if (externalParams.destinationProtocol === Protocol.UniswapV4 && 'hooks' in externalParams) {
-        mintParams = encodeMintParamsForV4({
-          ...additionalParams,
-          ...externalParams, // get the rest of the params from the request
-        });
-      } else {
-        throw new Error('Bridge type not supported');
-      }
-      const interimMessageForSettler = encodeSettlementParamsForSettler(
-        encodeSettlementParams(
-          {
-            recipient: externalParams.owner,
-            senderShareBps: 0,
-            senderFeeRecipient: zeroAddress,
-          },
-          mintParams
-        ),
-        migrationId
-      );
+      const { migrationId, interimMessageForSettler } = generateMigration(sourceChainConfig, MigrationMethod.SingleToken, externalParams, positionWithFees.owner);
 
       const acrossQuote = await getAcrossQuote(
         sourceChainConfig,
@@ -112,7 +77,7 @@ export const startUniswapV4Migration = async ({
     }
   } else if (externalParams.migrationMethod === MigrationMethod.DualToken) {
     if (externalParams.bridgeType === BridgeType.Across) {
-      const { migrationId, interimMessageForSettler } = generateMigration(sourceChainConfig, MigrationMethod.DualToken, externalParams);
+      const { migrationId, interimMessageForSettler } = generateMigration(sourceChainConfig, MigrationMethod.DualToken, externalParams, positionWithFees.owner);
 
       let flipTokens = false;
       if (isToken0EthOrWeth) flipTokens = externalParams.token0 != NATIVE_ETH_ADDRESS && externalParams.token0 != destinationChainConfig.wethAddress;
