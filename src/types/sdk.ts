@@ -7,7 +7,6 @@ import type { Position as V4Position } from '@uniswap/v4-sdk';
 export type IUniswapPositionParams = {
   chainId: number;
   tokenId: bigint;
-  owner: `0x${string}`;
 };
 
 export type TokenAmount = {

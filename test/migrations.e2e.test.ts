@@ -385,7 +385,6 @@ describe('in-range v3→ migrations', () => {
     v3Response = await client.getV3Position({
       chainId: v3ChainId,
       tokenId: v3TokenId,
-      owner: v3Owner,
     });
   });
 
@@ -502,7 +501,6 @@ describe('in-range v4→ migrations', () => {
     v4Response = await client.getV4Position({
       chainId: v4ChainId,
       tokenId: v4TokenId,
-      owner: v4Owner,
     });
   });
 
@@ -642,7 +640,6 @@ describe('out of range v3→ migrations', () => {
     v3Response = await client.getV3Position({
       chainId: v3ChainId,
       tokenId: v3TokenId,
-      owner: v3Owner,
     });
   });
 
@@ -734,7 +731,6 @@ describe('out of range v4→ migrations', () => {
     v4Response = await client.getV4Position({
       chainId: v4ChainId,
       tokenId: v4TokenId,
-      owner: v4Owner,
     });
   });
 

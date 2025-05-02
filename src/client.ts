@@ -133,7 +133,6 @@ export class ChainHopperClient {
     const v3Position = await getV3Position(this.chainConfigs[sourceChainId], {
       chainId: sourceChainId,
       tokenId,
-      owner: params.owner,
     });
 
     // make sure position has liquidity or fees
@@ -197,7 +196,6 @@ export class ChainHopperClient {
     const v4Position = await getV4Position(this.chainConfigs[sourceChainId], {
       chainId: sourceChainId,
       tokenId,
-      owner: params.owner,
     });
 
     // make sure position has liquidity or fees

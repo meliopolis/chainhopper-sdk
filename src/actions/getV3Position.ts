@@ -37,6 +37,13 @@ export const getV3Position = async (chainConfig: ChainConfig, params: IUniswapPo
     args: [params.tokenId],
   })) as IPositionsCallResult;
 
+  const tokenOwner = (await publicClient?.readContract({
+    address: chainConfig.v3NftPositionManagerContract.address as `0x${string}`,
+    abi: chainConfig.v3NftPositionManagerContract.abi,
+    functionName: 'ownerOf',
+    args: [params.tokenId],
+  })) as `0x${string}`;
+
   const positionsCallData = {
     token0: positionsCallResult[2],
     token1: positionsCallResult[3],
@@ -54,12 +61,12 @@ export const getV3Position = async (chainConfig: ChainConfig, params: IUniswapPo
       args: [
         {
           tokenId: params.tokenId,
-          recipient: params.owner,
+          recipient: tokenOwner,
           amount0Max: MAX_UINT128,
           amount1Max: MAX_UINT128,
         },
       ] as const,
-      account: params.owner, // need to simulate the call as the owner
+      account: tokenOwner, // simulate the call as the actual token owner
     })
   ).result as ILPFeeCallResult;
 
