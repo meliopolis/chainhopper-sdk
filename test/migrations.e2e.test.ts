@@ -73,7 +73,7 @@ const validateMigrationResponse = (params: RequestMigrationParams, result: Reque
   // check execution params
   const executionParams = result.executionParams;
   expect(executionParams.functionName).toBe('safeTransferFrom');
-  expect(executionParams.args[0]).toBe(params.owner);
+  expect(executionParams.args[0]).toBe(result.owner);
   expect(executionParams.args[1]).toBeDefined();
   expect(executionParams.args[2]).toBe(params.tokenId);
   expect(executionParams.args[3]).toBe(result.migratorMessage);
@@ -92,7 +92,6 @@ describe('invalid migrations', () => {
       sourceChainId: 8453,
       destinationChainId: 130,
       tokenId: 104758n,
-      owner: '0x5a395ae92f10f082380a6254e5aa904cf60b5be2',
       sourceProtocol: Protocol.UniswapV3,
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: 'nobridge' as BridgeType,
@@ -117,7 +116,6 @@ describe('invalid migrations', () => {
       sourceChainId: 8453,
       destinationChainId: 130,
       tokenId: 104758n,
-      owner: '0x5a395ae92f10f082380a6254e5aa904cf60b5be2',
       sourceProtocol: Protocol.UniswapV3,
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: 'nobridge' as BridgeType,
@@ -142,7 +140,6 @@ describe('invalid migrations', () => {
       sourceChainId: 8453,
       destinationChainId: 130,
       tokenId: 104758n,
-      owner: '0x5a395ae92f10f082380a6254e5aa904cf60b5be2',
       sourceProtocol: Protocol.UniswapV4,
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: 'nobridge' as BridgeType,
@@ -167,7 +164,6 @@ describe('invalid migrations', () => {
       sourceChainId: 8453,
       destinationChainId: 130,
       tokenId: 104758n,
-      owner: '0x5a395ae92f10f082380a6254e5aa904cf60b5be2',
       sourceProtocol: Protocol.UniswapV4,
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: 'nobridge' as BridgeType,
@@ -192,7 +188,6 @@ describe('invalid migrations', () => {
       sourceChainId: 8453,
       destinationChainId: 130,
       tokenId: 104758n,
-      owner: '0x5a395ae92f10f082380a6254e5aa904cf60b5be2',
       sourceProtocol: Protocol.UniswapV3,
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: BridgeType.Across,
@@ -217,7 +212,6 @@ describe('invalid migrations', () => {
       sourceChainId: 8453,
       destinationChainId: 130,
       tokenId: 1638928n,
-      owner: '0x8ba7cf01f651daeb71031b43a2bf380dfe0a81bc',
       sourceProtocol: Protocol.UniswapV3,
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: BridgeType.Across,
@@ -242,7 +236,6 @@ describe('invalid migrations', () => {
       sourceChainId: 8453,
       destinationChainId: 130,
       tokenId: 1638928n,
-      owner: '0x8ba7cf01f651daeb71031b43a2bf380dfe0a81bc',
       sourceProtocol: Protocol.UniswapV3,
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: BridgeType.Across,
@@ -268,7 +261,6 @@ describe('invalid migrations', () => {
       sourceChainId: 1,
       destinationChainId: 130,
       tokenId: 963499n,
-      owner: '0xbab7901210a28eef316744a713aed9036e2c5d21',
       sourceProtocol: Protocol.UniswapV3,
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: BridgeType.Across,
@@ -293,7 +285,6 @@ describe('invalid migrations', () => {
       sourceChainId: 1,
       destinationChainId: 130,
       tokenId: 963499n,
-      owner: '0xbab7901210a28eef316744a713aed9036e2c5d21',
       sourceProtocol: Protocol.UniswapV3,
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: BridgeType.Across,
@@ -319,7 +310,6 @@ describe('invalid migrations', () => {
         sourceChainId: 130,
         destinationChainId: 8453,
         tokenId: 64594n,
-        owner: '0x29d8915a034d690ea4919fd9657cfdf6e6f679b1',
         sourceProtocol: Protocol.UniswapV4,
         destinationProtocol: Protocol.UniswapV3,
         bridgeType: BridgeType.Across,
@@ -342,7 +332,6 @@ describe('invalid migrations', () => {
         sourceChainId: 1,
         destinationChainId: 8453,
         tokenId: 949124n,
-        owner: '0x6dd98c8488dc6b37a3afd4a0a26f803c04c6c043',
         sourceProtocol: Protocol.UniswapV3,
         destinationProtocol: Protocol.UniswapV4,
         bridgeType: BridgeType.Across,
@@ -367,7 +356,6 @@ describe('invalid migrations', () => {
         sourceChainId: 8453,
         destinationChainId: 130,
         tokenId: 13300n,
-        owner: '0xa836154C6031cA89086A9cfa48a3C25c9dfd9D9B',
         sourceProtocol: Protocol.UniswapV4,
         destinationProtocol: Protocol.UniswapV4,
         bridgeType: BridgeType.Across,
@@ -389,18 +377,15 @@ describe('invalid migrations', () => {
 
 describe('in-range v3→ migrations', () => {
   let v3ChainId: number;
-  let v3Owner: `0x${string}`;
   let v3TokenId: bigint;
   let v3Response: IV3PositionWithUncollectedFees;
 
   beforeAll(async () => {
     v3ChainId = 1;
-    v3Owner = '0xbab7901210a28eef316744a713aed9036e2c5d21';
     v3TokenId = 963499n;
     v3Response = await client.getV3Position({
       chainId: v3ChainId,
       tokenId: v3TokenId,
-      owner: v3Owner,
     });
   });
 
@@ -409,7 +394,6 @@ describe('in-range v3→ migrations', () => {
       sourceChainId: v3ChainId,
       destinationChainId: 130,
       tokenId: v3TokenId,
-      owner: v3Owner,
       sourceProtocol: Protocol.UniswapV3,
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: BridgeType.Across,
@@ -430,7 +414,6 @@ describe('in-range v3→ migrations', () => {
       sourceChainId: v3ChainId,
       destinationChainId: 130,
       tokenId: v3TokenId,
-      owner: v3Owner,
       sourceProtocol: Protocol.UniswapV3,
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: BridgeType.Across,
@@ -451,7 +434,6 @@ describe('in-range v3→ migrations', () => {
       sourceChainId: v3ChainId,
       destinationChainId: 130,
       tokenId: v3TokenId,
-      owner: v3Owner,
       sourceProtocol: Protocol.UniswapV3,
       destinationProtocol: Protocol.UniswapV3,
       bridgeType: BridgeType.Across,
@@ -470,7 +452,6 @@ describe('in-range v3→ migrations', () => {
       sourceChainId: v3ChainId,
       destinationChainId: 130,
       tokenId: v3TokenId,
-      owner: v3Owner,
       sourceProtocol: Protocol.UniswapV3,
       destinationProtocol: Protocol.UniswapV3,
       bridgeType: BridgeType.Across,
@@ -489,7 +470,6 @@ describe('in-range v3→ migrations', () => {
   //     sourceChainId: 1,
   //     destinationChainId: 130,
   //     tokenId: 35119n,
-  //     owner: '0x6615d7f48beddb737953ec447f67d555c64500bc',
   //     sourceProtocol: Protocol.UniswapV3,
   //     destinationProtocol: Protocol.UniswapV4,
   //     bridgeType: BridgeType.Across,
@@ -506,18 +486,15 @@ describe('in-range v3→ migrations', () => {
 
 describe('in-range v4→ migrations', () => {
   let v4ChainId: number;
-  let v4Owner: `0x${string}`;
   let v4TokenId: bigint;
   let v4Response: IV4PositionWithUncollectedFees;
 
   beforeAll(async () => {
     v4ChainId = 130;
-    v4Owner = '0x29d8915a034d690ea4919fd9657cfdf6e6f679b1';
     v4TokenId = 64594n;
     v4Response = await client.getV4Position({
       chainId: v4ChainId,
       tokenId: v4TokenId,
-      owner: v4Owner,
     });
   });
 
@@ -526,7 +503,6 @@ describe('in-range v4→ migrations', () => {
       sourceChainId: v4ChainId,
       destinationChainId: 8453,
       tokenId: v4TokenId,
-      owner: v4Owner,
       sourceProtocol: Protocol.UniswapV4,
       destinationProtocol: Protocol.UniswapV3,
       bridgeType: BridgeType.Across,
@@ -545,7 +521,6 @@ describe('in-range v4→ migrations', () => {
       sourceChainId: v4ChainId,
       destinationChainId: 8453,
       tokenId: v4TokenId,
-      owner: v4Owner,
       sourceProtocol: Protocol.UniswapV4,
       destinationProtocol: Protocol.UniswapV3,
       bridgeType: BridgeType.Across,
@@ -564,7 +539,6 @@ describe('in-range v4→ migrations', () => {
       sourceChainId: v4ChainId,
       destinationChainId: 8453,
       tokenId: v4TokenId,
-      owner: v4Owner,
       sourceProtocol: Protocol.UniswapV4,
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: BridgeType.Across,
@@ -585,7 +559,6 @@ describe('in-range v4→ migrations', () => {
       sourceChainId: v4ChainId,
       destinationChainId: 8453,
       tokenId: v4TokenId,
-      owner: v4Owner,
       sourceProtocol: Protocol.UniswapV4,
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: BridgeType.Across,
@@ -608,7 +581,6 @@ describe('flipped token order between chains', () => {
       sourceChainId: 8453,
       destinationChainId: 130,
       tokenId: 46001n,
-      owner: '0xD0f0ba9c73983E283451cA872A94b2f0662b8976',
       sourceProtocol: Protocol.UniswapV4,
       destinationProtocol: Protocol.UniswapV3,
       bridgeType: BridgeType.Across,
@@ -627,7 +599,6 @@ describe('flipped token order between chains', () => {
       sourceChainId: 42161,
       destinationChainId: 10,
       tokenId: 4n,
-      owner: '0x4423b0d6955af39b48cf215577a79ce574299d3f',
       sourceProtocol: Protocol.UniswapV4,
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: BridgeType.Across,
@@ -646,18 +617,15 @@ describe('flipped token order between chains', () => {
 
 describe('out of range v3→ migrations', () => {
   let v3ChainId: number;
-  let v3Owner: `0x${string}`;
   let v3TokenId: bigint;
   let v3Response: IV3PositionWithUncollectedFees;
 
   beforeAll(async () => {
     v3ChainId = 1;
-    v3Owner = '0x98f6910cb1f3dd6accae99945b3291d0f99407f9';
     v3TokenId = 893202n;
     v3Response = await client.getV3Position({
       chainId: v3ChainId,
       tokenId: v3TokenId,
-      owner: v3Owner,
     });
   });
 
@@ -668,7 +636,6 @@ describe('out of range v3→ migrations', () => {
           sourceChainId: v3ChainId,
           destinationChainId: 130,
           tokenId: v3TokenId,
-          owner: v3Owner,
           sourceProtocol: Protocol.UniswapV3,
           destinationProtocol: Protocol.UniswapV4,
           bridgeType: BridgeType.Across,
@@ -690,7 +657,6 @@ describe('out of range v3→ migrations', () => {
           sourceChainId: v3ChainId,
           destinationChainId: 130,
           tokenId: v3TokenId,
-          owner: v3Owner,
           sourceProtocol: Protocol.UniswapV3,
           destinationProtocol: Protocol.UniswapV4,
           bridgeType: BridgeType.Across,
@@ -714,7 +680,6 @@ describe('out of range v3→ migrations', () => {
         sourceChainId: v3ChainId,
         destinationChainId: 130,
         tokenId: v3TokenId,
-        owner: v3Owner,
         sourceProtocol: Protocol.UniswapV3,
         destinationProtocol: Protocol.UniswapV4,
         bridgeType: BridgeType.Across,
@@ -738,18 +703,15 @@ describe('out of range v3→ migrations', () => {
 
 describe('out of range v4→ migrations', () => {
   let v4ChainId: number;
-  let v4Owner: `0x${string}`;
   let v4TokenId: bigint;
   let v4Response: IV4PositionWithUncollectedFees;
 
   beforeAll(async () => {
     v4ChainId = 130;
-    v4Owner = '0x29d8915a034d690ea4919fd9657cfdf6e6f679b1';
     v4TokenId = 64594n;
     v4Response = await client.getV4Position({
       chainId: v4ChainId,
       tokenId: v4TokenId,
-      owner: v4Owner,
     });
   });
 
@@ -760,7 +722,6 @@ describe('out of range v4→ migrations', () => {
           sourceChainId: 130,
           destinationChainId: 8453,
           tokenId: v4TokenId,
-          owner: v4Owner,
           sourceProtocol: Protocol.UniswapV4,
           destinationProtocol: Protocol.UniswapV4,
           bridgeType: BridgeType.Across,
@@ -782,7 +743,6 @@ describe('out of range v4→ migrations', () => {
           sourceChainId: 130,
           destinationChainId: 8453,
           tokenId: v4TokenId,
-          owner: v4Owner,
           sourceProtocol: Protocol.UniswapV4,
           destinationProtocol: Protocol.UniswapV4,
           bridgeType: BridgeType.Across,
@@ -807,7 +767,6 @@ describe('out of range v4→ migrations', () => {
           sourceChainId: 130,
           destinationChainId: 8453,
           tokenId: v4TokenId,
-          owner: v4Owner,
           sourceProtocol: Protocol.UniswapV4,
           destinationProtocol: Protocol.UniswapV4,
           bridgeType: BridgeType.Across,

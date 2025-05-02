@@ -8,7 +8,6 @@ import type { Position as V4Position } from '@uniswap/v4-sdk';
 export type IUniswapPositionParams = {
   chainId: number;
   tokenId: bigint;
-  owner: `0x${string}`;
 };
 
 export type TokenAmount = {
@@ -20,7 +19,6 @@ export type BaseRequestMigrationParams = {
   sourceChainId: number;
   destinationChainId: number;
   tokenId: bigint;
-  owner: `0x${string}`; // needed for call data
   destinationProtocol: Protocol;
   bridgeType?: BridgeType;
   migrationMethod?: MigrationMethod;
@@ -110,6 +108,7 @@ export type RequestMigrationResponse = {
   sourceProtocol: Protocol;
   sourcePosition: IV3PositionWithUncollectedFees | IV4PositionWithUncollectedFees;
   sourceTokenId: bigint;
+  owner: `0x${string}`;
   destProtocol: Protocol;
   destPosition: V3Position | V4Position;
   destChainId: number;

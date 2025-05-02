@@ -7,6 +7,7 @@ import { encodePacked, keccak256, pad } from 'viem';
 import { subIn256 } from '../utils/helpers';
 
 export type IV4PositionWithUncollectedFees = {
+  owner: `0x${string}`;
   position: Position;
   uncollectedFees: {
     amount0: CurrencyAmount<Currency>;
@@ -49,15 +50,20 @@ export const getV4Position = async (chainConfig: ChainConfig, params: IUniswapPo
           functionName: 'getPositionLiquidity',
           args: [tokenId],
         },
+        {
+          ...chainConfig.v4PositionManagerContract,
+          functionName: 'ownerOf',
+          args: [tokenId],
+        },
       ],
     })
-  )?.map((result) => result.result) as [IPoolAndPositionCallResult, bigint];
+  )?.map((result) => result.result) as [IPoolAndPositionCallResult, bigint, `0x${string}`];
 
   const poolKey = poolAndPositionCallResult[0][0];
   const tickLower = extract24BitsAsSigned(poolAndPositionCallResult[0][1], 8n);
   const tickUpper = extract24BitsAsSigned(poolAndPositionCallResult[0][1], 32n);
   const liquidity = poolAndPositionCallResult[1];
-
+  const owner = poolAndPositionCallResult[2];
   // get pool data
   const pool = await getV4Pool(chainConfig, poolKey);
 
@@ -97,6 +103,7 @@ export const getV4Position = async (chainConfig: ChainConfig, params: IUniswapPo
   const uncollectedFees1 = (liquidity * feeGrowthDelta1) / 2n ** 128n;
 
   return {
+    owner: owner,
     position: new Position({
       pool,
       liquidity: (liquidity || 0n).toString(),

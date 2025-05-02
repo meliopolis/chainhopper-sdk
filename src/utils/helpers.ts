@@ -11,7 +11,7 @@ import JSBI from 'jsbi';
 import { getV3Quote } from '../actions/getV3Quote';
 import { chainConfigs, type ChainConfig } from '../chains';
 import { getV4CombinedQuote } from '../actions/getV4CombinedQuote';
-import { NFTSafeTransferFrom } from '@/abis/NFTSafeTransferFrom';
+import { NFTSafeTransferFrom } from '../abis/NFTSafeTransferFrom';
 
 export const genMigrationId = (chainId: number, migrator: string, method: MigrationMethod, nonce: bigint): `0x${string}` => {
   const mode = method === MigrationMethod.SingleToken ? 1 : 2;
@@ -33,7 +33,8 @@ export const genMigrationId = (chainId: number, migrator: string, method: Migrat
 export const generateMigration = (
   sourceChainConfig: ChainConfig,
   migrationMethod: MigrationMethod,
-  externalParams: RequestMigrationParams
+  externalParams: RequestMigrationParams,
+  owner: `0x${string}`
 ): { migrationId: `0x${string}`; interimMessageForSettler: `0x${string}` } => {
   const migrationId = genMigrationId(externalParams.sourceChainId, sourceChainConfig.UniswapV3AcrossMigrator || zeroAddress, migrationMethod, BigInt(0));
   let mintParams: `0x${string}`;
@@ -60,7 +61,7 @@ export const generateMigration = (
   const interimMessageForSettler = encodeSettlementParamsForSettler(
     encodeSettlementParams(
       {
-        recipient: externalParams.owner,
+        recipient: owner,
         senderShareBps: 0,
         senderFeeRecipient: zeroAddress,
       },
@@ -78,6 +79,7 @@ export const generateMigrationParams = async (
   routes: Route[],
   maxPosition: V3Position | V4Position,
   maxPositionUsingRouteMinAmountOut: V3Position | V4Position,
+  owner: `0x${string}`,
   swapAmountInMilliBps?: number
 ): Promise<{
   destPosition: V3Position | V4Position;
@@ -102,7 +104,7 @@ export const generateMigrationParams = async (
         }))
       ),
       settlementParams: {
-        recipient: externalParams.owner,
+        recipient: owner,
         senderShareBps: externalParams.senderShareBps || 0,
         senderFeeRecipient: externalParams.senderFeeRecipient || zeroAddress,
         // mint params

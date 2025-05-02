@@ -99,11 +99,6 @@ export class ChainHopperClient {
       throw new Error('tokenId is not valid');
     }
 
-    // make sure owner is valid
-    if (params.owner.length !== 42 || !params.owner.startsWith('0x')) {
-      throw new Error('owner is not valid');
-    }
-
     // validate token addresses
     this.validateAddress(params.token0);
     this.validateAddress(params.token1);
@@ -136,7 +131,6 @@ export class ChainHopperClient {
     const v3Position = await getV3Position(this.chainConfigs[sourceChainId], {
       chainId: sourceChainId,
       tokenId,
-      owner: params.owner,
     });
 
     // make sure position has liquidity or fees
@@ -170,14 +164,16 @@ export class ChainHopperClient {
         migrationId,
         routes,
         externalParams: params as RequestV3toV3MigrationParams,
+        owner: v3Position.owner,
       });
       return {
         destProtocol: Protocol.UniswapV3,
+        owner: v3Position.owner,
         ...returnResponse,
         ...v3Settlement,
         executionParams: generateExecutionParams({
           sourceChainId,
-          owner: params.owner,
+          owner: v3Position.owner,
           protocol: Protocol.UniswapV3,
           tokenId,
           message: v3Settlement.migratorMessage,
@@ -189,14 +185,16 @@ export class ChainHopperClient {
         migrationId,
         routes,
         externalParams: params as RequestV3toV4MigrationParams,
+        owner: v3Position.owner,
       });
       return {
         destProtocol: Protocol.UniswapV4,
+        owner: v3Position.owner,
         ...returnResponse,
         ...v4Settlement,
         executionParams: generateExecutionParams({
           sourceChainId,
-          owner: params.owner,
+          owner: v3Position.owner,
           protocol: Protocol.UniswapV3,
           tokenId,
           message: v4Settlement.migratorMessage,
@@ -214,7 +212,6 @@ export class ChainHopperClient {
     const v4Position = await getV4Position(this.chainConfigs[sourceChainId], {
       chainId: sourceChainId,
       tokenId,
-      owner: params.owner,
     });
 
     // make sure position has liquidity or fees
@@ -249,13 +246,15 @@ export class ChainHopperClient {
         migrationId,
         routes,
         externalParams: params as RequestV4toV3MigrationParams,
+        owner: v4Position.owner,
       });
       return {
         ...returnResponse,
+        owner: v4Position.owner,
         ...v3Settlement,
         executionParams: generateExecutionParams({
           sourceChainId,
-          owner: params.owner,
+          owner: v4Position.owner,
           protocol: Protocol.UniswapV4,
           tokenId,
           message: v3Settlement.migratorMessage,
@@ -267,13 +266,15 @@ export class ChainHopperClient {
         migrationId,
         routes,
         externalParams: params as RequestV4toV4MigrationParams,
+        owner: v4Position.owner,
       });
       return {
         ...returnResponse,
+        owner: v4Position.owner,
         ...v4Settlement,
         executionParams: generateExecutionParams({
           sourceChainId,
-          owner: params.owner,
+          owner: v4Position.owner,
           protocol: Protocol.UniswapV4,
           tokenId,
           message: v4Settlement.migratorMessage,
