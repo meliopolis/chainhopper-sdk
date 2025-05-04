@@ -108,6 +108,7 @@ export type RequestMigrationResponse = {
   sourceProtocol: Protocol;
   sourcePosition: IV3PositionWithUncollectedFees | IV4PositionWithUncollectedFees;
   sourceTokenId: bigint;
+  sourceChainId: number;
   owner: `0x${string}`;
   destProtocol: Protocol;
   destPosition: V3Position | V4Position;

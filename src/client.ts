@@ -169,6 +169,7 @@ export class ChainHopperClient {
       return {
         destProtocol: Protocol.UniswapV3,
         owner: v3Position.owner,
+        sourceChainId,
         ...returnResponse,
         ...v3Settlement,
         executionParams: generateExecutionParams({
@@ -190,6 +191,7 @@ export class ChainHopperClient {
       return {
         destProtocol: Protocol.UniswapV4,
         owner: v3Position.owner,
+        sourceChainId,
         ...returnResponse,
         ...v4Settlement,
         executionParams: generateExecutionParams({
@@ -251,6 +253,7 @@ export class ChainHopperClient {
       return {
         ...returnResponse,
         owner: v4Position.owner,
+        sourceChainId,
         ...v3Settlement,
         executionParams: generateExecutionParams({
           sourceChainId,
@@ -271,6 +274,7 @@ export class ChainHopperClient {
       return {
         ...returnResponse,
         owner: v4Position.owner,
+        sourceChainId,
         ...v4Settlement,
         executionParams: generateExecutionParams({
           sourceChainId,

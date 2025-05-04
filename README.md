@@ -12,7 +12,7 @@ bun install chainhopper-sdk viem
 
 ## Quick Start
 
-1. Setup the ChainHopperClient
+### 1. Setup the ChainHopperClient
 
 ```typescript
 import { ChainHopperClient } from 'chainhopper-sdk';
@@ -28,7 +28,7 @@ export const client = ChainHopperClient.create({
 });
 ```
 
-2. Retrieve migration data
+### 2. Retrieve migration data
 
 Now, you can pass in a source LP position and parameters of a destination LP position and retrieve all the relevant data.
 
@@ -64,16 +64,23 @@ const migrationResponse = await client.requestMigration(requestParams);
 console.log(migrationResponse);
 // this will look like the following
 {
+  // source chain params (mostly as a confirmation)
   sourceProtocol: Protocol.UniswapV3,
   sourcePosition: Position, // from @uniswap/v3-sdk
   sourceTokenId: 1806423n,
+  sourceChainId: 8453,
   owner: '0x4bD047CA72fa05F0B89ad08FE5Ba5ccdC07DFFBF',
 
+  // destination chain
   destProtocol: Protocol.UniswapV4,
   destPosition: Position, // from @uniswap/v4-sdk (note it's a Uniswap v4 position)
   destChainId: 130,
+
+  // messages
   migratorMessage: '0x...', // message sent to the migrator on the source chain
   settlerMessage: '0x...', // useful to simulate settler receiving message from the bridge
+
+  // slippage calcs that can be used to give messages to the user
   slippageCalcs: {
     swapAmountInMilliBps: 40_000_000, // amount of WETH to be swapped on destination chain
     mintAmount0Min: 84393483n, // min amount of token0 after minting on destination chain
@@ -96,7 +103,7 @@ console.log(migrationResponse);
 }
 ```
 
-3. Execute the migration
+### 3. Execute the migration
 
 ```typescript
 import { createWalletClient, simulateContract, writeContract } from 'viem';
@@ -153,7 +160,7 @@ Currently, we only support Across. We are considering adding Wormhole and Native
 
 ### Supported chains
 
-Currently, we support Ethereum, Optimism, Arbitrum, Base and Unichain.
+Currently, we support Ethereum, Optimism, Arbitrum, Base and Unichain. Please get in touch if you want us to support additional chains.
 
 ## Questions/Comments
 
