@@ -41,6 +41,7 @@ beforeAll(() => {
 const validateMigrationResponse = (params: RequestMigrationParams, result: RequestMigrationResponse): void => {
   // check correct output chain
   expect(result.destChainId).toBe(params.destinationChainId);
+  expect(result.sourceChainId).toBe(params.sourceChainId);
 
   // check correct output protocol
   expect(result.destProtocol).toBe(params.destinationProtocol);
