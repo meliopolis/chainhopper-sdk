@@ -19,6 +19,7 @@ export const settleUniswapV4Migration = async ({
   if (routes.length > 2) throw new Error('Invalid number of routes');
 
   const { tickSpacing, hooks } = externalParams as RequestV3toV4MigrationParams | RequestV4toV4MigrationParams;
+  const slippageInBps = externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS;
 
   // now we need fetch the pool on the destination chain
   const pool = await getV4Pool(destinationChainConfig, {
@@ -53,10 +54,17 @@ export const settleUniswapV4Migration = async ({
       maxOtherTokenAvailable,
       externalParams.tickLower,
       externalParams.tickUpper,
-      new Fraction(externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000).divide(20),
+      new Fraction(slippageInBps, 10000).divide(20),
       10
     )) as Position;
-    // TODO compare quote price vs pool price; if diff too high, alert somehow
+
+    let originalRatio = Number(pool.sqrtRatioX96.toString());
+    let newRatio = Number(maxPosition.pool.sqrtRatioX96.toString());
+    let priceImpactBps = ((newRatio / originalRatio) ** 2 - 1) * 10000;
+
+    if (Math.abs(priceImpactBps) > slippageInBps) {
+      throw new Error('Price impact exceeds slippage');
+    }
 
     const amountInUsingRouteMinAmountOut = routeMinAmountOut * (1n - settlerFeesInBps / 10_000n);
     const baseTokenAvailableUsingRouteMinAmountOut = CurrencyAmount.fromRawAmount(pool.token0, amountInUsingRouteMinAmountOut.toString());
@@ -68,7 +76,7 @@ export const settleUniswapV4Migration = async ({
       maxOtherTokenAvailableUsingRouteMinAmountOut,
       externalParams.tickLower,
       externalParams.tickUpper,
-      new Fraction(externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000).divide(20),
+      new Fraction(slippageInBps, 10000).divide(20),
       10
     )) as Position;
 
@@ -102,7 +110,7 @@ export const settleUniswapV4Migration = async ({
     const minToken1Available = routes[1].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
 
     let settleAmountOut0, settleAmountOut1, settleMinAmountOut0, settleMinAmountOut1;
-    if (externalParams.token0 !== routes[0].outputToken) {
+    if (token0Address !== routes[0].outputToken) {
       // the token order must be flipped if the token addresses sort in a different order on the destination chain
       settleAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, token1Available.toString());
       settleAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, token0Available.toString());
@@ -118,6 +126,25 @@ export const settleUniswapV4Migration = async ({
     const maxPosition = generateMaxV4Position(pool, settleAmountOut0, settleAmountOut1, externalParams.tickLower, externalParams.tickUpper);
 
     const maxPositionUsingSettleMinAmountsOut = generateMaxV4Position(pool, settleMinAmountOut0, settleMinAmountOut1, externalParams.tickLower, externalParams.tickUpper);
+
+    // // Get adjusted values to ensure token decimals are consistent
+    // // Convert raw min amounts to CurrencyAmount objects with same token as position
+    // const minAmount0 = CurrencyAmount.fromRawAmount(pool.token0, minToken0Available.toString());
+    // const minAmount1 = CurrencyAmount.fromRawAmount(pool.token1, minToken1Available.toString());
+
+    // // Calculate slippage-adjusted minimum amounts
+    // const slippageAdjustedMinAmount0 = minAmount0.multiply(new Fraction(10000 - slippageInBps, 10000));
+    // const slippageAdjustedMinAmount1 = minAmount1.multiply(new Fraction(10000 - slippageInBps, 10000));
+
+    // // Check if actual position amounts meet or exceed slippage-adjusted minimums
+    // const amount0WithinTolerance = maxPositionUsingSettleMinAmountsOut.amount0.greaterThan(slippageAdjustedMinAmount0);
+    // const amount1WithinTolerance = maxPositionUsingSettleMinAmountsOut.amount1.greaterThan(slippageAdjustedMinAmount1);
+
+    // if (!amount0WithinTolerance || !amount1WithinTolerance) {
+    //   console.log('Position amounts:', maxPositionUsingSettleMinAmountsOut.amount0.toFixed(6), maxPositionUsingSettleMinAmountsOut.amount1.toFixed(6));
+    //   console.log('Slippage-adjusted minimums:', slippageAdjustedMinAmount0.toFixed(6), slippageAdjustedMinAmount1.toFixed(6));
+    //   throw new Error(`Can't create new position with value within slippage tolerance`);
+    // }
 
     return generateMigrationParams(migrationId, externalParams, destinationChainConfig, routes, maxPosition, maxPositionUsingSettleMinAmountsOut, owner);
   }
