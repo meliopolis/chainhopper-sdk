@@ -338,27 +338,31 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
     // @ts-expect-error - Types from different package versions conflict
     exchangeRate = new Price({ baseAmount: inputBalance, quoteAmount: outputBalance });
   }
-  const [token0BalanceUpdated, token1BalanceUpdated] = inputBalanceUpdated.currency.wrapped.sortsBefore(outputBalanceUpdated.currency.wrapped)
-    ? [inputBalanceUpdated, outputBalanceUpdated]
-    : [outputBalanceUpdated, inputBalanceUpdated];
+  const [token0BalanceUpdated, token1BalanceUpdated] =
+    inputBalanceUpdated.currency.isNative || inputBalanceUpdated.currency.wrapped.sortsBefore(outputBalanceUpdated.currency.wrapped)
+      ? [inputBalanceUpdated, outputBalanceUpdated]
+      : [outputBalanceUpdated, inputBalanceUpdated];
 
-  return isV4 && 'hooks' in postSwapPool
-    ? V4Position.fromAmounts({
-        pool: postSwapPool,
-        tickLower: nearestUsableTick(tickLower, pool.tickSpacing),
-        tickUpper: nearestUsableTick(tickUpper, pool.tickSpacing),
-        amount0: token0BalanceUpdated.quotient.toString(),
-        amount1: token1BalanceUpdated.quotient.toString(),
-        useFullPrecision: true,
-      })
-    : V3Position.fromAmounts({
-        pool: postSwapPool as V3Pool,
-        tickLower: nearestUsableTick(tickLower, pool.tickSpacing),
-        tickUpper: nearestUsableTick(tickUpper, pool.tickSpacing),
-        amount0: token0BalanceUpdated.quotient.toString(),
-        amount1: token1BalanceUpdated.quotient.toString(),
-        useFullPrecision: true,
-      });
+  const returnPosition =
+    isV4 && 'hooks' in postSwapPool
+      ? V4Position.fromAmounts({
+          pool: postSwapPool,
+          tickLower: nearestUsableTick(tickLower, pool.tickSpacing),
+          tickUpper: nearestUsableTick(tickUpper, pool.tickSpacing),
+          amount0: token0BalanceUpdated.quotient.toString(),
+          amount1: token1BalanceUpdated.quotient.toString(),
+          useFullPrecision: true,
+        })
+      : V3Position.fromAmounts({
+          pool: postSwapPool as V3Pool,
+          tickLower: nearestUsableTick(tickLower, pool.tickSpacing),
+          tickUpper: nearestUsableTick(tickUpper, pool.tickSpacing),
+          amount0: token0BalanceUpdated.quotient.toString(),
+          amount1: token1BalanceUpdated.quotient.toString(),
+          useFullPrecision: true,
+        });
+
+  return returnPosition;
 };
 
 export const subIn256 = (x: bigint, y: bigint): bigint => {

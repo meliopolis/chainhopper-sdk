@@ -47,7 +47,15 @@ export const settleUniswapV3Migration = async ({
       new Fraction(externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000).divide(20),
       numIterations
     );
-    // TODO compare quote price vs pool price; if diff too high, alert somehow
+
+    const originalRatio = Number(pool.sqrtRatioX96.toString());
+    const newRatio = Number(maxPositionWithSwap.pool.sqrtRatioX96.toString());
+    const priceImpactBps = ((newRatio / originalRatio) ** 2 - 1) * 10000;
+
+    if (Math.abs(priceImpactBps) > (externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS)) {
+      throw new Error('Price impact exceeds slippage');
+    }
+
     // 2. now we calculate the max position using the routeMinAmountOut
     const amountInUsingRouteMinAmountOut = routeMinAmountOut * (1n - settlerFeesInBps / 10_000n);
     const baseTokenAvailableUsingRouteMinAmountOut = CurrencyAmount.fromRawAmount(isWethToken0 ? pool.token0 : pool.token1, amountInUsingRouteMinAmountOut.toString());

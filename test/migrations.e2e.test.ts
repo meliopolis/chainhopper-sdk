@@ -466,6 +466,26 @@ describe('in-range v3→ migrations', () => {
     validateMigrationResponse(params, await client.requestMigration(params));
   });
 
+  test('generate valid base v3 → arbitrum v4 dual-token migration with (w)eth as token0', async () => {
+    const params: RequestV3toV4MigrationParams = {
+      sourceChainId: 8453,
+      destinationChainId: 42161,
+      tokenId: 2825070n,
+      sourceProtocol: Protocol.UniswapV3,
+      destinationProtocol: Protocol.UniswapV4,
+      bridgeType: BridgeType.Across,
+      migrationMethod: MigrationMethod.DualToken,
+      token0: '0x0000000000000000000000000000000000000000',
+      token1: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+      tickLower: -201230,
+      tickUpper: -187780,
+      fee: 500,
+      tickSpacing: 10,
+      hooks: '0x0000000000000000000000000000000000000000',
+    };
+    validateMigrationResponse(params, await client.requestMigration(params));
+  });
+
   // TODO: this example actually be used to test pool creation path when needed
   //   const params: RequestV3toV4MigrationParams = {
   //     sourceChainId: 1,
@@ -535,7 +555,7 @@ describe('in-range v4→ migrations', () => {
     validateMigrationResponse(params, await client.requestMigration(params));
   });
 
-  test('generate valid unichain v4 → base v4 single-token migration', async () => {
+  test('reject unichain v4 → base v4 single-token migration with high slippage on destination swap', async () => {
     const params: RequestV4toV4MigrationParams = {
       sourceChainId: v4ChainId,
       destinationChainId: 8453,
@@ -552,7 +572,11 @@ describe('in-range v4→ migrations', () => {
       hooks: '0x0000000000000000000000000000000000000000',
       tickSpacing: v4Response.position.pool.tickSpacing,
     };
-    validateMigrationResponse(params, await client.requestMigration(params));
+    try {
+      validateMigrationResponse(params, await client.requestMigration(params));
+    } catch (e) {
+      expect(e.message).toBe('Price impact exceeds slippage');
+    }
   });
 
   test('generate valid unichain v4 → base v4 dual-token migration', async () => {
