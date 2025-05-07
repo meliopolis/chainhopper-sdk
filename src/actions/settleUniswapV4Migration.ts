@@ -58,9 +58,9 @@ export const settleUniswapV4Migration = async ({
       10
     )) as Position;
 
-    let originalRatio = Number(pool.sqrtRatioX96.toString());
-    let newRatio = Number(maxPosition.pool.sqrtRatioX96.toString());
-    let priceImpactBps = ((newRatio / originalRatio) ** 2 - 1) * 10000;
+    const originalRatio = Number(pool.sqrtRatioX96.toString());
+    const newRatio = Number(maxPosition.pool.sqrtRatioX96.toString());
+    const priceImpactBps = ((newRatio / originalRatio) ** 2 - 1) * 10000;
 
     if (Math.abs(priceImpactBps) > slippageInBps) {
       throw new Error('Price impact exceeds slippage');
