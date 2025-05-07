@@ -124,27 +124,7 @@ export const settleUniswapV4Migration = async ({
     }
 
     const maxPosition = generateMaxV4Position(pool, settleAmountOut0, settleAmountOut1, externalParams.tickLower, externalParams.tickUpper);
-
     const maxPositionUsingSettleMinAmountsOut = generateMaxV4Position(pool, settleMinAmountOut0, settleMinAmountOut1, externalParams.tickLower, externalParams.tickUpper);
-
-    // // Get adjusted values to ensure token decimals are consistent
-    // // Convert raw min amounts to CurrencyAmount objects with same token as position
-    // const minAmount0 = CurrencyAmount.fromRawAmount(pool.token0, minToken0Available.toString());
-    // const minAmount1 = CurrencyAmount.fromRawAmount(pool.token1, minToken1Available.toString());
-
-    // // Calculate slippage-adjusted minimum amounts
-    // const slippageAdjustedMinAmount0 = minAmount0.multiply(new Fraction(10000 - slippageInBps, 10000));
-    // const slippageAdjustedMinAmount1 = minAmount1.multiply(new Fraction(10000 - slippageInBps, 10000));
-
-    // // Check if actual position amounts meet or exceed slippage-adjusted minimums
-    // const amount0WithinTolerance = maxPositionUsingSettleMinAmountsOut.amount0.greaterThan(slippageAdjustedMinAmount0);
-    // const amount1WithinTolerance = maxPositionUsingSettleMinAmountsOut.amount1.greaterThan(slippageAdjustedMinAmount1);
-
-    // if (!amount0WithinTolerance || !amount1WithinTolerance) {
-    //   console.log('Position amounts:', maxPositionUsingSettleMinAmountsOut.amount0.toFixed(6), maxPositionUsingSettleMinAmountsOut.amount1.toFixed(6));
-    //   console.log('Slippage-adjusted minimums:', slippageAdjustedMinAmount0.toFixed(6), slippageAdjustedMinAmount1.toFixed(6));
-    //   throw new Error(`Can't create new position with value within slippage tolerance`);
-    // }
 
     return generateMigrationParams(migrationId, externalParams, destinationChainConfig, routes, maxPosition, maxPositionUsingSettleMinAmountsOut, owner);
   }

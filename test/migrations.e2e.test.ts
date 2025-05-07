@@ -486,8 +486,6 @@ describe('in-range v3→ migrations', () => {
     validateMigrationResponse(params, await client.requestMigration(params));
   });
 
-  //2937816
-
   // TODO: this example actually be used to test pool creation path when needed
   //   const params: RequestV3toV4MigrationParams = {
   //     sourceChainId: 1,
