@@ -1,7 +1,7 @@
 {
   "name": "chainhopper-sdk",
   "module": "src/index.ts",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "description": "Chainhopper Protocol SDK",
   "license": "MIT",
   "type": "module",
