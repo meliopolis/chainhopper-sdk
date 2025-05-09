@@ -268,7 +268,6 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
   let ratioAchieved = false;
   let postSwapPool: V3Pool | V4Pool = pool;
   let exchangeRate = zeroForOne ? pool.token0Price : pool.token1Price;
-
   let inputBalanceUpdated = inputBalance;
   let outputBalanceUpdated = outputBalance;
   while (!ratioAchieved) {
@@ -305,9 +304,8 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
     outputBalanceUpdated = outputBalance.add(currencyAmountOut);
     const newRatio = inputBalanceUpdated.divide(outputBalanceUpdated);
     optimalRatio = calculateOptimalRatio(tickLower, tickUpper, JSBI.BigInt(sqrtPriceX96After.toString()), zeroForOne);
-
     // check slippage
-    ratioAchieved = newRatio.equalTo(optimalRatio) || newRatio.asFraction.divide(optimalRatio).subtract(1).lessThan(slippageTolerance);
+    ratioAchieved = newRatio.asFraction.equalTo(optimalRatio) || newRatio.asFraction.divide(optimalRatio).subtract(1).lessThan(slippageTolerance);
     // if slippage is acceptable, break
     if (ratioAchieved) {
       if (isV4) {
@@ -336,7 +334,7 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
       break;
     }
     // @ts-expect-error - Types from different package versions conflict
-    exchangeRate = new Price({ baseAmount: inputBalance, quoteAmount: outputBalance });
+    exchangeRate = new Price({ baseAmount: currencyAmountToSwap, quoteAmount: currencyAmountOut });
   }
   const [token0BalanceUpdated, token1BalanceUpdated] =
     inputBalanceUpdated.currency.isNative || inputBalanceUpdated.currency.wrapped.sortsBefore(outputBalanceUpdated.currency.wrapped)
