@@ -1,3 +1,5 @@
+import { MigrationDataAbi } from './MigrationData';
+
 export const SettlementParamsAbi = [
   {
     name: 'SettlementParams',
@@ -53,13 +55,10 @@ export const V4MintParamsAbi = [
   },
 ];
 
-export const SettlementParamsForSettlerAbi = [
+export const ParamsForSettlerAbi = [
   {
-    name: 'migrationId',
+    name: 'migrationHash',
     type: 'bytes32',
   },
-  {
-    name: 'SettlementParams',
-    type: 'bytes',
-  },
+  ...MigrationDataAbi,
 ];

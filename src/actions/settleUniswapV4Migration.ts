@@ -9,8 +9,9 @@ import type { RequestV3toV4MigrationParams, RequestV4toV4MigrationParams } from 
 import type { Position } from '@uniswap/v4-sdk';
 
 export const settleUniswapV4Migration = async ({
+  sourceChainConfig,
   destinationChainConfig,
-  migrationId,
+  migrationHash,
   routes,
   externalParams,
   owner,
@@ -86,16 +87,17 @@ export const settleUniswapV4Migration = async ({
         ? maxPosition.amount0.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).add(new Fraction(1, 10_000_000)).toFixed(0)
         : maxPosition.amount1.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).add(new Fraction(1, 10_000_000)).toFixed(0);
 
-    return generateMigrationParams(
-      migrationId,
+    return generateMigrationParams({
+      migrationHash,
       externalParams,
+      sourceChainConfig,
       destinationChainConfig,
       routes,
       maxPosition,
       maxPositionUsingRouteMinAmountOut,
       owner,
-      10_000_000 - Number(swapAmountInMilliBps)
-    );
+      swapAmountInMilliBps: 10_000_000 - Number(swapAmountInMilliBps)
+    });
   } else {
     // logically has to be (routes.length) === 2 but needs to look exhaustive for ts compiler
     // make sure both tokens are found in routes
@@ -126,6 +128,15 @@ export const settleUniswapV4Migration = async ({
     const maxPosition = generateMaxV4Position(pool, settleAmountOut0, settleAmountOut1, externalParams.tickLower, externalParams.tickUpper);
     const maxPositionUsingSettleMinAmountsOut = generateMaxV4Position(pool, settleMinAmountOut0, settleMinAmountOut1, externalParams.tickLower, externalParams.tickUpper);
 
-    return generateMigrationParams(migrationId, externalParams, destinationChainConfig, routes, maxPosition, maxPositionUsingSettleMinAmountsOut, owner);
+    return generateMigrationParams({
+      migrationHash,
+      externalParams,
+      sourceChainConfig,
+      destinationChainConfig,
+      routes,
+      maxPosition,
+      maxPositionUsingRouteMinAmountOut: maxPositionUsingSettleMinAmountsOut,
+      owner,
+    });
   }
 };

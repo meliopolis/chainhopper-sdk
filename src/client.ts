@@ -143,7 +143,7 @@ export class ChainHopperClient {
     }
 
     // start migration on source chain
-    const { routes, migrationId } = await startUniswapV3Migration({
+    const { routes, migrationHash } = await startUniswapV3Migration({
       sourceChainConfig: this.chainConfigs[sourceChainId],
       destinationChainConfig: this.chainConfigs[destinationChainId],
       positionWithUncollectedFees: v3Position,
@@ -160,8 +160,9 @@ export class ChainHopperClient {
     };
     if (destinationProtocol === Protocol.UniswapV3) {
       const v3Settlement = await settleUniswapV3Migration({
+        sourceChainConfig: this.chainConfigs[sourceChainId],
         destinationChainConfig: this.chainConfigs[destinationChainId],
-        migrationId,
+        migrationHash,
         routes,
         externalParams: params as RequestV3toV3MigrationParams,
         owner: v3Position.owner,
@@ -182,8 +183,9 @@ export class ChainHopperClient {
       };
     } else if (destinationProtocol === Protocol.UniswapV4) {
       const v4Settlement = await settleUniswapV4Migration({
+        sourceChainConfig: this.chainConfigs[sourceChainId],
         destinationChainConfig: this.chainConfigs[destinationChainId],
-        migrationId,
+        migrationHash,
         routes,
         externalParams: params as RequestV3toV4MigrationParams,
         owner: v3Position.owner,
@@ -226,7 +228,7 @@ export class ChainHopperClient {
     }
 
     // start migration on source chain
-    const { routes, migrationId } = await startUniswapV4Migration({
+    const { routes, migrationHash } = await startUniswapV4Migration({
       sourceChainConfig: this.chainConfigs[sourceChainId],
       destinationChainConfig: this.chainConfigs[destinationChainId],
       positionWithUncollectedFees: v4Position,
@@ -244,8 +246,9 @@ export class ChainHopperClient {
     };
     if (destinationProtocol === Protocol.UniswapV3) {
       const v3Settlement = await settleUniswapV3Migration({
+        sourceChainConfig: this.chainConfigs[sourceChainId],
         destinationChainConfig: this.chainConfigs[destinationChainId],
-        migrationId,
+        migrationHash,
         routes,
         externalParams: params as RequestV4toV3MigrationParams,
         owner: v4Position.owner,
@@ -265,8 +268,9 @@ export class ChainHopperClient {
       };
     } else if (destinationProtocol === Protocol.UniswapV4) {
       const v4Settlement = await settleUniswapV4Migration({
+        sourceChainConfig: this.chainConfigs[sourceChainId],
         destinationChainConfig: this.chainConfigs[destinationChainId],
-        migrationId,
+        migrationHash,
         routes,
         externalParams: params as RequestV4toV4MigrationParams,
         owner: v4Position.owner,

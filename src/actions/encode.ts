@@ -1,7 +1,9 @@
-import { SettlementParamsForSettlerAbi, SettlementParamsAbi, V4MintParamsAbi, V3MintParamsAbi } from '../abis/SettlementParams';
+import { SettlementParamsAbi, V4MintParamsAbi, V3MintParamsAbi, ParamsForSettlerAbi } from '../abis/SettlementParams';
 import { MigrationParamsAbi, RouteAbi } from '../abis/MigrationParams';
-import type { MigrationParams, SettlementParams, UniswapV3MintParams, UniswapV4MintParams } from '../types';
+import type { MigrationData, MigrationParams, SettlementParams, UniswapV3MintParams, UniswapV4MintParams } from '../types';
 import { encodeAbiParameters } from 'viem';
+import { MigrationMethod } from '../utils/constants';
+import { RoutesDataAbi } from '../abis/MigrationData';
 
 export const encodeMintParamsForV3 = (params: UniswapV3MintParams): `0x${string}` => {
   return encodeAbiParameters(V3MintParamsAbi, [
@@ -48,11 +50,25 @@ export const encodeSettlementParams = (params: SettlementParams, mintParams: `0x
   ]);
 };
 
-export const encodeSettlementParamsForSettler = (settlementParams: `0x${string}`, migrationId: `0x${string}`): `0x${string}` => {
-  return encodeAbiParameters(SettlementParamsForSettlerAbi, [migrationId, settlementParams]);
+export const encodeParamsForSettler = (migrationHash: `0x${string}`, migrationData: MigrationData): `0x${string}` => {
+  return encodeAbiParameters(ParamsForSettlerAbi, [
+    migrationHash,
+    {
+      sourceChainId: migrationData.sourceChainId,
+      migrator: migrationData.migrator,
+      nonce: migrationData.nonce,
+      mode: migrationData.mode == MigrationMethod.SingleToken ? 1 : 2,
+      routesData: migrationData.routesData,
+      settlementData: migrationData.settlementData,
+    },
+  ]);
 };
 
-export const encodeMigrationParams = (params: MigrationParams, migrationId: `0x${string}`): { migratorMessage: `0x${string}`; settlerMessage: `0x${string}` } => {
+export const encodeMigrationParams = (
+  params: MigrationParams,
+  migrationHash: `0x${string}`,
+  migrationData: MigrationData
+): { migratorMessage: `0x${string}`; settlerMessage: `0x${string}` } => {
   const mintParams =
     'hooks' in params.settlementParams
       ? encodeMintParamsForV4(params.settlementParams as SettlementParams & UniswapV4MintParams)
@@ -71,6 +87,18 @@ export const encodeMigrationParams = (params: MigrationParams, migrationId: `0x$
       },
     ])
   );
+  const routesDataForSettler =
+    params.tokenRoutes.length > 1
+      ? encodeAbiParameters(
+          RoutesDataAbi,
+          params.tokenRoutes.map((route) => ({
+            token0: route.inputToken,
+            token1: route.outputToken,
+            amount0Min: route.minAmountOut,
+            amount1Min: route.minAmountOut,
+          }))
+        )
+      : '0x';
   return {
     migratorMessage: encodeAbiParameters(MigrationParamsAbi, [
       {
@@ -84,6 +112,10 @@ export const encodeMigrationParams = (params: MigrationParams, migrationId: `0x$
         settlementParams,
       },
     ]),
-    settlerMessage: encodeSettlementParamsForSettler(settlementParams, migrationId),
+    settlerMessage: encodeParamsForSettler(migrationHash, {
+      ...migrationData,
+      routesData: routesDataForSettler,
+      settlementData: settlementParams,
+    }),
   };
 };

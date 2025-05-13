@@ -3,42 +3,42 @@ import { DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod,
 import { nearestUsableTick, Pool as V3Pool, SqrtPriceMath, TickMath, Position as V3Position } from '@uniswap/v3-sdk';
 import { Position as V4Position, Pool as V4Pool } from '@uniswap/v4-sdk';
 
-import { encodeMigrationParams, encodeMintParamsForV3, encodeMintParamsForV4, encodeSettlementParams, encodeSettlementParamsForSettler } from '../actions/encode';
-import { zeroAddress } from 'viem';
-import type { ExecutionParams, RequestMigrationParams, Route } from '../types/sdk';
+import { encodeMigrationParams, encodeMintParamsForV3, encodeMintParamsForV4, encodeSettlementParams, encodeParamsForSettler } from '../actions/encode';
+import { encodeAbiParameters, keccak256, zeroAddress } from 'viem';
+import type { ExecutionParams, RequestMigrationParams } from '../types/sdk';
 
 import JSBI from 'jsbi';
 import { getV3Quote } from '../actions/getV3Quote';
 import { chainConfigs, type ChainConfig } from '../chains';
 import { getV4CombinedQuote } from '../actions/getV4CombinedQuote';
 import { NFTSafeTransferFrom } from '../abis/NFTSafeTransferFrom';
+import type { MigrationData } from '../types';
+import { MigrationDataAbi } from '../abis/MigrationData';
+import type { InternalGenerateMigrationParamsInput } from '../types/internal';
 
-export const genMigrationId = (chainId: number, migrator: string, method: MigrationMethod, nonce: bigint): `0x${string}` => {
-  const mode = method === MigrationMethod.SingleToken ? 1 : 2;
-  // Mask values to match Solidity's assembly masks
-  const chainIdMasked = BigInt(chainId) & BigInt('0xFFFFFFFF'); // 4 bytes
-  const migratorMasked = BigInt(migrator) & BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'); // 20 bytes
-  const modeMasked = BigInt(mode) & BigInt('0xFF'); // 1 byte
-  const nonceMasked = nonce & BigInt('0xFFFFFFFFFFFFFF'); // 7 bytes
-
-  // Perform the shifts and combinations
-  const shiftedChainId = chainIdMasked << BigInt(224);
-  const shiftedMigrator = migratorMasked << BigInt(64);
-  const shiftedMode = modeMasked << BigInt(56);
-
-  // Combine all parts using OR operations
-  return `0x${(shiftedChainId | shiftedMigrator | shiftedMode | nonceMasked).toString(16).padStart(64, '0')}` as `0x${string}`;
+export const genMigrationHash = (migrationData: MigrationData): `0x${string}` => {
+  return keccak256(
+    encodeAbiParameters(MigrationDataAbi, [
+      {
+        sourceChainId: migrationData.sourceChainId,
+        migrator: migrationData.migrator,
+        nonce: migrationData.nonce,
+        mode: migrationData.mode == MigrationMethod.SingleToken ? 1 : 2,
+        routesData: migrationData.routesData,
+        settlementData: migrationData.settlementData,
+      },
+    ])
+  );
 };
 
-export const generateMigration = (
+export const generateSettlerData = (
   sourceChainConfig: ChainConfig,
   migrationMethod: MigrationMethod,
   externalParams: RequestMigrationParams,
   owner: `0x${string}`
-): { migrationId: `0x${string}`; interimMessageForSettler: `0x${string}` } => {
-  const migrationId = genMigrationId(externalParams.sourceChainId, sourceChainConfig.UniswapV3AcrossMigrator || zeroAddress, migrationMethod, BigInt(0));
+): { migrationHash: `0x${string}`; interimMessageForSettler: `0x${string}` } => {
+  // generate mintParams first
   let mintParams: `0x${string}`;
-
   const additionalParams = {
     amount0Min: 1000n,
     amount1Min: 1000n,
@@ -58,30 +58,47 @@ export const generateMigration = (
   } else {
     throw new Error('Destination protocol not supported');
   }
-  const interimMessageForSettler = encodeSettlementParamsForSettler(
-    encodeSettlementParams(
-      {
-        recipient: owner,
-        senderShareBps: 0,
-        senderFeeRecipient: zeroAddress,
-      },
-      mintParams
-    ),
-    migrationId
+  // encode settlement params
+  const settlementParams = encodeSettlementParams(
+    {
+      recipient: owner,
+      senderShareBps: 0,
+      senderFeeRecipient: zeroAddress,
+    },
+    mintParams
   );
-  return { migrationId, interimMessageForSettler };
+
+  // generate migrationdata to calculate hash
+  const migratorAddress =
+    externalParams.sourceProtocol == Protocol.UniswapV3 ? sourceChainConfig.UniswapV3AcrossMigrator || zeroAddress : sourceChainConfig.UniswapV4AcrossMigrator || zeroAddress;
+  // todo fix routesData to account for dualToken
+  const routesData = '0x' as `0x${string}`;
+  const migrationData = {
+    sourceChainId: BigInt(externalParams.sourceChainId),
+    migrator: migratorAddress,
+    nonce: BigInt(1), // hardcoded, as it doesn't matter
+    mode: migrationMethod,
+    routesData: routesData,
+    settlementData: settlementParams,
+  };
+
+  const migrationHash = genMigrationHash(migrationData);
+  // generate interim message for settler
+  const interimMessageForSettler = encodeParamsForSettler(migrationHash, migrationData);
+  return { migrationHash, interimMessageForSettler };
 };
 
-export const generateMigrationParams = async (
-  migrationId: `0x${string}`,
-  externalParams: RequestMigrationParams,
-  destinationChainConfig: ChainConfig,
-  routes: Route[],
-  maxPosition: V3Position | V4Position,
-  maxPositionUsingRouteMinAmountOut: V3Position | V4Position,
-  owner: `0x${string}`,
-  swapAmountInMilliBps?: number
-): Promise<{
+export const generateMigrationParams = async ({
+  migrationHash,
+  externalParams,
+  sourceChainConfig,
+  destinationChainConfig,
+  routes,
+  maxPosition,
+  maxPositionUsingRouteMinAmountOut,
+  owner,
+  swapAmountInMilliBps,
+}: InternalGenerateMigrationParamsInput): Promise<{
   destPosition: V3Position | V4Position;
   slippageCalcs: { routeMinAmountOuts: bigint[]; swapAmountInMilliBps: number; mintAmount0Min: bigint; mintAmount1Min: bigint };
   migratorMessage: `0x${string}`;
@@ -93,7 +110,7 @@ export const generateMigrationParams = async (
 
   const { migratorMessage, settlerMessage } = encodeMigrationParams(
     {
-      chainId: destinationChainConfig.chainId,
+      chainId: BigInt(destinationChainConfig.chainId),
       settler: resolveSettler(externalParams, destinationChainConfig),
       tokenRoutes: await Promise.all(
         routes.map(async (route) => ({
@@ -121,7 +138,14 @@ export const generateMigrationParams = async (
         ...('hooks' in externalParams && { hooks: externalParams.hooks }),
       },
     },
-    migrationId
+    migrationHash,
+    {
+      sourceChainId: BigInt(externalParams.sourceChainId),
+      migrator:
+        externalParams.sourceProtocol == Protocol.UniswapV3 ? sourceChainConfig.UniswapV3AcrossMigrator || zeroAddress : sourceChainConfig.UniswapV4AcrossMigrator || zeroAddress,
+      nonce: BigInt(1), // hardcoded, as it doesn't matter
+      mode: externalParams.migrationMethod || MigrationMethod.SingleToken,
+    }
   );
 
   return {

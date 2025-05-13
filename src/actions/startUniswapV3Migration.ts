@@ -3,7 +3,7 @@ import { BridgeType, DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, Migr
 import { CurrencyAmount } from '@uniswap/sdk-core';
 import { getV3Quote } from './getV3Quote';
 import type { InternalStartMigrationParams, InternalStartMigrationResult } from '../types/internal';
-import { generateMigration } from '../utils/helpers';
+import { generateSettlerData } from '../utils/helpers';
 import { getAcrossQuote } from '../lib/acrossClient';
 
 export const startUniswapV3Migration = async ({
@@ -53,7 +53,7 @@ export const startUniswapV3Migration = async ({
     if (externalParams.bridgeType === BridgeType.Across) {
       // generate the message that will be passed to the settler on the destination chain
       // note that this is different than the message that is passed to Migrator on the source chain
-      const { migrationId, interimMessageForSettler } = generateMigration(sourceChainConfig, MigrationMethod.SingleToken, externalParams, positionWithFees.owner);
+      const { migrationHash, interimMessageForSettler } = generateSettlerData(sourceChainConfig, MigrationMethod.SingleToken, externalParams, positionWithFees.owner);
       const acrossQuote = await getAcrossQuote(
         sourceChainConfig,
         destinationChainConfig,
@@ -79,14 +79,14 @@ export const startUniswapV3Migration = async ({
             exclusivityDeadline: acrossQuote.deposit.exclusivityDeadline,
           },
         ],
-        migrationId,
+        migrationHash,
       };
     } else {
       throw new Error('Bridge type not supported');
     }
   } else if (externalParams.migrationMethod === MigrationMethod.DualToken) {
     if (externalParams.bridgeType === BridgeType.Across) {
-      const { migrationId, interimMessageForSettler } = generateMigration(sourceChainConfig, MigrationMethod.DualToken, externalParams, positionWithFees.owner);
+      const { migrationHash, interimMessageForSettler } = generateSettlerData(sourceChainConfig, MigrationMethod.DualToken, externalParams, positionWithFees.owner);
 
       let flipTokens = false;
       if (isWethToken0) flipTokens = externalParams.token0 != NATIVE_ETH_ADDRESS && externalParams.token0 != destinationChainConfig.wethAddress;
@@ -138,7 +138,7 @@ export const startUniswapV3Migration = async ({
             exclusivityDeadline: acrossQuote1.deposit.exclusivityDeadline,
           },
         ],
-        migrationId,
+        migrationHash,
       };
     } else {
       throw new Error('Bridge type not supported');

@@ -6,8 +6,9 @@ import type { InternalSettleMigrationParams, InternalSettleMigrationResult } fro
 import { getSettlerFees } from './getSettlerFees';
 
 export const settleUniswapV3Migration = async ({
+  sourceChainConfig,
   destinationChainConfig,
-  migrationId,
+  migrationHash,
   routes,
   externalParams,
   owner,
@@ -78,16 +79,17 @@ export const settleUniswapV3Migration = async ({
         ? maxPositionWithSwap.amount0.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).quotient
         : maxPositionWithSwap.amount1.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).quotient;
 
-    return generateMigrationParams(
-      migrationId,
+    return generateMigrationParams({
+      migrationHash,
       externalParams,
+      sourceChainConfig,
       destinationChainConfig,
       routes,
-      maxPositionWithSwap,
-      maxPositionWithSwapUsingRouteMinAmountOut,
+      maxPosition: maxPositionWithSwap,
+      maxPositionUsingRouteMinAmountOut: maxPositionWithSwapUsingRouteMinAmountOut,
       owner,
-      10_000_000 - Number(swapAmountInMilliBps.toString())
-    );
+      swapAmountInMilliBps: 10_000_000 - Number(swapAmountInMilliBps.toString())
+    });
   } else {
     // logically has to be (routes.length) === 2 but needs to look exhaustive for ts compiler
     // make sure both tokens are found in routes
@@ -117,6 +119,15 @@ export const settleUniswapV3Migration = async ({
 
     const maxPositionUsingSettleMinAmountsOut = generateMaxV3Position(pool, settleMinAmountOut0, settleMinAmountOut1, externalParams.tickLower, externalParams.tickUpper);
 
-    return generateMigrationParams(migrationId, externalParams, destinationChainConfig, routes, maxPosition, maxPositionUsingSettleMinAmountsOut, owner);
+    return generateMigrationParams({
+      migrationHash,
+      externalParams,
+      sourceChainConfig,
+      destinationChainConfig,
+      routes,
+      maxPosition,
+      maxPositionUsingRouteMinAmountOut: maxPositionUsingSettleMinAmountsOut,
+      owner
+    });
   }
 };
