@@ -123,15 +123,15 @@ const { request } = await walletClient.simulateContract({
 const result = await writeContract(config, request);
 ```
 
-## Advanced Options
+## Advance Options
 
-### Single Token vs Dual Token paths
+### Single Token vs Dual Token migrations
 
 ChainHopper Protocol supports two different methods to migrate a position.
 
-Single Token: converts the entire position into WETH (via a swap on source chain), migrates it and swaps back to the OtherToken on destination chain before minting.
+Single Token: converts the entire position into WETH (or USDC) (via a swap on source chain), migrates that asset to destination chain and swaps back to the OtherToken on destination chain before minting.
 
-Dual Token: moves both tokens over independently and reconstructs the position on destination chain. This is simpler (fewer steps within the smart contract) but limited as both tokens need to be available routes on the bridge. Typically WETH and USDC are primary routes, though our current bridge Across supports [a few others for specific chains](https://app.across.to/api/available-routes). As of now, one of the two tokens in this path must be either WETH or ETH.
+Dual Token: moves both tokens over independently and reconstructs the position on destination chain. This is simpler (fewer steps within the smart contract) but limited as both tokens need to be available as routes on the bridge. Typically WETH and USDC are primary routes, though our current bridge Across supports [a few others for specific chains](https://app.across.to/api/available-routes). As of now, one of the two tokens in this path must be either WETH or ETH.
 
 By default, SDK returns Single Token route. To get a quote for Dual Token:
 
@@ -167,13 +167,41 @@ const migrationParams: RequestV3toV4MigrationParams = {
 
 ChainHopper Protocol (the smart contracts) supports creating a pool if it doesn't exist already. We are working on adding this functionality to the SDK. If this is blocking you, please get in touch with us.
 
-### Different bridges
+## FAQs
+
+*1. What chains are supported?*
+
+Currently, we support Ethereum, Optimism, Arbitrum, Base and Unichain. Please get in touch if you want us to support additional chains.
+
+*2. Do you have plans to support additional bridges?*
 
 Currently, we only support Across. We are considering adding Wormhole and Native Interop. If you have a request, please let us know.
 
-### Supported chains
+*3. What types of pools or tokens are supported?*
 
-Currently, we support Ethereum, Optimism, Arbitrum, Base and Unichain. Please get in touch if you want us to support additional chains.
+Besides Fee-on-transfer and rebasing tokens, we support all tokens. 
+
+For pools, as long as there is a bridgeable asset in a pool, we can support it. Though, we caution users when using any pool with hooks, as those can lead to unpredictable scenarios.
+
+*4. Is this protocol Audited?*
+
+Yes. You can find the audit reports in protocol repository: [ChainHopper Protocol](https://github.com/meliopolis/chainhopper-protocol).
+
+*5. How long does a migration typically take?*
+
+Most migrations with reasonable slippage (~1%) finish within 10 seconds.
+
+*6. How do fees work?*
+
+You, as the interface, can specify a fee and a recipient address to share that fee with. The protocol takes a 0.1% fee and additionally takes a 15% cut of the interface fee. So, if you specified 0.15% as the interface fee, the user will pay 0.25% which will be split 0.1225% for protocol and 0.1275% for you.
+
+*7. What happens if migration fails midway?*
+
+If migration fails on the source chain, nothing happens. User still owns the LP token and can retry. 
+
+If migration fails on the destination chian, the bridged asset will be delivered to the user's wallet **on destination chain**. And we will not take any fees for a failed migration.
+
+In extremely rare scenarios, it's possible that an Across relayer was unable to deliver the asset on destination chain. In those situations, the attempted bridged asset - ETH, WETH, USDC - will be returned to the user *on source chain*.
 
 ## Questions/Comments
 
