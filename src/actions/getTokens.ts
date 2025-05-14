@@ -3,7 +3,12 @@ import { type ChainConfig } from '../chains';
 import { Ether, Token, type Currency } from '@uniswap/sdk-core';
 import { NATIVE_ETH_ADDRESS } from '../utils/constants';
 
+const cache = new Map<string, Currency[]>();
+
 export const getTokens = async (chainConfig: ChainConfig, tokenAddresses: `0x${string}`[]): Promise<Currency[]> => {
+  const key = `${chainConfig.chainId}:${tokenAddresses.join(',')}`;
+  if (cache.has(key)) return cache.get(key)!;
+
   const tokens = await chainConfig.publicClient?.multicall({
     contracts: tokenAddresses
       .filter((tokenAddress) => tokenAddress !== NATIVE_ETH_ADDRESS)
@@ -32,7 +37,7 @@ export const getTokens = async (chainConfig: ChainConfig, tokenAddresses: `0x${s
   }
   // now split the tokens into sets of 3
   const nativeTokens = tokenAddresses.filter((tokenAddress) => tokenAddress === NATIVE_ETH_ADDRESS).map(() => Ether.onChain(chainConfig.chainId));
-  return [
+  const tokensData = [
     ...nativeTokens,
     ...tokenAddresses
       .filter((tokenAddress) => tokenAddress !== NATIVE_ETH_ADDRESS)
@@ -46,4 +51,7 @@ export const getTokens = async (chainConfig: ChainConfig, tokenAddresses: `0x${s
         );
       }),
   ];
+
+  cache.set(key, tokensData);
+  return tokensData;
 };

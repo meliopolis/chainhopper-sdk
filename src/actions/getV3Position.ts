@@ -29,40 +29,52 @@ export type IV3PositionWithUncollectedFees = {
   };
 };
 
-export const getV3Position = async (chainConfig: ChainConfig, params: IUniswapPositionParams): Promise<IV3PositionWithUncollectedFees> => {
-  const publicClient = chainConfig.publicClient;
-  const positionManagerResult = await publicClient?.multicall({
-    contracts: [
-      {
-        address: chainConfig.v3NftPositionManagerContract.address as `0x${string}`,
-        abi: chainConfig.v3NftPositionManagerContract.abi,
-        functionName: 'ownerOf',
-        args: [params.tokenId],
-      },
-      {
-        address: chainConfig.v3NftPositionManagerContract.address as `0x${string}`,
-        abi: chainConfig.v3NftPositionManagerContract.abi,
-        functionName: 'positions',
-        args: [params.tokenId],
-      },
-    ],
-    multicallAddress: chainConfig.multicallAddress,
-  });
+// ── CACHE SETUP ────────────────────────────────────────────────────────────────
+const v3PositionCache = new Map<string, Promise<IV3PositionWithUncollectedFees>>();
 
-  const owner = positionManagerResult?.[0].result as `0x${string}`;
-  const positionsCallResult = positionManagerResult?.[1].result as IPositionsCallResult;
+export const getV3Position = async (
+  chainConfig: ChainConfig,
+  params: IUniswapPositionParams
+): Promise<IV3PositionWithUncollectedFees> => {
+  const key = `${chainConfig.chainId}:${params.tokenId}`;
+  if (v3PositionCache.has(key)) {
+    return v3PositionCache.get(key)!;
+  }
 
-  const positionsCallData = {
-    token0: positionsCallResult[2],
-    token1: positionsCallResult[3],
-    feeTier: positionsCallResult[4],
-    tickLower: positionsCallResult[5],
-    tickUpper: positionsCallResult[6],
-    liquidity: positionsCallResult[7],
-  } as IV3PositionsCallType;
+  const p = (async (): Promise<IV3PositionWithUncollectedFees> => {
+    const publicClient = chainConfig.publicClient;
+    // ── 1. ownerOf + positions() ─────────────────────────────────────────────
+    const [ownerRes, posRes] = await publicClient!.multicall({
+      contracts: [
+        {
+          address: chainConfig.v3NftPositionManagerContract.address as `0x${string}`,
+          abi: chainConfig.v3NftPositionManagerContract.abi,
+          functionName: 'ownerOf',
+          args: [params.tokenId],
+        },
+        {
+          address: chainConfig.v3NftPositionManagerContract.address as `0x${string}`,
+          abi: chainConfig.v3NftPositionManagerContract.abi,
+          functionName: 'positions',
+          args: [params.tokenId],
+        },
+      ],
+      multicallAddress: chainConfig.multicallAddress,
+    });
+    const owner = ownerRes.result as `0x${string}`;
+    const positionsCallResult = posRes.result as IPositionsCallResult;
 
-  const LPFeeData: ILPFeeCallResult = (
-    await publicClient!.simulateContract({
+    const positionsCallData = {
+      token0: positionsCallResult[2],
+      token1: positionsCallResult[3],
+      feeTier: positionsCallResult[4],
+      tickLower: positionsCallResult[5],
+      tickUpper: positionsCallResult[6],
+      liquidity: positionsCallResult[7],
+    };
+
+    // ── 2. collect() simulate to get uncollected fees ──────────────────────────
+    const lpFee = (await publicClient!.simulateContract({
       address: chainConfig.v3NftPositionManagerContract.address as `0x${string}`,
       abi: chainConfig.v3NftPositionManagerContract.abi,
       functionName: 'collect',
@@ -74,109 +86,83 @@ export const getV3Position = async (chainConfig: ChainConfig, params: IUniswapPo
           amount1Max: MAX_UINT128,
         },
       ] as const,
-      account: owner, // need to simulate the call as the owner
-    })
-  ).result as ILPFeeCallResult;
+      account: owner,
+    })).result as ILPFeeCallResult;
 
-  // fetch pool data
-  const poolAddress = computePoolAddress({
-    factoryAddress: chainConfig.v3FactoryAddress as `0x${string}`,
-    tokenA: new Token(chainConfig.chain.id, positionsCallData.token0, 18), // only address is needed for computePoolAddress
-    tokenB: new Token(chainConfig.chain.id, positionsCallData.token1, 18), // only address is needed for computePoolAddress
-    fee: positionsCallData.feeTier,
-  });
-  const poolContract = {
-    address: poolAddress as `0x${string}`,
-    abi: PoolContract.abi as Abi,
-  };
-  const poolCallResult = (
-    await publicClient?.multicall({
+    // ── 3. fetch pool slot0 + liquidity ────────────────────────────────────────
+    const poolAddress = computePoolAddress({
+      factoryAddress: chainConfig.v3FactoryAddress as `0x${string}`,
+      tokenA: new Token(chainConfig.chain.id, positionsCallData.token0, 18),
+      tokenB: new Token(chainConfig.chain.id, positionsCallData.token1, 18),
+      fee: positionsCallData.feeTier,
+    });
+    const poolContract = {
+      address: poolAddress as `0x${string}`,
+      abi: PoolContract.abi as Abi,
+    };
+    const [slot0Res, liqRes] = await publicClient!.multicall({
       contracts: [
-        {
-          ...poolContract,
-          functionName: 'slot0',
-        },
-        {
-          ...poolContract,
-          functionName: 'liquidity',
-        },
+        { ...poolContract, functionName: 'slot0' },
+        { ...poolContract, functionName: 'liquidity' },
       ],
       multicallAddress: chainConfig.multicallAddress,
-    })
-  )?.map((result) => result.result) as IPoolCallResult;
+    });
+    const poolData = {
+      sqrtPriceX96: (slot0Res.result as any)[0] as bigint,
+      liquidity: liqRes.result as bigint,
+      tick: (slot0Res.result as any)[1] as number,
+    };
 
-  const poolData = {
-    sqrtPriceX96: poolCallResult[0][0],
-    liquidity: poolCallResult[1],
-    tick: poolCallResult[0][1],
-  };
+    // ── 4. fetch token metadata ────────────────────────────────────────────────
+    const tokenCalls = [positionsCallData.token0, positionsCallData.token1]
+      .flatMap((tokenAddress) =>
+        ['decimals', 'symbol', 'name'].map((fn) => ({
+          address: tokenAddress as `0x${string}`,
+          abi: erc20Abi,
+          functionName: fn as 'decimals' | 'symbol' | 'name',
+        }))
+      );
 
-  // fetch tokens; could combine with pool data call to avoid an extra call
-  const tokenList = [positionsCallData.token0, positionsCallData.token1] as `0x${string}`[];
-  const tokenCalls = tokenList
-    .map((tokenAddress) => {
-      const tokenContract = {
-        address: tokenAddress,
-        abi: erc20Abi,
-      };
-      return [
-        {
-          ...tokenContract,
-          functionName: 'decimals',
-        },
-        {
-          ...tokenContract,
-          functionName: 'symbol',
-        },
-        {
-          ...tokenContract,
-          functionName: 'name',
-        },
-      ];
-    })
-    .flat(1);
-
-  const tokenData = (
-    await chainConfig.publicClient?.multicall({
+    const rawMeta = await publicClient!.multicall({
       contracts: tokenCalls,
       multicallAddress: chainConfig.multicallAddress,
-    })
-  )
-    ?.filter((r) => r.status === 'success')
-    .map((r) => r.result as number | string)
-    .reduce(
-      (resultArray: (number | string)[][], item, index) => {
-        const chunkIndex = Math.floor(index / 3);
-        if (chunkIndex < 0 || chunkIndex >= 2) {
-          throw new Error('Invalid token data chunk index');
-        }
-        resultArray[chunkIndex] = resultArray[chunkIndex] || [];
-        resultArray[chunkIndex].push(item);
-        return resultArray;
-      },
-      [] as (number | string)[][]
+    });
+
+    const meta = rawMeta
+      .filter((r) => r.status === 'success')
+      .map((r) => r.result as number | string)
+      .reduce((arr: (number | string)[][], v, i) => {
+        const idx = Math.floor(i / 3);
+        arr[idx] = arr[idx] || [];
+        arr[idx].push(v);
+        return arr;
+      }, []);
+
+    const pool = new Pool(
+      new Token(params.chainId, positionsCallData.token0, meta[0][0] as number, meta[0][1] as string, meta[0][2] as string),
+      new Token(params.chainId, positionsCallData.token1, meta[1][0] as number, meta[1][1] as string, meta[1][2] as string),
+      positionsCallData.feeTier,
+      poolData.sqrtPriceX96.toString(),
+      poolData.liquidity.toString(),
+      poolData.tick
     );
 
-  const pool = new Pool(
-    new Token(params.chainId, positionsCallData.token0, tokenData?.[0]?.[0] as number, tokenData?.[0]?.[1] as string, tokenData?.[0]?.[2] as string),
-    new Token(params.chainId, positionsCallData.token1, tokenData?.[1]?.[0] as number, tokenData?.[1]?.[1] as string, tokenData?.[1]?.[2] as string),
-    positionsCallData.feeTier,
-    poolData.sqrtPriceX96.toString(),
-    poolData.liquidity.toString(),
-    poolData.tick
-  );
+    return {
+      owner,
+      position: new Position({
+        pool,
+        liquidity: positionsCallData.liquidity.toString(),
+        tickLower: positionsCallData.tickLower,
+        tickUpper: positionsCallData.tickUpper,
+      }),
+      uncollectedFees: {
+        amount0: CurrencyAmount.fromRawAmount(pool.token0, lpFee[0].toString()),
+        amount1: CurrencyAmount.fromRawAmount(pool.token1, lpFee[1].toString()),
+      },
+    };
+  })();
 
-  return {
-    owner,
-    position: new Position({
-      pool,
-      liquidity: positionsCallData.liquidity.toString(),
-      tickLower: positionsCallData.tickLower,
-      tickUpper: positionsCallData.tickUpper,
-    }),
-    uncollectedFees: {
-      amount0: CurrencyAmount.fromRawAmount(pool.token0, LPFeeData[0].toString()),
-      amount1: CurrencyAmount.fromRawAmount(pool.token1, LPFeeData[1].toString()),
-    },
-  };
+  v3PositionCache.set(key, p);
+  setTimeout(() => v3PositionCache.delete(key), 300);
+  return p;
 };

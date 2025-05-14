@@ -18,27 +18,30 @@ export type IV4PositionWithUncollectedFees = {
 type IPoolAndPositionCallResult = [PoolKey, bigint];
 
 const extract24BitsAsSigned = (positionInfo: bigint, shift: bigint): number => {
-  // Extract 24 bits
   const bits = (positionInfo >> shift) & ((1n << 24n) - 1n);
-
-  // Check if the sign bit (bit 23) is set
   const isNegative = (bits & (1n << 23n)) !== 0n;
-  if (isNegative) {
-    // If negative, perform sign extension by setting all higher bits to 1
-    // We subtract 2^24 to get the correct negative value
-    return Number(bits | (BigInt(-1) << 24n));
-  } else {
-    // If positive, just convert to number
-    return Number(bits);
-  }
+  return isNegative
+    ? Number(bits | (BigInt(-1) << 24n))
+    : Number(bits);
 };
 
-export const getV4Position = async (chainConfig: ChainConfig, params: IUniswapPositionParams): Promise<IV4PositionWithUncollectedFees> => {
-  const { tokenId } = params;
+// ── 300ms ROLLING CACHE ───────────────────────────────────────────────────────
+const v4PositionCache = new Map<string, Promise<IV4PositionWithUncollectedFees>>();
 
-  // get position details
-  const poolAndPositionCallResult = (
-    await chainConfig.publicClient?.multicall({
+export const getV4Position = async (
+  chainConfig: ChainConfig,
+  params: IUniswapPositionParams
+): Promise<IV4PositionWithUncollectedFees> => {
+  const key = `${chainConfig.chainId}:${params.tokenId}`;
+  if (v4PositionCache.has(key)) {
+    return v4PositionCache.get(key)!;
+  }
+
+  const p = (async (): Promise<IV4PositionWithUncollectedFees> => {
+    const { tokenId } = params;
+
+    // 1) getPoolAndPositionInfo + getPositionLiquidity + ownerOf
+    const raw = await chainConfig.publicClient!.multicall({
       contracts: [
         {
           ...chainConfig.v4PositionManagerContract,
@@ -56,26 +59,28 @@ export const getV4Position = async (chainConfig: ChainConfig, params: IUniswapPo
           args: [tokenId],
         },
       ],
-    })
-  )?.map((result) => result.result) as [IPoolAndPositionCallResult, bigint, `0x${string}`];
+    });
+    const [[poolKey, packed], liquidity, owner] = raw.map(r => r.result) as [IPoolAndPositionCallResult, bigint, `0x${string}`];
+    const tickLower = extract24BitsAsSigned(packed, 8n);
+    const tickUpper = extract24BitsAsSigned(packed, 32n);
 
-  const poolKey = poolAndPositionCallResult[0][0];
-  const tickLower = extract24BitsAsSigned(poolAndPositionCallResult[0][1], 8n);
-  const tickUpper = extract24BitsAsSigned(poolAndPositionCallResult[0][1], 32n);
-  const liquidity = poolAndPositionCallResult[1];
-  const owner = poolAndPositionCallResult[2];
-  // get pool data
-  const pool = await getV4Pool(chainConfig, poolKey);
+    // 2) fetch pool object
+    const pool = await getV4Pool(chainConfig, poolKey);
 
-  const poolId = Pool.getPoolId(pool.token0, pool.token1, pool.fee, pool.tickSpacing, pool.hooks);
-  const positionId = keccak256(
-    encodePacked(
-      ['address', 'int24', 'int24', 'bytes32'],
-      [chainConfig.v4PositionManagerContract?.address as `0x${string}`, tickLower as number, tickUpper as number, pad(tokenId?.toString(16) as `0x${string}`)]
-    )
-  );
-  const feeGrowthCallResult = (
-    await chainConfig.publicClient?.multicall({
+    // 3) feeGrowthInside + positionInfo
+    const poolId = Pool.getPoolId(pool.token0, pool.token1, pool.fee, pool.tickSpacing, pool.hooks);
+    const positionId = keccak256(
+      encodePacked(
+        ['address', 'int24', 'int24', 'bytes32'],
+        [
+          chainConfig.v4PositionManagerContract.address as `0x${string}`,
+          tickLower,
+          tickUpper,
+          pad(tokenId.toString(16) as `0x${string}`)
+        ]
+      )
+    );
+    const [[fee0X128, fee1X128], [_, last0, last1]] = (await chainConfig.publicClient!.multicall({
       contracts: [
         {
           ...chainConfig.v4StateViewContract,
@@ -88,31 +93,30 @@ export const getV4Position = async (chainConfig: ChainConfig, params: IUniswapPo
           args: [poolId, positionId],
         },
       ],
-    })
-  )?.map((result) => result.result) as [[bigint, bigint], [bigint, bigint, bigint]];
+    })).map(r => r.result) as [[bigint, bigint], [bigint, bigint, bigint]];
 
-  // get uncollected fees
-  const feeGrowthInside0X128 = feeGrowthCallResult[0][0];
-  const feeGrowthInside1X128 = feeGrowthCallResult[0][1];
-  const feeGrowthInside0LastX128 = feeGrowthCallResult[1][1];
-  const feeGrowthInside1LastX128 = feeGrowthCallResult[1][2];
-  const feeGrowthDelta0: bigint = subIn256(feeGrowthInside0X128, feeGrowthInside0LastX128);
-  const feeGrowthDelta1: bigint = subIn256(feeGrowthInside1X128, feeGrowthInside1LastX128);
+    // 4) compute uncollected fees
+    const delta0 = subIn256(fee0X128, last0);
+    const delta1 = subIn256(fee1X128, last1);
+    const uncollected0 = (liquidity * delta0) / (1n << 128n);
+    const uncollected1 = (liquidity * delta1) / (1n << 128n);
 
-  const uncollectedFees0 = (liquidity * feeGrowthDelta0) / 2n ** 128n;
-  const uncollectedFees1 = (liquidity * feeGrowthDelta1) / 2n ** 128n;
+    return {
+      owner,
+      position: new Position({
+        pool,
+        liquidity: liquidity.toString(),
+        tickLower,
+        tickUpper,
+      }),
+      uncollectedFees: {
+        amount0: CurrencyAmount.fromRawAmount(pool.token0, uncollected0.toString()),
+        amount1: CurrencyAmount.fromRawAmount(pool.token1, uncollected1.toString()),
+      },
+    };
+  })();
 
-  return {
-    owner: owner,
-    position: new Position({
-      pool,
-      liquidity: (liquidity || 0n).toString(),
-      tickLower: tickLower || 0,
-      tickUpper: tickUpper || 0,
-    }),
-    uncollectedFees: {
-      amount0: CurrencyAmount.fromRawAmount(pool.token0, uncollectedFees0.toString()),
-      amount1: CurrencyAmount.fromRawAmount(pool.token1, uncollectedFees1.toString()),
-    },
-  };
+  v4PositionCache.set(key, p);
+  setTimeout(() => v4PositionCache.delete(key), 300);
+  return p;
 };

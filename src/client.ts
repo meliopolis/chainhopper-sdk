@@ -13,6 +13,7 @@ import type {
   RequestV3toV4MigrationParams,
   RequestV4toV4MigrationParams,
   RequestMigrationResponse,
+  RequestMigrationErrorResponse,
 } from './types';
 import { startUniswapV3Migration, settleUniswapV3Migration } from './actions';
 import { getV4Position, type IV4PositionWithUncollectedFees } from './actions/getV4Position';
@@ -64,6 +65,19 @@ export class ChainHopperClient {
 
   public getV4Position(params: IUniswapPositionParams): Promise<IV4PositionWithUncollectedFees> {
     return getV4Position(this.chainConfigs[params.chainId], params);
+  }
+
+  public async requestMigrations(migrationsParams: RequestMigrationParams[]): Promise<Array<RequestMigrationResponse | RequestMigrationErrorResponse>> {
+    return Promise.all(
+      migrationsParams.map(async (migrationParams: RequestMigrationParams): Promise<RequestMigrationResponse | RequestMigrationErrorResponse> => {
+        try {
+          return await this.requestMigration(migrationParams);
+        } catch (e) {
+          const error = e instanceof Error ? e : new Error(`Unknown error: ${e}`);
+          return { migrationParams, error };
+        }
+      })
+    );
   }
 
   public async requestMigration(params: RequestMigrationParams): Promise<RequestMigrationResponse> {

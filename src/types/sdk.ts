@@ -119,3 +119,8 @@ export type RequestMigrationResponse = {
   routes: Route[];
   executionParams: ExecutionParams;
 };
+
+export type RequestMigrationErrorResponse = {
+  migrationParams: RequestMigrationParams;
+  error: Error;
+};
