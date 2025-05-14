@@ -79,11 +79,17 @@ const validateMigrationResponse = (params: RequestMigrationParams, result: Reque
   expect(executionParams.args[2]).toBe(params.tokenId);
   expect(executionParams.args[3]).toBe(result.migratorMessage);
   if (params.sourceProtocol === Protocol.UniswapV3) {
-    expect(executionParams.address).toBe(client.chainConfigs[params.sourceChainId].v3NftPositionManagerContract.address);
-    expect(executionParams.args[1]).toBe(client.chainConfigs[params.sourceChainId].UniswapV3AcrossMigrator as `0x${string}`);
+    expect(executionParams.address).toBe(
+      client.chainConfigs[params.sourceChainId].v3NftPositionManagerContract.address
+    );
+    expect(executionParams.args[1]).toBe(
+      client.chainConfigs[params.sourceChainId].UniswapV3AcrossMigrator as `0x${string}`
+    );
   } else {
     expect(executionParams.address).toBe(client.chainConfigs[params.sourceChainId].v4PositionManagerContract.address);
-    expect(executionParams.args[1]).toBe(client.chainConfigs[params.sourceChainId].UniswapV4AcrossMigrator as `0x${string}`);
+    expect(executionParams.args[1]).toBe(
+      client.chainConfigs[params.sourceChainId].UniswapV4AcrossMigrator as `0x${string}`
+    );
   }
 };
 
@@ -204,7 +210,10 @@ describe('invalid migrations', () => {
     try {
       await client.requestMigration(params);
     } catch (e) {
-      expect(e.message.includes("doesn't have enough funds to support this deposit") || e.message.includes('Amount exceeds max. deposit limit')).toBe(true);
+      expect(
+        e.message.includes("doesn't have enough funds to support this deposit") ||
+          e.message.includes('Amount exceeds max. deposit limit')
+      ).toBe(true);
     }
   });
 

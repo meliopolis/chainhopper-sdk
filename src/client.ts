@@ -90,7 +90,10 @@ export class ChainHopperClient {
     }
 
     // check migration method
-    if (params.migrationMethod !== MigrationMethod.SingleToken && params.migrationMethod !== MigrationMethod.DualToken) {
+    if (
+      params.migrationMethod !== MigrationMethod.SingleToken &&
+      params.migrationMethod !== MigrationMethod.DualToken
+    ) {
       params.migrationMethod = MigrationMethod.SingleToken;
     }
 

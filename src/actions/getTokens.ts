@@ -31,7 +31,9 @@ export const getTokens = async (chainConfig: ChainConfig, tokenAddresses: `0x${s
     throw new Error('Failed to get token');
   }
   // now split the tokens into sets of 3
-  const nativeTokens = tokenAddresses.filter((tokenAddress) => tokenAddress === NATIVE_ETH_ADDRESS).map(() => Ether.onChain(chainConfig.chainId));
+  const nativeTokens = tokenAddresses
+    .filter((tokenAddress) => tokenAddress === NATIVE_ETH_ADDRESS)
+    .map(() => Ether.onChain(chainConfig.chainId));
   return [
     ...nativeTokens,
     ...tokenAddresses

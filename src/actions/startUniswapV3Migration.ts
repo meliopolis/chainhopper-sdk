@@ -1,5 +1,11 @@
 import { type IV3PositionWithUncollectedFees } from './getV3Position';
-import { BridgeType, DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, NATIVE_ETH_ADDRESS } from '../utils/constants';
+import {
+  BridgeType,
+  DEFAULT_FILL_DEADLINE_OFFSET,
+  DEFAULT_SLIPPAGE_IN_BPS,
+  MigrationMethod,
+  NATIVE_ETH_ADDRESS,
+} from '../utils/constants';
 import { CurrencyAmount } from '@uniswap/sdk-core';
 import { getV3Quote } from './getV3Quote';
 import type { InternalStartMigrationParams, InternalStartMigrationResult } from '../types/internal';
@@ -30,20 +36,29 @@ export const startUniswapV3Migration = async ({
   // if migration Method is single-token
   if (externalParams.migrationMethod === MigrationMethod.SingleToken) {
     // get a quote from Uniswap Router to trade otherToken
-    const amountIn = isWethToken0 ? BigInt(totalToken1.asFraction.toFixed(0)) : BigInt(totalToken0.asFraction.toFixed(0));
+    const amountIn = isWethToken0
+      ? BigInt(totalToken1.asFraction.toFixed(0))
+      : BigInt(totalToken0.asFraction.toFixed(0));
     let amountOut = CurrencyAmount.fromRawAmount(isWethToken0 ? totalToken0.currency : totalToken1.currency, 0);
 
     if (amountIn > 0n) {
       const quote = await getV3Quote(
         sourceChainConfig,
-        isWethToken0 ? (totalToken1.currency.address as `0x${string}`) : (totalToken0.currency.address as `0x${string}`),
-        isWethToken0 ? (totalToken0.currency.address as `0x${string}`) : (totalToken1.currency.address as `0x${string}`),
+        isWethToken0
+          ? (totalToken1.currency.address as `0x${string}`)
+          : (totalToken0.currency.address as `0x${string}`),
+        isWethToken0
+          ? (totalToken0.currency.address as `0x${string}`)
+          : (totalToken1.currency.address as `0x${string}`),
         position.pool.fee,
         amountIn,
         0n
       );
       // calculate total amount of WETH available
-      amountOut = CurrencyAmount.fromRawAmount(isWethToken0 ? totalToken0.currency : totalToken1.currency, quote.amountOut.toString());
+      amountOut = CurrencyAmount.fromRawAmount(
+        isWethToken0 ? totalToken0.currency : totalToken1.currency,
+        quote.amountOut.toString()
+      );
     }
     const totalWethAvailable = isWethToken0 ? totalToken0.add(amountOut) : totalToken1.add(amountOut);
 
@@ -53,7 +68,12 @@ export const startUniswapV3Migration = async ({
     if (externalParams.bridgeType === BridgeType.Across) {
       // generate the message that will be passed to the settler on the destination chain
       // note that this is different than the message that is passed to Migrator on the source chain
-      const { migrationHash, interimMessageForSettler } = generateSettlerData(sourceChainConfig, MigrationMethod.SingleToken, externalParams, positionWithFees.owner);
+      const { migrationHash, interimMessageForSettler } = generateSettlerData(
+        sourceChainConfig,
+        MigrationMethod.SingleToken,
+        externalParams,
+        positionWithFees.owner
+      );
       const acrossQuote = await getAcrossQuote(
         sourceChainConfig,
         destinationChainConfig,
@@ -72,7 +92,10 @@ export const startUniswapV3Migration = async ({
             outputToken: acrossQuote.deposit.outputToken,
             inputAmount: BigInt(totalWethAvailable.asFraction.toFixed(0)),
             outputAmount: acrossQuote.deposit.outputAmount,
-            minOutputAmount: (acrossQuote.deposit.outputAmount * BigInt(10000 - (externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS) / 2)) / 10000n,
+            minOutputAmount:
+              (acrossQuote.deposit.outputAmount *
+                BigInt(10000 - (externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS) / 2)) /
+              10000n,
             maxFees: acrossQuote.fees.totalRelayFee.total,
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
             exclusiveRelayer: acrossQuote.deposit.exclusiveRelayer,
@@ -86,10 +109,17 @@ export const startUniswapV3Migration = async ({
     }
   } else if (externalParams.migrationMethod === MigrationMethod.DualToken) {
     if (externalParams.bridgeType === BridgeType.Across) {
-      const { migrationHash, interimMessageForSettler } = generateSettlerData(sourceChainConfig, MigrationMethod.DualToken, externalParams, positionWithFees.owner);
+      const { migrationHash, interimMessageForSettler } = generateSettlerData(
+        sourceChainConfig,
+        MigrationMethod.DualToken,
+        externalParams,
+        positionWithFees.owner
+      );
 
       let flipTokens = false;
-      if (isWethToken0) flipTokens = externalParams.token0 != NATIVE_ETH_ADDRESS && externalParams.token0 != destinationChainConfig.wethAddress;
+      if (isWethToken0)
+        flipTokens =
+          externalParams.token0 != NATIVE_ETH_ADDRESS && externalParams.token0 != destinationChainConfig.wethAddress;
       if (isWethToken1) flipTokens = externalParams.token1 != destinationChainConfig.wethAddress;
 
       const acrossQuote0 = await getAcrossQuote(
@@ -120,7 +150,10 @@ export const startUniswapV3Migration = async ({
             outputToken: acrossQuote0.deposit.outputToken,
             inputAmount: BigInt(totalToken0.asFraction.toFixed(0)),
             outputAmount: acrossQuote0.deposit.outputAmount,
-            minOutputAmount: (acrossQuote0.deposit.outputAmount * BigInt(10000 - (externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS) / 2)) / 10000n,
+            minOutputAmount:
+              (acrossQuote0.deposit.outputAmount *
+                BigInt(10000 - (externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS) / 2)) /
+              10000n,
             maxFees: acrossQuote0.fees.totalRelayFee.total,
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
             exclusiveRelayer: acrossQuote0.deposit.exclusiveRelayer,
@@ -131,7 +164,10 @@ export const startUniswapV3Migration = async ({
             outputToken: acrossQuote1.deposit.outputToken,
             inputAmount: BigInt(totalToken1.asFraction.toFixed(0)),
             outputAmount: acrossQuote1.deposit.outputAmount,
-            minOutputAmount: (acrossQuote1.deposit.outputAmount * BigInt(10000 - (externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS) / 2)) / 10000n,
+            minOutputAmount:
+              (acrossQuote1.deposit.outputAmount *
+                BigInt(10000 - (externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS) / 2)) /
+              10000n,
             maxFees: acrossQuote1.fees.totalRelayFee.total,
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
             exclusiveRelayer: acrossQuote1.deposit.exclusiveRelayer,

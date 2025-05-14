@@ -7,7 +7,12 @@ import type { Token } from '@uniswap/sdk-core';
 
 type IPoolCallResult = [[bigint, number, number, number, number, number, boolean], bigint];
 
-export const getV3Pool = async (chainConfig: ChainConfig, token0: `0x${string}`, token1: `0x${string}`, feeTier: number): Promise<Pool> => {
+export const getV3Pool = async (
+  chainConfig: ChainConfig,
+  token0: `0x${string}`,
+  token1: `0x${string}`,
+  feeTier: number
+): Promise<Pool> => {
   const tokens = await getTokens(chainConfig, [token0, token1]);
   if (tokens.some((t) => t.isNative)) {
     throw new Error('Native tokens not supported on Uniswap v3');
@@ -41,5 +46,12 @@ export const getV3Pool = async (chainConfig: ChainConfig, token0: `0x${string}`,
     throw new Error('Failed to get pool data');
   }
   const poolDataResults = poolData?.map((p) => p.result) as IPoolCallResult;
-  return new Pool(tokens[0] as Token, tokens[1] as Token, feeTier, poolDataResults[0][0].toString(), poolDataResults[1].toString(), poolDataResults[0][1]);
+  return new Pool(
+    tokens[0] as Token,
+    tokens[1] as Token,
+    feeTier,
+    poolDataResults[0][0].toString(),
+    poolDataResults[1].toString(),
+    poolDataResults[0][1]
+  );
 };

@@ -1,6 +1,12 @@
 import { SettlementParamsAbi, V4MintParamsAbi, V3MintParamsAbi, ParamsForSettlerAbi } from '../abis/SettlementParams';
 import { MigrationParamsAbi, RouteAbi } from '../abis/MigrationParams';
-import type { MigrationData, MigrationParams, SettlementParams, UniswapV3MintParams, UniswapV4MintParams } from '../types';
+import type {
+  MigrationData,
+  MigrationParams,
+  SettlementParams,
+  UniswapV3MintParams,
+  UniswapV4MintParams,
+} from '../types';
 import { encodeAbiParameters } from 'viem';
 import { MigrationMethod } from '../utils/constants';
 import { RoutesDataAbi } from '../abis/MigrationData';

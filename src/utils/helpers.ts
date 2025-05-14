@@ -3,7 +3,13 @@ import { DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod,
 import { nearestUsableTick, Pool as V3Pool, SqrtPriceMath, TickMath, Position as V3Position } from '@uniswap/v3-sdk';
 import { Position as V4Position, Pool as V4Pool } from '@uniswap/v4-sdk';
 
-import { encodeMigrationParams, encodeMintParamsForV3, encodeMintParamsForV4, encodeSettlementParams, encodeParamsForSettler } from '../actions/encode';
+import {
+  encodeMigrationParams,
+  encodeMintParamsForV3,
+  encodeMintParamsForV4,
+  encodeSettlementParams,
+  encodeParamsForSettler,
+} from '../actions/encode';
 import { encodeAbiParameters, keccak256, zeroAddress } from 'viem';
 import type { ExecutionParams, RequestMigrationParams } from '../types/sdk';
 
@@ -70,7 +76,9 @@ export const generateSettlerData = (
 
   // generate migrationdata to calculate hash
   const migratorAddress =
-    externalParams.sourceProtocol == Protocol.UniswapV3 ? sourceChainConfig.UniswapV3AcrossMigrator || zeroAddress : sourceChainConfig.UniswapV4AcrossMigrator || zeroAddress;
+    externalParams.sourceProtocol == Protocol.UniswapV3
+      ? sourceChainConfig.UniswapV3AcrossMigrator || zeroAddress
+      : sourceChainConfig.UniswapV4AcrossMigrator || zeroAddress;
   // todo fix routesData to account for dualToken
   const routesData = '0x' as `0x${string}`;
   const migrationData = {
@@ -100,7 +108,12 @@ export const generateMigrationParams = async ({
   swapAmountInMilliBps,
 }: InternalGenerateMigrationParamsInput): Promise<{
   destPosition: V3Position | V4Position;
-  slippageCalcs: { routeMinAmountOuts: bigint[]; swapAmountInMilliBps: number; mintAmount0Min: bigint; mintAmount1Min: bigint };
+  slippageCalcs: {
+    routeMinAmountOuts: bigint[];
+    swapAmountInMilliBps: number;
+    mintAmount0Min: bigint;
+    mintAmount1Min: bigint;
+  };
   migratorMessage: `0x${string}`;
   settlerMessage: `0x${string}`;
 }> => {
@@ -142,7 +155,9 @@ export const generateMigrationParams = async ({
     {
       sourceChainId: BigInt(externalParams.sourceChainId),
       migrator:
-        externalParams.sourceProtocol == Protocol.UniswapV3 ? sourceChainConfig.UniswapV3AcrossMigrator || zeroAddress : sourceChainConfig.UniswapV4AcrossMigrator || zeroAddress,
+        externalParams.sourceProtocol == Protocol.UniswapV3
+          ? sourceChainConfig.UniswapV3AcrossMigrator || zeroAddress
+          : sourceChainConfig.UniswapV4AcrossMigrator || zeroAddress,
       nonce: BigInt(1), // hardcoded, as it doesn't matter
       mode: externalParams.migrationMethod || MigrationMethod.SingleToken,
     }
@@ -161,7 +176,10 @@ export const generateMigrationParams = async ({
   };
 };
 
-export const resolveSettler = (externalParams: RequestMigrationParams, destinationChainConfig: ChainConfig): `0x${string}` => {
+export const resolveSettler = (
+  externalParams: RequestMigrationParams,
+  destinationChainConfig: ChainConfig
+): `0x${string}` => {
   let settler: `0x${string}`;
   switch (externalParams.destinationProtocol) {
     case Protocol.UniswapV3:
@@ -189,7 +207,10 @@ export const generateMaxV3Position = (
   tickLower: number,
   tickUpper: number
 ): V3Position => {
-  const [amount0, amount1] = [currencyAmount0.asFraction.toFixed(0).toString(), currencyAmount1.asFraction.toFixed(0).toString()];
+  const [amount0, amount1] = [
+    currencyAmount0.asFraction.toFixed(0).toString(),
+    currencyAmount1.asFraction.toFixed(0).toString(),
+  ];
   // estimate max position possible given the ticks and both tokens maxed out
   const maxPosition = V3Position.fromAmounts({
     pool: pool,
@@ -210,7 +231,10 @@ export const generateMaxV4Position = (
   tickLower: number,
   tickUpper: number
 ): V4Position => {
-  const [amount0, amount1] = [currencyAmount0.asFraction.toFixed(0).toString(), currencyAmount1.asFraction.toFixed(0).toString()];
+  const [amount0, amount1] = [
+    currencyAmount0.asFraction.toFixed(0).toString(),
+    currencyAmount1.asFraction.toFixed(0).toString(),
+  ];
 
   // estimate max position possible given the ticks and both tokens maxed out
   const maxPosition = V4Position.fromAmounts({
@@ -225,7 +249,12 @@ export const generateMaxV4Position = (
   return maxPosition;
 };
 
-const calculateOptimalRatio = (tickLower: number, tickUpper: number, sqrtRatioX96: JSBI, zeroForOne: boolean): Fraction => {
+const calculateOptimalRatio = (
+  tickLower: number,
+  tickUpper: number,
+  sqrtRatioX96: JSBI,
+  zeroForOne: boolean
+): Fraction => {
   const upperSqrtRatioX96 = TickMath.getSqrtRatioAtTick(tickUpper);
   const lowerSqrtRatioX96 = TickMath.getSqrtRatioAtTick(tickLower);
 
@@ -251,7 +280,9 @@ const calculateRatioAmountIn = (
   outputBalance: CurrencyAmount<Currency>
 ): CurrencyAmount<Currency> => {
   // formula: amountToSwap = (inputBalance - (optimalRatio * outputBalance)) / ((optimalRatio * inputTokenPrice) + 1))
-  const amountToSwapRaw = new Fraction(inputBalance.quotient).subtract(optimalRatio.multiply(outputBalance.quotient)).divide(optimalRatio.multiply(inputTokenPrice).add(1));
+  const amountToSwapRaw = new Fraction(inputBalance.quotient)
+    .subtract(optimalRatio.multiply(outputBalance.quotient))
+    .divide(optimalRatio.multiply(inputTokenPrice).add(1));
 
   if (amountToSwapRaw.lessThan(0)) {
     // should never happen since we do checks before calling in
@@ -299,7 +330,12 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
     if (n > numIterations) {
       break;
     }
-    const currencyAmountToSwap = calculateRatioAmountIn(optimalRatio, exchangeRate, inputBalance, outputBalance) as CurrencyAmount<Token>;
+    const currencyAmountToSwap = calculateRatioAmountIn(
+      optimalRatio,
+      exchangeRate,
+      inputBalance,
+      outputBalance
+    ) as CurrencyAmount<Token>;
     if (BigInt(currencyAmountToSwap.quotient.toString()) === 0n) {
       // todo handle this case
       break;
@@ -308,7 +344,13 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
     let amountOut: bigint;
     let sqrtPriceX96After: bigint;
     if (isV4) {
-      const quote = await getV4CombinedQuote(chainConfig, pool.poolKey, BigInt(currencyAmountToSwap.quotient.toString()), zeroForOne, '0x');
+      const quote = await getV4CombinedQuote(
+        chainConfig,
+        pool.poolKey,
+        BigInt(currencyAmountToSwap.quotient.toString()),
+        zeroForOne,
+        '0x'
+      );
       amountOut = quote.amountOut;
       sqrtPriceX96After = quote.sqrtPriceX96After;
     } else {
@@ -329,7 +371,9 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
     const newRatio = inputBalanceUpdated.divide(outputBalanceUpdated);
     optimalRatio = calculateOptimalRatio(tickLower, tickUpper, JSBI.BigInt(sqrtPriceX96After.toString()), zeroForOne);
     // check slippage
-    ratioAchieved = newRatio.asFraction.equalTo(optimalRatio) || newRatio.asFraction.divide(optimalRatio).subtract(1).lessThan(slippageTolerance);
+    ratioAchieved =
+      newRatio.asFraction.equalTo(optimalRatio) ||
+      newRatio.asFraction.divide(optimalRatio).subtract(1).lessThan(slippageTolerance);
     // if slippage is acceptable, break
     if (ratioAchieved) {
       if (isV4) {
@@ -361,7 +405,8 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
     exchangeRate = new Price({ baseAmount: currencyAmountToSwap, quoteAmount: currencyAmountOut });
   }
   const [token0BalanceUpdated, token1BalanceUpdated] =
-    inputBalanceUpdated.currency.isNative || inputBalanceUpdated.currency.wrapped.sortsBefore(outputBalanceUpdated.currency.wrapped)
+    inputBalanceUpdated.currency.isNative ||
+    inputBalanceUpdated.currency.wrapped.sortsBefore(outputBalanceUpdated.currency.wrapped)
       ? [inputBalanceUpdated, outputBalanceUpdated]
       : [outputBalanceUpdated, inputBalanceUpdated];
 

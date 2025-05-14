@@ -1,4 +1,10 @@
-import { BridgeType, DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, NATIVE_ETH_ADDRESS } from '../utils/constants';
+import {
+  BridgeType,
+  DEFAULT_FILL_DEADLINE_OFFSET,
+  DEFAULT_SLIPPAGE_IN_BPS,
+  MigrationMethod,
+  NATIVE_ETH_ADDRESS,
+} from '../utils/constants';
 import { CurrencyAmount } from '@uniswap/sdk-core';
 import type { IV4PositionWithUncollectedFees } from './getV4Position';
 import { generateSettlerData } from '../utils/helpers';
@@ -16,8 +22,10 @@ export const startUniswapV4Migration = async ({
   const { position, uncollectedFees } = positionWithFees;
 
   // find ETH/WETH in position
-  const isToken0EthOrWeth = position.amount0.currency.isNative || position.amount0.currency.address === sourceChainConfig.wethAddress;
-  const isToken1Weth = position.amount1.currency.isNative || position.amount1.currency.address === sourceChainConfig.wethAddress;
+  const isToken0EthOrWeth =
+    position.amount0.currency.isNative || position.amount0.currency.address === sourceChainConfig.wethAddress;
+  const isToken1Weth =
+    position.amount1.currency.isNative || position.amount1.currency.address === sourceChainConfig.wethAddress;
 
   if (!isToken0EthOrWeth && !isToken1Weth) {
     throw new Error('ETH/WETH not found in position');
@@ -34,16 +42,30 @@ export const startUniswapV4Migration = async ({
     let amountOut = CurrencyAmount.fromRawAmount(isToken0EthOrWeth ? totalToken0.currency : totalToken1.currency, 0);
 
     if (BigInt(exactAmount) > 0n) {
-      const quote = await getV4Quote(sourceChainConfig, position.pool.poolKey, BigInt(exactAmount), !isToken0EthOrWeth, position.pool.hooks as `0x${string}`);
+      const quote = await getV4Quote(
+        sourceChainConfig,
+        position.pool.poolKey,
+        BigInt(exactAmount),
+        !isToken0EthOrWeth,
+        position.pool.hooks as `0x${string}`
+      );
       // calculate total amount of WETH available
-      amountOut = CurrencyAmount.fromRawAmount(isToken0EthOrWeth ? totalToken0.currency : totalToken1.currency, quote.toString());
+      amountOut = CurrencyAmount.fromRawAmount(
+        isToken0EthOrWeth ? totalToken0.currency : totalToken1.currency,
+        quote.toString()
+      );
     }
 
     // TODO check that quote price is not much worse than current price
     const totalWethAvailable = isToken0EthOrWeth ? totalToken0.add(amountOut) : totalToken1.add(amountOut);
 
     if (externalParams.bridgeType === BridgeType.Across) {
-      const { migrationHash, interimMessageForSettler } = generateSettlerData(sourceChainConfig, MigrationMethod.SingleToken, externalParams, positionWithFees.owner);
+      const { migrationHash, interimMessageForSettler } = generateSettlerData(
+        sourceChainConfig,
+        MigrationMethod.SingleToken,
+        externalParams,
+        positionWithFees.owner
+      );
 
       const acrossQuote = await getAcrossQuote(
         sourceChainConfig,
@@ -63,7 +85,10 @@ export const startUniswapV4Migration = async ({
             outputToken: acrossQuote.deposit.outputToken,
             inputAmount: BigInt(totalWethAvailable.asFraction.toFixed(0)),
             outputAmount: acrossQuote.deposit.outputAmount,
-            minOutputAmount: (acrossQuote.deposit.outputAmount * BigInt(10000 - (externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS) / 2)) / 10000n,
+            minOutputAmount:
+              (acrossQuote.deposit.outputAmount *
+                BigInt(10000 - (externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS) / 2)) /
+              10000n,
             maxFees: acrossQuote.fees.totalRelayFee.total,
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
             exclusiveRelayer: acrossQuote.deposit.exclusiveRelayer,
@@ -77,10 +102,17 @@ export const startUniswapV4Migration = async ({
     }
   } else if (externalParams.migrationMethod === MigrationMethod.DualToken) {
     if (externalParams.bridgeType === BridgeType.Across) {
-      const { migrationHash, interimMessageForSettler } = generateSettlerData(sourceChainConfig, MigrationMethod.DualToken, externalParams, positionWithFees.owner);
+      const { migrationHash, interimMessageForSettler } = generateSettlerData(
+        sourceChainConfig,
+        MigrationMethod.DualToken,
+        externalParams,
+        positionWithFees.owner
+      );
 
       let flipTokens = false;
-      if (isToken0EthOrWeth) flipTokens = externalParams.token0 != NATIVE_ETH_ADDRESS && externalParams.token0 != destinationChainConfig.wethAddress;
+      if (isToken0EthOrWeth)
+        flipTokens =
+          externalParams.token0 != NATIVE_ETH_ADDRESS && externalParams.token0 != destinationChainConfig.wethAddress;
       if (isToken1Weth) flipTokens = externalParams.token1 != destinationChainConfig.wethAddress;
 
       const acrossQuote0 = await getAcrossQuote(
@@ -88,7 +120,11 @@ export const startUniswapV4Migration = async ({
         destinationChainConfig,
         totalToken0.currency.wrapped.address as `0x${string}`,
         totalToken0.asFraction.toFixed(0),
-        isToken0EthOrWeth ? destinationChainConfig.wethAddress : flipTokens ? externalParams.token1 : externalParams.token0,
+        isToken0EthOrWeth
+          ? destinationChainConfig.wethAddress
+          : flipTokens
+            ? externalParams.token1
+            : externalParams.token0,
         externalParams,
         interimMessageForSettler
       );
@@ -111,7 +147,10 @@ export const startUniswapV4Migration = async ({
             outputToken: acrossQuote0.deposit.outputToken,
             inputAmount: BigInt(totalToken0.asFraction.toFixed(0)),
             outputAmount: acrossQuote0.deposit.outputAmount,
-            minOutputAmount: (acrossQuote0.deposit.outputAmount * BigInt(10000 - (externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS) / 2)) / 10000n,
+            minOutputAmount:
+              (acrossQuote0.deposit.outputAmount *
+                BigInt(10000 - (externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS) / 2)) /
+              10000n,
             maxFees: acrossQuote0.fees.totalRelayFee.total,
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
             exclusiveRelayer: acrossQuote0.deposit.exclusiveRelayer,
@@ -122,7 +161,10 @@ export const startUniswapV4Migration = async ({
             outputToken: acrossQuote1.deposit.outputToken,
             inputAmount: BigInt(totalToken1.asFraction.toFixed(0)),
             outputAmount: acrossQuote1.deposit.outputAmount,
-            minOutputAmount: (acrossQuote1.deposit.outputAmount * BigInt(10000 - (externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS) / 2)) / 10000n,
+            minOutputAmount:
+              (acrossQuote1.deposit.outputAmount *
+                BigInt(10000 - (externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS) / 2)) /
+              10000n,
             maxFees: acrossQuote1.fees.totalRelayFee.total,
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
             exclusiveRelayer: acrossQuote1.deposit.exclusiveRelayer,
