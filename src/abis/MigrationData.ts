@@ -21,41 +21,43 @@ export const RoutesDataAbi = [
   },
 ];
 
+export const MigrationDataComponentsAbi = [
+  {
+    name: 'sourceChainId',
+    internalType: 'uint256',
+    type: 'uint256',
+  },
+  {
+    name: 'migrator',
+    internalType: 'address',
+    type: 'address',
+  },
+  {
+    name: 'nonce',
+    internalType: 'uint256',
+    type: 'uint256',
+  },
+  {
+    name: 'mode',
+    internalType: 'MigrationMode',
+    type: 'uint8',
+  },
+  {
+    name: 'routesData',
+    internalType: 'bytes',
+    type: 'bytes',
+  },
+  {
+    name: 'settlementData',
+    internalType: 'bytes',
+    type: 'bytes',
+  },
+];
+
 export const MigrationDataAbi = [
   {
     name: 'MigrationData',
     type: 'tuple',
-    components: [
-      {
-        name: 'sourceChainId',
-        internalType: 'uint256',
-        type: 'uint256',
-      },
-      {
-        name: 'migrator',
-        internalType: 'address',
-        type: 'address',
-      },
-      {
-        name: 'nonce',
-        internalType: 'uint256',
-        type: 'uint256',
-      },
-      {
-        name: 'mode',
-        internalType: 'uint8',
-        type: 'uint8',
-      },
-      {
-        name: 'routesData',
-        internalType: 'bytes',
-        type: 'bytes',
-      },
-      {
-        name: 'settlementData',
-        internalType: 'bytes',
-        type: 'bytes',
-      },
-    ],
+    components: MigrationDataComponentsAbi,
   },
 ];

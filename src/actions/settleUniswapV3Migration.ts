@@ -12,7 +12,6 @@ import { getSettlerFees } from './getSettlerFees';
 export const settleUniswapV3Migration = async ({
   sourceChainConfig,
   destinationChainConfig,
-  migrationHash,
   routes,
   externalParams,
   owner,
@@ -102,7 +101,6 @@ export const settleUniswapV3Migration = async ({
         : maxPositionWithSwap.amount1.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).quotient;
 
     return generateMigrationParams({
-      migrationHash,
       externalParams,
       sourceChainConfig,
       destinationChainConfig,
@@ -156,7 +154,6 @@ export const settleUniswapV3Migration = async ({
     );
 
     return generateMigrationParams({
-      migrationHash,
       externalParams,
       sourceChainConfig,
       destinationChainConfig,

@@ -21,14 +21,12 @@ export type InternalStartMigrationParams = {
 
 export type InternalStartMigrationResult = {
   acrossQuotes: Quote[];
-  migrationHash: `0x${string}`;
   routes: Route[];
 };
 
 export type InternalSettleMigrationParams = {
   sourceChainConfig: ChainConfig;
   destinationChainConfig: ChainConfig;
-  migrationHash: `0x${string}`;
   routes: Route[];
   externalParams: RequestMigrationParams;
   owner: `0x${string}`;
@@ -42,7 +40,6 @@ export type InternalSettleMigrationResult = {
 };
 
 export type InternalGenerateMigrationParamsInput = {
-  migrationHash: `0x${string}`;
   externalParams: RequestMigrationParams;
   sourceChainConfig: ChainConfig;
   destinationChainConfig: ChainConfig;

@@ -146,7 +146,7 @@ export class ChainHopperClient {
     }
 
     // start migration on source chain
-    const { routes, migrationHash } = await startUniswapV3Migration({
+    const { routes } = await startUniswapV3Migration({
       sourceChainConfig: this.chainConfigs[sourceChainId],
       destinationChainConfig: this.chainConfigs[destinationChainId],
       positionWithUncollectedFees: v3Position,
@@ -165,7 +165,6 @@ export class ChainHopperClient {
       const v3Settlement = await settleUniswapV3Migration({
         sourceChainConfig: this.chainConfigs[sourceChainId],
         destinationChainConfig: this.chainConfigs[destinationChainId],
-        migrationHash,
         routes,
         externalParams: params as RequestV3toV3MigrationParams,
         owner: v3Position.owner,
@@ -188,7 +187,6 @@ export class ChainHopperClient {
       const v4Settlement = await settleUniswapV4Migration({
         sourceChainConfig: this.chainConfigs[sourceChainId],
         destinationChainConfig: this.chainConfigs[destinationChainId],
-        migrationHash,
         routes,
         externalParams: params as RequestV3toV4MigrationParams,
         owner: v3Position.owner,
@@ -231,7 +229,7 @@ export class ChainHopperClient {
     }
 
     // start migration on source chain
-    const { routes, migrationHash } = await startUniswapV4Migration({
+    const { routes } = await startUniswapV4Migration({
       sourceChainConfig: this.chainConfigs[sourceChainId],
       destinationChainConfig: this.chainConfigs[destinationChainId],
       positionWithUncollectedFees: v4Position,
@@ -251,7 +249,6 @@ export class ChainHopperClient {
       const v3Settlement = await settleUniswapV3Migration({
         sourceChainConfig: this.chainConfigs[sourceChainId],
         destinationChainConfig: this.chainConfigs[destinationChainId],
-        migrationHash,
         routes,
         externalParams: params as RequestV4toV3MigrationParams,
         owner: v4Position.owner,
@@ -273,7 +270,6 @@ export class ChainHopperClient {
       const v4Settlement = await settleUniswapV4Migration({
         sourceChainConfig: this.chainConfigs[sourceChainId],
         destinationChainConfig: this.chainConfigs[destinationChainId],
-        migrationHash,
         routes,
         externalParams: params as RequestV4toV4MigrationParams,
         owner: v4Position.owner,

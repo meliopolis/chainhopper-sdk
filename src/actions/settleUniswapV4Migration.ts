@@ -15,7 +15,6 @@ import type { Position } from '@uniswap/v4-sdk';
 export const settleUniswapV4Migration = async ({
   sourceChainConfig,
   destinationChainConfig,
-  migrationHash,
   routes,
   externalParams,
   owner,
@@ -106,7 +105,6 @@ export const settleUniswapV4Migration = async ({
             .toFixed(0);
 
     return generateMigrationParams({
-      migrationHash,
       externalParams,
       sourceChainConfig,
       destinationChainConfig,
@@ -162,7 +160,6 @@ export const settleUniswapV4Migration = async ({
     );
 
     return generateMigrationParams({
-      migrationHash,
       externalParams,
       sourceChainConfig,
       destinationChainConfig,

@@ -60,7 +60,7 @@ export const startUniswapV4Migration = async ({
     const totalWethAvailable = isToken0EthOrWeth ? totalToken0.add(amountOut) : totalToken1.add(amountOut);
 
     if (externalParams.bridgeType === BridgeType.Across) {
-      const { migrationHash, interimMessageForSettler } = generateSettlerData(
+      const { interimMessageForSettler } = generateSettlerData(
         sourceChainConfig,
         MigrationMethod.SingleToken,
         externalParams,
@@ -95,14 +95,13 @@ export const startUniswapV4Migration = async ({
             exclusivityDeadline: acrossQuote.deposit.exclusivityDeadline,
           },
         ],
-        migrationHash,
       };
     } else {
       throw new Error('Bridge type not supported');
     }
   } else if (externalParams.migrationMethod === MigrationMethod.DualToken) {
     if (externalParams.bridgeType === BridgeType.Across) {
-      const { migrationHash, interimMessageForSettler } = generateSettlerData(
+      const { interimMessageForSettler } = generateSettlerData(
         sourceChainConfig,
         MigrationMethod.DualToken,
         externalParams,
@@ -171,7 +170,6 @@ export const startUniswapV4Migration = async ({
             exclusivityDeadline: acrossQuote1.deposit.exclusivityDeadline,
           },
         ],
-        migrationHash,
       };
     } else {
       throw new Error('Bridge type not supported');

@@ -68,7 +68,7 @@ export const startUniswapV3Migration = async ({
     if (externalParams.bridgeType === BridgeType.Across) {
       // generate the message that will be passed to the settler on the destination chain
       // note that this is different than the message that is passed to Migrator on the source chain
-      const { migrationHash, interimMessageForSettler } = generateSettlerData(
+      const { interimMessageForSettler } = generateSettlerData(
         sourceChainConfig,
         MigrationMethod.SingleToken,
         externalParams,
@@ -102,14 +102,13 @@ export const startUniswapV3Migration = async ({
             exclusivityDeadline: acrossQuote.deposit.exclusivityDeadline,
           },
         ],
-        migrationHash,
       };
     } else {
       throw new Error('Bridge type not supported');
     }
   } else if (externalParams.migrationMethod === MigrationMethod.DualToken) {
     if (externalParams.bridgeType === BridgeType.Across) {
-      const { migrationHash, interimMessageForSettler } = generateSettlerData(
+      const { interimMessageForSettler } = generateSettlerData(
         sourceChainConfig,
         MigrationMethod.DualToken,
         externalParams,
@@ -174,7 +173,6 @@ export const startUniswapV3Migration = async ({
             exclusivityDeadline: acrossQuote1.deposit.exclusivityDeadline,
           },
         ],
-        migrationHash,
       };
     } else {
       throw new Error('Bridge type not supported');

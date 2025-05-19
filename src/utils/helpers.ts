@@ -10,7 +10,7 @@ import {
   encodeSettlementParams,
   encodeParamsForSettler,
 } from '../actions/encode';
-import { encodeAbiParameters, keccak256, zeroAddress } from 'viem';
+import { zeroAddress } from 'viem';
 import type { ExecutionParams, RequestMigrationParams } from '../types/sdk';
 
 import JSBI from 'jsbi';
@@ -18,31 +18,14 @@ import { getV3Quote } from '../actions/getV3Quote';
 import { chainConfigs, type ChainConfig } from '../chains';
 import { getV4CombinedQuote } from '../actions/getV4CombinedQuote';
 import { NFTSafeTransferFrom } from '../abis/NFTSafeTransferFrom';
-import type { MigrationData } from '../types';
-import { MigrationDataAbi } from '../abis/MigrationData';
 import type { InternalGenerateMigrationParamsInput } from '../types/internal';
-
-export const genMigrationHash = (migrationData: MigrationData): `0x${string}` => {
-  return keccak256(
-    encodeAbiParameters(MigrationDataAbi, [
-      {
-        sourceChainId: migrationData.sourceChainId,
-        migrator: migrationData.migrator,
-        nonce: migrationData.nonce,
-        mode: migrationData.mode == MigrationMethod.SingleToken ? 1 : 2,
-        routesData: migrationData.routesData,
-        settlementData: migrationData.settlementData,
-      },
-    ])
-  );
-};
 
 export const generateSettlerData = (
   sourceChainConfig: ChainConfig,
   migrationMethod: MigrationMethod,
   externalParams: RequestMigrationParams,
   owner: `0x${string}`
-): { migrationHash: `0x${string}`; interimMessageForSettler: `0x${string}` } => {
+): { interimMessageForSettler: `0x${string}` } => {
   // generate mintParams first
   let mintParams: `0x${string}`;
   const additionalParams = {
@@ -89,15 +72,12 @@ export const generateSettlerData = (
     routesData: routesData,
     settlementData: settlementParams,
   };
-
-  const migrationHash = genMigrationHash(migrationData);
   // generate interim message for settler
-  const interimMessageForSettler = encodeParamsForSettler(migrationHash, migrationData);
-  return { migrationHash, interimMessageForSettler };
+  const interimMessageForSettler = encodeParamsForSettler(migrationData);
+  return { interimMessageForSettler };
 };
 
 export const generateMigrationParams = async ({
-  migrationHash,
   externalParams,
   sourceChainConfig,
   destinationChainConfig,
@@ -151,7 +131,6 @@ export const generateMigrationParams = async ({
         ...('hooks' in externalParams && { hooks: externalParams.hooks }),
       },
     },
-    migrationHash,
     {
       sourceChainId: BigInt(externalParams.sourceChainId),
       migrator:

@@ -57,9 +57,9 @@ export type UniswapV4MintParams = {
   token0: `0x${string}`;
   token1: `0x${string}`;
   fee: number;
-  sqrtPriceX96: bigint;
   tickSpacing: number;
   hooks: `0x${string}`;
+  sqrtPriceX96: bigint;
   tickLower: number;
   tickUpper: number;
   swapAmountInMilliBps: number;
