@@ -1,6 +1,7 @@
 import { test, describe, expect } from 'bun:test';
 import { ChainHopperClient } from '../src/client';
 import { getSettlerFees } from '../src/actions/getSettlerFees';
+import { configurePublicClients } from '../src/utils/configurePublicClients';
 
 const rpcUrls = {
   1: Bun.env.MAINNET_RPC_URL!,
@@ -9,8 +10,9 @@ const rpcUrls = {
   8453: Bun.env.BASE_RPC_URL!,
   42161: Bun.env.ARBITRUM_RPC_URL!,
 };
-
 const client = ChainHopperClient.create({ rpcUrls });
+// this is needed to remove block number overrides from other tests
+configurePublicClients(client.chainConfigs, rpcUrls);
 
 describe('getSettlerFees', () => {
   Object.entries(client.chainConfigs).forEach(([chainId, chainConfig]) => {
@@ -24,7 +26,7 @@ describe('getSettlerFees', () => {
       if (chainConfig.UniswapV3AcrossSettler) {
         test('should return fees for UniswapV3AcrossSettler', async () => {
           const fees = await getSettlerFees(chainConfig, chainConfig.UniswapV3AcrossSettler);
-          expect(fees.protocolShareOfSenderFeePct).toBe(10n);
+          expect(fees.protocolShareOfSenderFeePct).toBe(15n);
           expect(fees.protocolShareBps).toBe(10n);
         });
       }
@@ -32,7 +34,7 @@ describe('getSettlerFees', () => {
       if (chainConfig.UniswapV4AcrossSettler) {
         test('should return fees for UniswapV4AcrossSettler', async () => {
           const fees = await getSettlerFees(chainConfig, chainConfig.UniswapV4AcrossSettler);
-          expect(fees.protocolShareOfSenderFeePct).toBe(10n);
+          expect(fees.protocolShareOfSenderFeePct).toBe(15n);
           expect(fees.protocolShareBps).toBe(10n);
         });
       }

@@ -152,15 +152,16 @@ const migrationParams: RequestV3toV4MigrationParams = {
   // ... rest of params
 };
 ```
+
 ### Slippage Params
 
 By default, the SDK uses 1% slippage, which it splits across source chain and destination chain. So, it allows up to 0.5% slippage on source chain and 0.5% on destination chain. You can specify a different amount by passing in `slippageInBps` param.
 
 ```typescript
 const migrationParams: RequestV3toV4MigrationParams = {
-  // .. previous params  
+  // .. previous params
   slippageInBps: 100, // 1% slippage
-  }
+};
 ```
 
 ### Creating a new pool before migration
@@ -169,39 +170,39 @@ ChainHopper Protocol (the smart contracts) supports creating a pool if it doesn'
 
 ## FAQs
 
-*1. What chains are supported?*
+_1. What chains are supported?_
 
 Currently, we support Ethereum, Optimism, Arbitrum, Base and Unichain. Please get in touch if you want us to support additional chains.
 
-*2. Do you have plans to support additional bridges?*
+_2. Do you have plans to support additional bridges?_
 
 Currently, we only support Across. We are considering adding Wormhole and Native Interop. If you have a request, please let us know.
 
-*3. What types of pools or tokens are supported?*
+_3. What types of pools or tokens are supported?_
 
-Besides Fee-on-transfer and rebasing tokens, we support all tokens. 
+Besides Fee-on-transfer and rebasing tokens, we support all tokens.
 
 For pools, as long as there is a bridgeable asset in a pool, we can support it. Though, we caution users when using any pool with hooks, as those can lead to unpredictable scenarios.
 
-*4. Is this protocol Audited?*
+_4. Is this protocol Audited?_
 
 Yes. You can find the audit reports in protocol repository: [ChainHopper Protocol](https://github.com/meliopolis/chainhopper-protocol).
 
-*5. How long does a migration typically take?*
+_5. How long does a migration typically take?_
 
 Most migrations with reasonable slippage (~1%) finish within 10 seconds.
 
-*6. How do fees work?*
+_6. How do fees work?_
 
 You, as the interface, can specify a fee and a recipient address to share that fee with. The protocol takes a 0.1% fee and additionally takes a 15% cut of the interface fee. So, if you specified 0.15% as the interface fee, the user will pay 0.25% which will be split 0.1225% for protocol and 0.1275% for you.
 
-*7. What happens if migration fails midway?*
+_7. What happens if migration fails midway?_
 
-If migration fails on the source chain, nothing happens. User still owns the LP token and can retry. 
+If migration fails on the source chain, nothing happens. User still owns the LP token and can retry.
 
 If migration fails on the destination chian, the bridged asset will be delivered to the user's wallet **on destination chain**. And we will not take any fees for a failed migration.
 
-In extremely rare scenarios, it's possible that an Across relayer was unable to deliver the asset on destination chain. In those situations, the attempted bridged asset - ETH, WETH, USDC - will be returned to the user *on source chain*.
+In extremely rare scenarios, it's possible that an Across relayer was unable to deliver the asset on destination chain. In those situations, the attempted bridged asset - ETH, WETH, USDC - will be returned to the user _on source chain_.
 
 ## Questions/Comments
 
