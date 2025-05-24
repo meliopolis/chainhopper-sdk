@@ -107,15 +107,12 @@ export const encodeMigrationParams = (
   );
   const routesDataForSettler =
     params.tokenRoutes.length > 1
-      ? encodeAbiParameters(
-          RoutesDataAbi,
-          params.tokenRoutes.map((route) => ({
-            token0: route.inputToken,
-            token1: route.outputToken,
-            amount0Min: route.minAmountOut,
-            amount1Min: route.minAmountOut,
-          }))
-        )
+      ? encodeAbiParameters(RoutesDataAbi, [
+          params.tokenRoutes[0].outputToken,
+          params.tokenRoutes[1].outputToken,
+          params.tokenRoutes[0].minAmountOut,
+          params.tokenRoutes[1].minAmountOut,
+        ])
       : '0x';
   return {
     migratorMessage: encodeAbiParameters(MigrationParamsAbi, [

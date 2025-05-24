@@ -139,8 +139,8 @@ export class ChainHopperClient {
     // make sure position has liquidity or fees
     if (
       BigInt(v3Position.position?.liquidity.toString() ?? '0') === BigInt(0) &&
-      (v3Position.uncollectedFees?.amount0.toString() ?? '0') === '0' &&
-      (v3Position.uncollectedFees?.amount1.toString() ?? '0') === '0'
+      (v3Position.uncollectedFees?.amount0.quotient.toString() ?? '0') === '0' &&
+      (v3Position.uncollectedFees?.amount1.quotient.toString() ?? '0') === '0'
     ) {
       throw new Error('Position has no liquidity or fees');
     }
@@ -222,8 +222,8 @@ export class ChainHopperClient {
     // make sure position has liquidity or fees
     if (
       BigInt(v4Position.position?.liquidity.toString() ?? '0') === BigInt(0) &&
-      (v4Position.uncollectedFees?.amount0.toString() ?? '0') === '0' &&
-      (v4Position.uncollectedFees?.amount1.toString() ?? '0') === '0'
+      (v4Position.uncollectedFees?.amount0.quotient.toString() ?? '0') === '0' &&
+      (v4Position.uncollectedFees?.amount1.quotient.toString() ?? '0') === '0'
     ) {
       throw new Error('Position has no liquidity or fees');
     }
