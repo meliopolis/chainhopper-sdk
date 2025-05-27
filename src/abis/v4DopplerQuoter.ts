@@ -39,7 +39,13 @@ export const v4DopplerQuoterAbi: Abi = [
     outputs: [{ name: '', type: 'bytes', internalType: 'bytes' }],
     stateMutability: 'nonpayable',
   },
-  { type: 'function', name: 'poolManager', inputs: [], outputs: [{ name: '', type: 'address', internalType: 'contract IPoolManager' }], stateMutability: 'view' },
+  {
+    type: 'function',
+    name: 'poolManager',
+    inputs: [],
+    outputs: [{ name: '', type: 'address', internalType: 'contract IPoolManager' }],
+    stateMutability: 'view',
+  },
   {
     type: 'function',
     name: 'quoteDopplerLensData',
@@ -73,7 +79,13 @@ export const v4DopplerQuoterAbi: Abi = [
     ],
     stateMutability: 'nonpayable',
   },
-  { type: 'function', name: 'stateView', inputs: [], outputs: [{ name: '', type: 'address', internalType: 'contract IStateView' }], stateMutability: 'view' },
+  {
+    type: 'function',
+    name: 'stateView',
+    inputs: [],
+    outputs: [{ name: '', type: 'address', internalType: 'contract IStateView' }],
+    stateMutability: 'view',
+  },
   {
     type: 'function',
     name: 'unlockCallback',
@@ -81,10 +93,18 @@ export const v4DopplerQuoterAbi: Abi = [
     outputs: [{ name: '', type: 'bytes', internalType: 'bytes' }],
     stateMutability: 'nonpayable',
   },
-  { type: 'error', name: 'DopplerLensData', inputs: [{ name: 'sqrtPriceX96', type: 'uint160', internalType: 'uint160' }] },
+  {
+    type: 'error',
+    name: 'DopplerLensData',
+    inputs: [{ name: 'sqrtPriceX96', type: 'uint160', internalType: 'uint160' }],
+  },
   { type: 'error', name: 'NotEnoughLiquidity', inputs: [{ name: 'poolId', type: 'bytes32', internalType: 'PoolId' }] },
   { type: 'error', name: 'NotPoolManager', inputs: [] },
   { type: 'error', name: 'NotSelf', inputs: [] },
   { type: 'error', name: 'UnexpectedCallSuccess', inputs: [] },
-  { type: 'error', name: 'UnexpectedRevertBytes', inputs: [{ name: 'revertData', type: 'bytes', internalType: 'bytes' }] },
+  {
+    type: 'error',
+    name: 'UnexpectedRevertBytes',
+    inputs: [{ name: 'revertData', type: 'bytes', internalType: 'bytes' }],
+  },
 ];

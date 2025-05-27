@@ -1,3 +1,5 @@
+import { MigrationDataAbi } from './MigrationData';
+
 export const SettlementParamsAbi = [
   {
     name: 'SettlementParams',
@@ -46,20 +48,17 @@ export const V4MintParamsAbi = [
       { internalType: 'uint160', name: 'sqrtPriceX96', type: 'uint160' },
       { internalType: 'int24', name: 'tickLower', type: 'int24' },
       { internalType: 'int24', name: 'tickUpper', type: 'int24' },
-      { internalType: 'uint256', name: 'swapAmountInMilliBps', type: 'uint256' },
+      { internalType: 'uint24', name: 'swapAmountInMilliBps', type: 'uint24' },
       { internalType: 'uint256', name: 'amount0Min', type: 'uint256' },
       { internalType: 'uint256', name: 'amount1Min', type: 'uint256' },
     ],
   },
 ];
 
-export const SettlementParamsForSettlerAbi = [
+export const ParamsForSettlerAbi = [
   {
     name: 'migrationId',
     type: 'bytes32',
   },
-  {
-    name: 'SettlementParams',
-    type: 'bytes',
-  },
+  ...MigrationDataAbi,
 ];

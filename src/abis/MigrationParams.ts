@@ -5,8 +5,8 @@ export const MigrationParamsAbi = [
     components: [
       {
         name: 'chainId',
-        internalType: 'uint32',
-        type: 'uint32',
+        internalType: 'uint256',
+        type: 'uint256',
       },
       {
         name: 'settler',

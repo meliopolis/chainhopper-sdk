@@ -37,26 +37,25 @@ import { RequestV3toV4MigrationParams, Protocol, chainConfigs } from "chainhoppe
 import { zeroAddress } from 'viem';
 
 const migrationParams: RequestV3toV4MigrationParams = {
-  // source info
-  sourceChainId: 8453,
-  sourceProtocol: Protocol.UniswapV3,
+  // source chain, protocol and LP position info
+  sourceChainId: 8453, // Base, in this example
+  sourceProtocol: Protocol.UniswapV3, // source protocol: UniswapV3 or UniswapV4
   tokenId: 1806423n, // change to the position you want to migrate
 
-  // destination info
-  destinationChainId: 130,
+  // destination chain and protocol info
+  destinationChainId: 130, // Unichain, in this example
   destinationProtocol: Protocol.UniswapV4, // can be v3 or v4
 
   // destination pool info
-  token0: zeroAddress, // native ETH on destination chain
+  token0: zeroAddress, // native ETH on destination chain; can be any ERC20 address as well
   token1: chainConfigs[130].usdcAddress, // can be any ERC20 token address
   fee: 500, // set the fee for the pool
   tickSpacing: 10, // set the tick spacing for your pool
   hooks: zeroAddress, // set the address of the hooks for your pool
 
-  // destination position specific info
-  tickLower: -250000; // SDK will automatically calculate the nearest usable tick
-  tickUpper: -150000; // SDK will automatically calculate the nearest usable tick
-  slippageInBps: 100, // 1% slippage
+  // destination position info
+  tickLower: -250000, // SDK will automatically calculate the nearest usable tick
+  tickUpper: -150000, // SDK will automatically calculate the nearest usable tick
   }
 
 const migrationResponse = await client.requestMigration(requestParams);
@@ -64,14 +63,14 @@ const migrationResponse = await client.requestMigration(requestParams);
 console.log(migrationResponse);
 // this will look like the following
 {
-  // source chain params (mostly as a confirmation)
+  // source chain params (returned for confirmation purposes)
   sourceProtocol: Protocol.UniswapV3,
   sourcePosition: Position, // from @uniswap/v3-sdk
   sourceTokenId: 1806423n,
   sourceChainId: 8453,
   owner: '0x4bD047CA72fa05F0B89ad08FE5Ba5ccdC07DFFBF',
 
-  // destination chain
+  // destination chain, protocol and Position that could be created
   destProtocol: Protocol.UniswapV4,
   destPosition: Position, // from @uniswap/v4-sdk (note it's a Uniswap v4 position)
   destChainId: 130,
@@ -84,7 +83,7 @@ console.log(migrationResponse);
   slippageCalcs: {
     swapAmountInMilliBps: 40_000_000, // amount of WETH to be swapped on destination chain
     mintAmount0Min: 84393483n, // min amount of token0 after minting on destination chain
-    mintAmount1Min: 348933n; // min amount of token1 after minting on destination chain
+    mintAmount1Min: 348933n, // min amount of token1 after minting on destination chain
     routeMinAmountOuts: [89939399n] // min amount that the bridge must output
   },
 
@@ -94,10 +93,10 @@ console.log(migrationResponse);
     abi: [...], // abi for `safeTransferFrom` from v3/v4 Position Manager
     functionName: 'safeTransferFrom', // this is how the position is transferred to migrator and liquidated
     args: [
-      '0x...', // owner of the LP position
+      '0x...', // current owner of the LP position (the user)
       '0x...', // address of the migrator contract on source chain
       1806423n, // tokenId
-      '0x...', // migratorMessage
+      '0x...', // migratorMessage (this also encodes the `settlerMessage` and passes it directly through the bridge)
     ]
   }
 }
@@ -124,15 +123,15 @@ const { request } = await walletClient.simulateContract({
 const result = await writeContract(config, request);
 ```
 
-## Advanced Options
+## Advance Options
 
-### Single Token vs Dual Token paths
+### Single Token vs Dual Token migrations
 
 ChainHopper Protocol supports two different methods to migrate a position.
 
-Single Token: converts the entire position into WETH (via a swap on source chain), migrates it and swaps back to the OtherToken on destination chain before minting.
+Single Token: converts the entire position into WETH (or USDC) (via a swap on source chain), migrates that asset to destination chain and swaps back to the OtherToken on destination chain before minting.
 
-Dual Token: moves both tokens over independently and reconstructs the position on destination chain. This is simpler (fewer steps within the smart contract) but limited as both tokens need to be available routes on the bridge. Typically WETH and USDC are primary routes, though our current bridge Across supports [a few others for specific chains](https://app.across.to/api/available-routes). As of now, one of the two tokens in this path must be either WETH or ETH.
+Dual Token: moves both tokens over independently and reconstructs the position on destination chain. This is simpler (fewer steps within the smart contract) but limited as both tokens need to be available as routes on the bridge. Typically WETH and USDC are primary routes, though our current bridge Across supports [a few others for specific chains](https://app.across.to/api/available-routes). As of now, one of the two tokens in this path must be either WETH or ETH.
 
 By default, SDK returns Single Token route. To get a quote for Dual Token:
 
@@ -154,13 +153,56 @@ const migrationParams: RequestV3toV4MigrationParams = {
 };
 ```
 
-### Different bridges
+### Slippage Params
+
+By default, the SDK uses 1% slippage, which it splits across source chain and destination chain. So, it allows up to 0.5% slippage on source chain and 0.5% on destination chain. You can specify a different amount by passing in `slippageInBps` param.
+
+```typescript
+const migrationParams: RequestV3toV4MigrationParams = {
+  // .. previous params
+  slippageInBps: 100, // 1% slippage
+};
+```
+
+### Creating a new pool before migration
+
+ChainHopper Protocol (the smart contracts) supports creating a pool if it doesn't exist already. We are working on adding this functionality to the SDK. If this is blocking you, please get in touch with us.
+
+## FAQs
+
+_1. What chains are supported?_
+
+Currently, we support Ethereum, Optimism, Arbitrum, Base and Unichain. Please get in touch if you want us to support additional chains.
+
+_2. Do you have plans to support additional bridges?_
 
 Currently, we only support Across. We are considering adding Wormhole and Native Interop. If you have a request, please let us know.
 
-### Supported chains
+_3. What types of pools or tokens are supported?_
 
-Currently, we support Ethereum, Optimism, Arbitrum, Base and Unichain. Please get in touch if you want us to support additional chains.
+Besides Fee-on-transfer and rebasing tokens, we support all tokens.
+
+For pools, as long as there is a bridgeable asset in a pool, we can support it. Though, we caution users when using any pool with hooks, as those can lead to unpredictable scenarios.
+
+_4. Is this protocol Audited?_
+
+Yes. You can find the audit reports in protocol repository: [ChainHopper Protocol](https://github.com/meliopolis/chainhopper-protocol).
+
+_5. How long does a migration typically take?_
+
+Most migrations with reasonable slippage (~1%) finish within 10 seconds.
+
+_6. How do fees work?_
+
+You, as the interface, can specify a fee and a recipient address to share that fee with. The protocol takes a 0.1% fee and additionally takes a 15% cut of the interface fee. So, if you specified 0.15% as the interface fee, the user will pay 0.25% which will be split 0.1225% for protocol and 0.1275% for you.
+
+_7. What happens if migration fails midway?_
+
+If migration fails on the source chain, nothing happens. User still owns the LP token and can retry.
+
+If migration fails on the destination chian, the bridged asset will be delivered to the user's wallet **on destination chain**. And we will not take any fees for a failed migration.
+
+In extremely rare scenarios, it's possible that an Across relayer was unable to deliver the asset on destination chain. In those situations, the attempted bridged asset - ETH, WETH, USDC - will be returned to the user _on source chain_.
 
 ## Questions/Comments
 

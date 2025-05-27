@@ -4,7 +4,15 @@ import type { ChainConfig } from '../chains';
 type ChainId = number;
 
 // wraps a viem publicClient to inject a blockNumber override on all read calls for integration testing
-const createBlockScopedClient = ({ transport, chainConfig, blockNumber }: { transport: HttpTransport; chainConfig: ChainConfig; blockNumber: bigint }): PublicClient => {
+const createBlockScopedClient = ({
+  transport,
+  chainConfig,
+  blockNumber,
+}: {
+  transport: HttpTransport;
+  chainConfig: ChainConfig;
+  blockNumber: bigint;
+}): PublicClient => {
   const baseClient = createPublicClient({
     transport: transport,
     chain: chainConfig.chain,
@@ -19,7 +27,9 @@ const createBlockScopedClient = ({ transport, chainConfig, blockNumber }: { tran
       return (...args: unknown[]) => {
         const lastArg = args[args.length - 1];
         const hasOverrides = lastArg && typeof lastArg === 'object' && !Array.isArray(lastArg);
-        const overrides = hasOverrides ? { ...lastArg } : ({} as { blockNumber?: bigint; blockTag?: 'latest' | 'earliest' | 'pending' });
+        const overrides = hasOverrides
+          ? { ...lastArg }
+          : ({} as { blockNumber?: bigint; blockTag?: 'latest' | 'earliest' | 'pending' });
 
         // Inject blockNumber if not already provided
         if (!('blockNumber' in overrides) && !('blockTag' in overrides)) {

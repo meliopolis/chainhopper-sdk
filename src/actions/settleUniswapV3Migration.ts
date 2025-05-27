@@ -1,13 +1,17 @@
 import { CurrencyAmount, Fraction } from '@uniswap/sdk-core';
 import { getV3Pool } from './getV3Pool';
 import { DEFAULT_SLIPPAGE_IN_BPS } from '../utils/constants';
-import { generateMaxV3Position, generateMaxV3orV4PositionWithSwapAllowed, generateMigrationParams } from '../utils/helpers';
+import {
+  generateMaxV3Position,
+  generateMaxV3orV4PositionWithSwapAllowed,
+  generateMigrationParams,
+} from '../utils/helpers';
 import type { InternalSettleMigrationParams, InternalSettleMigrationResult } from '../types/internal';
 import { getSettlerFees } from './getSettlerFees';
 
 export const settleUniswapV3Migration = async ({
+  sourceChainConfig,
   destinationChainConfig,
-  migrationId,
   routes,
   externalParams,
   owner,
@@ -16,10 +20,18 @@ export const settleUniswapV3Migration = async ({
   if (routes.length > 2) throw new Error('Invalid number of routes');
 
   // fetch the pool on the destination chain
-  const pool = await getV3Pool(destinationChainConfig, externalParams.token0, externalParams.token1, externalParams.fee);
+  const pool = await getV3Pool(
+    destinationChainConfig,
+    externalParams.token0,
+    externalParams.token1,
+    externalParams.fee
+  );
 
   // get the settler fees
-  const { protocolShareBps } = await getSettlerFees(destinationChainConfig, destinationChainConfig.UniswapV3AcrossSettler);
+  const { protocolShareBps } = await getSettlerFees(
+    destinationChainConfig,
+    destinationChainConfig.UniswapV3AcrossSettler
+  );
   const settlerFeesInBps = BigInt(protocolShareBps) + BigInt(externalParams.senderShareBps || 0);
 
   if (routes.length === 1) {
@@ -35,8 +47,13 @@ export const settleUniswapV3Migration = async ({
 
     // 1. calculate the max position using the across quote output amount
     const amountIn = route.outputAmount * (1n - settlerFeesInBps / 10_000n);
-    const baseTokenAvailable = CurrencyAmount.fromRawAmount(isWethToken0 ? pool.token0 : pool.token1, amountIn.toString());
-    const otherTokenAvailable = isWethToken0 ? CurrencyAmount.fromRawAmount(pool.token1, 0) : CurrencyAmount.fromRawAmount(pool.token0, 0);
+    const baseTokenAvailable = CurrencyAmount.fromRawAmount(
+      isWethToken0 ? pool.token0 : pool.token1,
+      amountIn.toString()
+    );
+    const otherTokenAvailable = isWethToken0
+      ? CurrencyAmount.fromRawAmount(pool.token1, 0)
+      : CurrencyAmount.fromRawAmount(pool.token0, 0);
     const maxPositionWithSwap = await generateMaxV3orV4PositionWithSwapAllowed(
       destinationChainConfig,
       pool,
@@ -58,8 +75,13 @@ export const settleUniswapV3Migration = async ({
 
     // 2. now we calculate the max position using the routeMinAmountOut
     const amountInUsingRouteMinAmountOut = routeMinAmountOut * (1n - settlerFeesInBps / 10_000n);
-    const baseTokenAvailableUsingRouteMinAmountOut = CurrencyAmount.fromRawAmount(isWethToken0 ? pool.token0 : pool.token1, amountInUsingRouteMinAmountOut.toString());
-    const otherTokenAvailableUsingRouteMinAmountOut = isWethToken0 ? CurrencyAmount.fromRawAmount(pool.token1, 0) : CurrencyAmount.fromRawAmount(pool.token0, 0);
+    const baseTokenAvailableUsingRouteMinAmountOut = CurrencyAmount.fromRawAmount(
+      isWethToken0 ? pool.token0 : pool.token1,
+      amountInUsingRouteMinAmountOut.toString()
+    );
+    const otherTokenAvailableUsingRouteMinAmountOut = isWethToken0
+      ? CurrencyAmount.fromRawAmount(pool.token1, 0)
+      : CurrencyAmount.fromRawAmount(pool.token0, 0);
     const maxPositionWithSwapUsingRouteMinAmountOut = await generateMaxV3orV4PositionWithSwapAllowed(
       destinationChainConfig,
       pool,
@@ -78,21 +100,23 @@ export const settleUniswapV3Migration = async ({
         ? maxPositionWithSwap.amount0.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).quotient
         : maxPositionWithSwap.amount1.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).quotient;
 
-    return generateMigrationParams(
-      migrationId,
+    return generateMigrationParams({
       externalParams,
+      sourceChainConfig,
       destinationChainConfig,
       routes,
-      maxPositionWithSwap,
-      maxPositionWithSwapUsingRouteMinAmountOut,
+      maxPosition: maxPositionWithSwap,
+      maxPositionUsingRouteMinAmountOut: maxPositionWithSwapUsingRouteMinAmountOut,
       owner,
-      10_000_000 - Number(swapAmountInMilliBps.toString())
-    );
+      swapAmountInMilliBps: 10_000_000 - Number(swapAmountInMilliBps.toString()),
+    });
   } else {
     // logically has to be (routes.length) === 2 but needs to look exhaustive for ts compiler
     // make sure both tokens are found in routes
-    if (externalParams.token0 != routes[0].outputToken && externalParams.token0 != routes[1].outputToken) throw new Error('Requested token0 not found in routes');
-    if (externalParams.token1 != routes[0].outputToken && externalParams.token1 != routes[1].outputToken) throw new Error('Requested token1 not found in routes');
+    if (externalParams.token0 != routes[0].outputToken && externalParams.token0 != routes[1].outputToken)
+      throw new Error('Requested token0 not found in routes');
+    if (externalParams.token1 != routes[0].outputToken && externalParams.token1 != routes[1].outputToken)
+      throw new Error('Requested token1 not found in routes');
 
     const token0Available = routes[0].outputAmount * (1n - settlerFeesInBps / 10_000n);
     const token1Available = routes[1].outputAmount * (1n - settlerFeesInBps / 10_000n);
@@ -113,10 +137,30 @@ export const settleUniswapV3Migration = async ({
       settleMinAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, minToken1Available.toString());
     }
 
-    const maxPosition = generateMaxV3Position(pool, settleAmountOut0, settleAmountOut1, externalParams.tickLower, externalParams.tickUpper);
+    const maxPosition = generateMaxV3Position(
+      pool,
+      settleAmountOut0,
+      settleAmountOut1,
+      externalParams.tickLower,
+      externalParams.tickUpper
+    );
 
-    const maxPositionUsingSettleMinAmountsOut = generateMaxV3Position(pool, settleMinAmountOut0, settleMinAmountOut1, externalParams.tickLower, externalParams.tickUpper);
+    const maxPositionUsingSettleMinAmountsOut = generateMaxV3Position(
+      pool,
+      settleMinAmountOut0,
+      settleMinAmountOut1,
+      externalParams.tickLower,
+      externalParams.tickUpper
+    );
 
-    return generateMigrationParams(migrationId, externalParams, destinationChainConfig, routes, maxPosition, maxPositionUsingSettleMinAmountsOut, owner);
+    return generateMigrationParams({
+      externalParams,
+      sourceChainConfig,
+      destinationChainConfig,
+      routes,
+      maxPosition,
+      maxPositionUsingRouteMinAmountOut: maxPositionUsingSettleMinAmountsOut,
+      owner,
+    });
   }
 };

@@ -1,5 +1,11 @@
 import type { Quote } from '@across-protocol/app-sdk';
-import type { RequestMigrationParams, RequestV3MigrationParams, RequestV4MigrationParams, Route, SlippageCalcs } from './sdk';
+import type {
+  RequestMigrationParams,
+  RequestV3MigrationParams,
+  RequestV4MigrationParams,
+  Route,
+  SlippageCalcs,
+} from './sdk';
 import type { Position as V3Position } from '@uniswap/v3-sdk';
 import type { Position as V4Position } from '@uniswap/v4-sdk';
 import type { ChainConfig } from '../chains';
@@ -15,13 +21,12 @@ export type InternalStartMigrationParams = {
 
 export type InternalStartMigrationResult = {
   acrossQuotes: Quote[];
-  migrationId: `0x${string}`;
   routes: Route[];
 };
 
 export type InternalSettleMigrationParams = {
+  sourceChainConfig: ChainConfig;
   destinationChainConfig: ChainConfig;
-  migrationId: `0x${string}`;
   routes: Route[];
   externalParams: RequestMigrationParams;
   owner: `0x${string}`;
@@ -32,4 +37,15 @@ export type InternalSettleMigrationResult = {
   slippageCalcs: SlippageCalcs;
   migratorMessage: `0x${string}`;
   settlerMessage: `0x${string}`;
+};
+
+export type InternalGenerateMigrationParamsInput = {
+  externalParams: RequestMigrationParams;
+  sourceChainConfig: ChainConfig;
+  destinationChainConfig: ChainConfig;
+  routes: Route[];
+  maxPosition: V3Position | V4Position;
+  maxPositionUsingRouteMinAmountOut: V3Position | V4Position;
+  owner: `0x${string}`;
+  swapAmountInMilliBps?: number;
 };

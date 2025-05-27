@@ -1,5 +1,7 @@
 // smart contract related types
 
+import type { MigrationMethod } from '../utils/constants';
+
 // Migrator Params
 
 export type AcrossRoute = {
@@ -17,14 +19,22 @@ export type TokenRoute = AcrossRoute & {
 };
 
 export type MigrationParams = {
-  chainId: number;
+  chainId: bigint;
   settler: `0x${string}`;
   tokenRoutes: TokenRoute[];
   settlementParams: SettlementParams & (UniswapV3MintParams | UniswapV4MintParams);
 };
 
-// Settlement Params
+export type MigrationData = {
+  sourceChainId: bigint;
+  migrator: `0x${string}`;
+  nonce: bigint;
+  mode: MigrationMethod;
+  routesData?: `0x${string}`;
+  settlementData?: `0x${string}`;
+};
 
+// Settlement Params
 export type SettlementParams = {
   recipient: `0x${string}`;
   senderShareBps: number;
@@ -47,9 +57,9 @@ export type UniswapV4MintParams = {
   token0: `0x${string}`;
   token1: `0x${string}`;
   fee: number;
-  sqrtPriceX96: bigint;
   tickSpacing: number;
   hooks: `0x${string}`;
+  sqrtPriceX96: bigint;
   tickLower: number;
   tickUpper: number;
   swapAmountInMilliBps: number;

@@ -1,7 +1,28 @@
-import { SettlementParamsForSettlerAbi, SettlementParamsAbi, V4MintParamsAbi, V3MintParamsAbi } from '../abis/SettlementParams';
+import { SettlementParamsAbi, V4MintParamsAbi, V3MintParamsAbi, ParamsForSettlerAbi } from '../abis/SettlementParams';
 import { MigrationParamsAbi, RouteAbi } from '../abis/MigrationParams';
-import type { MigrationParams, SettlementParams, UniswapV3MintParams, UniswapV4MintParams } from '../types';
-import { encodeAbiParameters } from 'viem';
+import type {
+  MigrationData,
+  MigrationParams,
+  SettlementParams,
+  UniswapV3MintParams,
+  UniswapV4MintParams,
+} from '../types';
+import { encodeAbiParameters, keccak256 } from 'viem';
+import { MigrationMethod } from '../utils/constants';
+import { MigrationDataComponentsAbi, RoutesDataAbi } from '../abis/MigrationData';
+
+export const genMigrationId = (migrationData: MigrationData): `0x${string}` => {
+  return keccak256(
+    encodeAbiParameters(MigrationDataComponentsAbi, [
+      migrationData.sourceChainId,
+      migrationData.migrator,
+      migrationData.nonce,
+      migrationData.mode == MigrationMethod.SingleToken ? 1 : 2,
+      migrationData.routesData || '0x',
+      migrationData.settlementData || '0x',
+    ])
+  );
+};
 
 export const encodeMintParamsForV3 = (params: UniswapV3MintParams): `0x${string}` => {
   return encodeAbiParameters(V3MintParamsAbi, [
@@ -25,9 +46,9 @@ export const encodeMintParamsForV4 = (params: UniswapV4MintParams): `0x${string}
       token0: params.token0,
       token1: params.token1,
       fee: params.fee,
-      sqrtPriceX96: params.sqrtPriceX96,
       tickSpacing: params.tickSpacing,
       hooks: params.hooks,
+      sqrtPriceX96: params.sqrtPriceX96,
       tickLower: params.tickLower,
       tickUpper: params.tickUpper,
       amount0Min: params.amount0Min,
@@ -48,11 +69,24 @@ export const encodeSettlementParams = (params: SettlementParams, mintParams: `0x
   ]);
 };
 
-export const encodeSettlementParamsForSettler = (settlementParams: `0x${string}`, migrationId: `0x${string}`): `0x${string}` => {
-  return encodeAbiParameters(SettlementParamsForSettlerAbi, [migrationId, settlementParams]);
+export const encodeParamsForSettler = (migrationData: MigrationData): `0x${string}` => {
+  return encodeAbiParameters(ParamsForSettlerAbi, [
+    genMigrationId(migrationData),
+    {
+      sourceChainId: migrationData.sourceChainId,
+      migrator: migrationData.migrator,
+      nonce: migrationData.nonce,
+      mode: migrationData.mode == MigrationMethod.SingleToken ? 1 : 2,
+      routesData: migrationData.routesData,
+      settlementData: migrationData.settlementData,
+    },
+  ]);
 };
 
-export const encodeMigrationParams = (params: MigrationParams, migrationId: `0x${string}`): { migratorMessage: `0x${string}`; settlerMessage: `0x${string}` } => {
+export const encodeMigrationParams = (
+  params: MigrationParams,
+  migrationData: MigrationData
+): { migratorMessage: `0x${string}`; settlerMessage: `0x${string}` } => {
   const mintParams =
     'hooks' in params.settlementParams
       ? encodeMintParamsForV4(params.settlementParams as SettlementParams & UniswapV4MintParams)
@@ -71,6 +105,15 @@ export const encodeMigrationParams = (params: MigrationParams, migrationId: `0x$
       },
     ])
   );
+  const routesDataForSettler =
+    params.tokenRoutes.length > 1
+      ? encodeAbiParameters(RoutesDataAbi, [
+          params.tokenRoutes[0].outputToken,
+          params.tokenRoutes[1].outputToken,
+          params.tokenRoutes[0].minAmountOut,
+          params.tokenRoutes[1].minAmountOut,
+        ])
+      : '0x';
   return {
     migratorMessage: encodeAbiParameters(MigrationParamsAbi, [
       {
@@ -84,6 +127,10 @@ export const encodeMigrationParams = (params: MigrationParams, migrationId: `0x$
         settlementParams,
       },
     ]),
-    settlerMessage: encodeSettlementParamsForSettler(settlementParams, migrationId),
+    settlerMessage: encodeParamsForSettler({
+      ...migrationData,
+      routesData: routesDataForSettler,
+      settlementData: settlementParams,
+    }),
   };
 };

@@ -41,7 +41,7 @@ export default [
         1,
         {
           endOfLine: 'lf',
-          printWidth: 180,
+          printWidth: 120,
           semi: true,
           singleQuote: true,
           tabWidth: 2,

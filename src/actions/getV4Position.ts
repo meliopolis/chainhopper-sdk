@@ -33,7 +33,10 @@ const extract24BitsAsSigned = (positionInfo: bigint, shift: bigint): number => {
   }
 };
 
-export const getV4Position = async (chainConfig: ChainConfig, params: IUniswapPositionParams): Promise<IV4PositionWithUncollectedFees> => {
+export const getV4Position = async (
+  chainConfig: ChainConfig,
+  params: IUniswapPositionParams
+): Promise<IV4PositionWithUncollectedFees> => {
   const { tokenId } = params;
 
   // get position details
@@ -71,7 +74,12 @@ export const getV4Position = async (chainConfig: ChainConfig, params: IUniswapPo
   const positionId = keccak256(
     encodePacked(
       ['address', 'int24', 'int24', 'bytes32'],
-      [chainConfig.v4PositionManagerContract?.address as `0x${string}`, tickLower as number, tickUpper as number, pad(tokenId?.toString(16) as `0x${string}`)]
+      [
+        chainConfig.v4PositionManagerContract?.address as `0x${string}`,
+        tickLower as number,
+        tickUpper as number,
+        pad(tokenId?.toString(16) as `0x${string}`),
+      ]
     )
   );
   const feeGrowthCallResult = (

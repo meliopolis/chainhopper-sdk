@@ -2,7 +2,10 @@ import type { ChainConfig } from '../chains';
 import { ProtocolFeesAbi } from '../abis/ProtocolFees';
 import type { Abi } from 'viem';
 
-export const getSettlerFees = async (chainConfig: ChainConfig, settler: `0x${string}` | undefined): Promise<{ protocolShareOfSenderFeePct: bigint; protocolShareBps: bigint }> => {
+export const getSettlerFees = async (
+  chainConfig: ChainConfig,
+  settler: `0x${string}` | undefined
+): Promise<{ protocolShareOfSenderFeePct: bigint; protocolShareBps: bigint }> => {
   if (!settler) {
     return { protocolShareOfSenderFeePct: 0n, protocolShareBps: 0n };
   }

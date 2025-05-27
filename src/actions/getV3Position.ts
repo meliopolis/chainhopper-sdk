@@ -7,7 +7,20 @@ import { erc20Abi } from 'viem';
 import type { IUniswapPositionParams } from '../types';
 const MAX_UINT128: bigint = BigInt(2) ** BigInt(127);
 
-type IPositionsCallResult = [bigint, string, string, string, number, number, number, bigint, bigint, bigint, bigint, bigint];
+type IPositionsCallResult = [
+  bigint,
+  string,
+  string,
+  string,
+  number,
+  number,
+  number,
+  bigint,
+  bigint,
+  bigint,
+  bigint,
+  bigint,
+];
 type IPoolCallResult = [[bigint, number, number, number, number, number, boolean], bigint];
 type ILPFeeCallResult = [bigint, bigint];
 
@@ -29,7 +42,10 @@ export type IV3PositionWithUncollectedFees = {
   };
 };
 
-export const getV3Position = async (chainConfig: ChainConfig, params: IUniswapPositionParams): Promise<IV3PositionWithUncollectedFees> => {
+export const getV3Position = async (
+  chainConfig: ChainConfig,
+  params: IUniswapPositionParams
+): Promise<IV3PositionWithUncollectedFees> => {
   const publicClient = chainConfig.publicClient;
   const positionManagerResult = await publicClient?.multicall({
     contracts: [
@@ -158,8 +174,20 @@ export const getV3Position = async (chainConfig: ChainConfig, params: IUniswapPo
     );
 
   const pool = new Pool(
-    new Token(params.chainId, positionsCallData.token0, tokenData?.[0]?.[0] as number, tokenData?.[0]?.[1] as string, tokenData?.[0]?.[2] as string),
-    new Token(params.chainId, positionsCallData.token1, tokenData?.[1]?.[0] as number, tokenData?.[1]?.[1] as string, tokenData?.[1]?.[2] as string),
+    new Token(
+      params.chainId,
+      positionsCallData.token0,
+      tokenData?.[0]?.[0] as number,
+      tokenData?.[0]?.[1] as string,
+      tokenData?.[0]?.[2] as string
+    ),
+    new Token(
+      params.chainId,
+      positionsCallData.token1,
+      tokenData?.[1]?.[0] as number,
+      tokenData?.[1]?.[1] as string,
+      tokenData?.[1]?.[2] as string
+    ),
     positionsCallData.feeTier,
     poolData.sqrtPriceX96.toString(),
     poolData.liquidity.toString(),

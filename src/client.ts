@@ -90,7 +90,10 @@ export class ChainHopperClient {
     }
 
     // check migration method
-    if (params.migrationMethod !== MigrationMethod.SingleToken && params.migrationMethod !== MigrationMethod.DualToken) {
+    if (
+      params.migrationMethod !== MigrationMethod.SingleToken &&
+      params.migrationMethod !== MigrationMethod.DualToken
+    ) {
       params.migrationMethod = MigrationMethod.SingleToken;
     }
 
@@ -136,14 +139,14 @@ export class ChainHopperClient {
     // make sure position has liquidity or fees
     if (
       BigInt(v3Position.position?.liquidity.toString() ?? '0') === BigInt(0) &&
-      (v3Position.uncollectedFees?.amount0.toString() ?? '0') === '0' &&
-      (v3Position.uncollectedFees?.amount1.toString() ?? '0') === '0'
+      (v3Position.uncollectedFees?.amount0.quotient.toString() ?? '0') === '0' &&
+      (v3Position.uncollectedFees?.amount1.quotient.toString() ?? '0') === '0'
     ) {
       throw new Error('Position has no liquidity or fees');
     }
 
     // start migration on source chain
-    const { routes, migrationId } = await startUniswapV3Migration({
+    const { routes } = await startUniswapV3Migration({
       sourceChainConfig: this.chainConfigs[sourceChainId],
       destinationChainConfig: this.chainConfigs[destinationChainId],
       positionWithUncollectedFees: v3Position,
@@ -160,8 +163,8 @@ export class ChainHopperClient {
     };
     if (destinationProtocol === Protocol.UniswapV3) {
       const v3Settlement = await settleUniswapV3Migration({
+        sourceChainConfig: this.chainConfigs[sourceChainId],
         destinationChainConfig: this.chainConfigs[destinationChainId],
-        migrationId,
         routes,
         externalParams: params as RequestV3toV3MigrationParams,
         owner: v3Position.owner,
@@ -182,8 +185,8 @@ export class ChainHopperClient {
       };
     } else if (destinationProtocol === Protocol.UniswapV4) {
       const v4Settlement = await settleUniswapV4Migration({
+        sourceChainConfig: this.chainConfigs[sourceChainId],
         destinationChainConfig: this.chainConfigs[destinationChainId],
-        migrationId,
         routes,
         externalParams: params as RequestV3toV4MigrationParams,
         owner: v3Position.owner,
@@ -219,14 +222,14 @@ export class ChainHopperClient {
     // make sure position has liquidity or fees
     if (
       BigInt(v4Position.position?.liquidity.toString() ?? '0') === BigInt(0) &&
-      (v4Position.uncollectedFees?.amount0.toString() ?? '0') === '0' &&
-      (v4Position.uncollectedFees?.amount1.toString() ?? '0') === '0'
+      (v4Position.uncollectedFees?.amount0.quotient.toString() ?? '0') === '0' &&
+      (v4Position.uncollectedFees?.amount1.quotient.toString() ?? '0') === '0'
     ) {
       throw new Error('Position has no liquidity or fees');
     }
 
     // start migration on source chain
-    const { routes, migrationId } = await startUniswapV4Migration({
+    const { routes } = await startUniswapV4Migration({
       sourceChainConfig: this.chainConfigs[sourceChainId],
       destinationChainConfig: this.chainConfigs[destinationChainId],
       positionWithUncollectedFees: v4Position,
@@ -244,8 +247,8 @@ export class ChainHopperClient {
     };
     if (destinationProtocol === Protocol.UniswapV3) {
       const v3Settlement = await settleUniswapV3Migration({
+        sourceChainConfig: this.chainConfigs[sourceChainId],
         destinationChainConfig: this.chainConfigs[destinationChainId],
-        migrationId,
         routes,
         externalParams: params as RequestV4toV3MigrationParams,
         owner: v4Position.owner,
@@ -265,8 +268,8 @@ export class ChainHopperClient {
       };
     } else if (destinationProtocol === Protocol.UniswapV4) {
       const v4Settlement = await settleUniswapV4Migration({
+        sourceChainConfig: this.chainConfigs[sourceChainId],
         destinationChainConfig: this.chainConfigs[destinationChainId],
-        migrationId,
         routes,
         externalParams: params as RequestV4toV4MigrationParams,
         owner: v4Position.owner,

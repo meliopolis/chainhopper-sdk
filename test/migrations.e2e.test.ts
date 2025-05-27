@@ -1,6 +1,5 @@
-import { test, describe, expect, beforeAll } from 'bun:test';
+import { test, describe, expect, beforeAll, mock, afterEach } from 'bun:test';
 import { ChainHopperClient } from '../src/client';
-import { configurePublicClients } from '../src/utils/configurePublicClients';
 import { Protocol, BridgeType, MigrationMethod, NATIVE_ETH_ADDRESS } from '../src/utils/constants';
 import type {
   RequestV3toV4MigrationParams,
@@ -10,10 +9,18 @@ import type {
   RequestMigrationResponse,
   RequestMigrationParams,
 } from '../src/types/sdk';
-import { Pool as V4Pool } from '@uniswap/v4-sdk';
+import { Position as V4Position, Pool as V4Pool } from '@uniswap/v4-sdk';
+import { Position as V3Position, Pool as V3Pool } from '@uniswap/v3-sdk';
 import { IV3PositionWithUncollectedFees, IV4PositionWithUncollectedFees } from '../src/actions';
+import { Quote } from '@across-protocol/app-sdk';
+import { ModuleMocker } from './ModuleMocker';
+import { zeroAddress } from 'viem';
+import { CurrencyAmount, Ether, Token } from '@uniswap/sdk-core';
+import { TickMath } from '@uniswap/v3-sdk';
 
 let client: ReturnType<typeof ChainHopperClient.create>;
+const moduleMocker = new ModuleMocker();
+const ownerAddress = '0x0000000000000000000000000000000000000001';
 
 beforeAll(() => {
   const rpcUrls = {
@@ -24,18 +31,11 @@ beforeAll(() => {
     42161: Bun.env.ARBITRUM_RPC_URL!,
   };
 
-  // approx 17:12:38 UTC on Apr 28, 2025
-  const blockNumbers = {
-    1: 22369267n,
-    10: 135130791n,
-    130: 15115599n,
-    8453: 29537305n,
-    42161: 331163184n,
-  };
-
-  // get client and override block numbers for read calls
   client = ChainHopperClient.create({ rpcUrls });
-  configurePublicClients(client.chainConfigs, rpcUrls, blockNumbers);
+});
+
+afterEach(() => {
+  moduleMocker.clear();
 });
 
 const validateMigrationResponse = (params: RequestMigrationParams, result: RequestMigrationResponse): void => {
@@ -79,11 +79,17 @@ const validateMigrationResponse = (params: RequestMigrationParams, result: Reque
   expect(executionParams.args[2]).toBe(params.tokenId);
   expect(executionParams.args[3]).toBe(result.migratorMessage);
   if (params.sourceProtocol === Protocol.UniswapV3) {
-    expect(executionParams.address).toBe(client.chainConfigs[params.sourceChainId].v3NftPositionManagerContract.address);
-    expect(executionParams.args[1]).toBe(client.chainConfigs[params.sourceChainId].UniswapV3AcrossMigrator as `0x${string}`);
+    expect(executionParams.address).toBe(
+      client.chainConfigs[params.sourceChainId].v3NftPositionManagerContract.address
+    );
+    expect(executionParams.args[1]).toBe(
+      client.chainConfigs[params.sourceChainId].UniswapV3AcrossMigrator as `0x${string}`
+    );
   } else {
     expect(executionParams.address).toBe(client.chainConfigs[params.sourceChainId].v4PositionManagerContract.address);
-    expect(executionParams.args[1]).toBe(client.chainConfigs[params.sourceChainId].UniswapV4AcrossMigrator as `0x${string}`);
+    expect(executionParams.args[1]).toBe(
+      client.chainConfigs[params.sourceChainId].UniswapV4AcrossMigrator as `0x${string}`
+    );
   }
 };
 
@@ -194,25 +200,66 @@ describe('invalid migrations', () => {
       bridgeType: BridgeType.Across,
       migrationMethod: MigrationMethod.SingleToken,
       token0: NATIVE_ETH_ADDRESS,
-      token1: '0x532f27101965dd16442E59d40670FaF5eBB142E4',
+      token1: client.chainConfigs[130].usdcAddress,
       tickLower: 62200,
       tickUpper: 103800,
       fee: 10000,
       tickSpacing: 200,
       hooks: '0x0000000000000000000000000000000000000000',
     };
-    try {
-      await client.requestMigration(params);
-    } catch (e) {
-      expect(e.message.includes("doesn't have enough funds to support this deposit") || e.message.includes('Amount exceeds max. deposit limit')).toBe(true);
-    }
+    await moduleMocker.mock('@across-protocol/app-sdk', () => ({
+      AcrossClient: {
+        create: mock(() => {
+          return {
+            getQuote: (): Promise<Quote> => {
+              throw new Error("doesn't have enough funds to support this deposit");
+            },
+          };
+        }),
+      },
+    }));
+    expect(async () => await client.requestMigration(params)).toThrow(
+      "doesn't have enough funds to support this deposit"
+    );
   });
 
   test("reject migration where a token can't be found on the destination chain", async () => {
+    const sourceChainId = 8453;
+    const token0 = client.chainConfigs[sourceChainId].wethAddress;
+    const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+    const fee = 500;
+
+    await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+      getV3Position: mock(() => {
+        const tickCurrent = 100;
+        const liquidity = 1_000_000_000n;
+        const pool = new V3Pool(
+          new Token(sourceChainId, token0, 18, 'WETH'),
+          new Token(sourceChainId, token1, 18, 'USDC'),
+          fee,
+          BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+          liquidity.toString(),
+          tickCurrent
+        );
+        return {
+          owner: ownerAddress,
+          position: new V3Position({
+            pool,
+            liquidity: 1_000_000_000_000,
+            tickLower: 10,
+            tickUpper: 500,
+          }),
+          uncollectedFees: {
+            amount0: CurrencyAmount.fromRawAmount(pool.token0, '0'),
+            amount1: CurrencyAmount.fromRawAmount(pool.token1, '0'),
+          },
+        };
+      }),
+    }));
     const params: RequestV3toV4MigrationParams = {
       sourceChainId: 8453,
       destinationChainId: 130,
-      tokenId: 1638928n,
+      tokenId: 104758n,
       sourceProtocol: Protocol.UniswapV3,
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: BridgeType.Across,
@@ -236,7 +283,7 @@ describe('invalid migrations', () => {
     const params: RequestV3toV4MigrationParams = {
       sourceChainId: 8453,
       destinationChainId: 130,
-      tokenId: 1638928n,
+      tokenId: 104758n,
       sourceProtocol: Protocol.UniswapV3,
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: BridgeType.Across,
@@ -310,7 +357,7 @@ describe('invalid migrations', () => {
       const params: RequestV4toV3MigrationParams = {
         sourceChainId: 130,
         destinationChainId: 8453,
-        tokenId: 64594n,
+        tokenId: 1000n,
         sourceProtocol: Protocol.UniswapV4,
         destinationProtocol: Protocol.UniswapV3,
         bridgeType: BridgeType.Across,
@@ -352,27 +399,58 @@ describe('invalid migrations', () => {
   });
 
   test('reject migration from v4 where neither token is weth or eth', async () => {
-    try {
-      const params: RequestV4toV4MigrationParams = {
-        sourceChainId: 8453,
-        destinationChainId: 130,
-        tokenId: 13300n,
-        sourceProtocol: Protocol.UniswapV4,
-        destinationProtocol: Protocol.UniswapV4,
-        bridgeType: BridgeType.Across,
-        migrationMethod: MigrationMethod.SingleToken,
-        token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
-        token1: '0x588CE4F028D8e7B53B687865d6A67b3A54C75518',
-        tickLower: -887220,
-        tickUpper: 887220,
-        fee: 500,
-        tickSpacing: 10,
-        hooks: '0x0000000000000000000000000000000000000000',
-      };
-      await client.requestMigration(params);
-    } catch (e) {
-      expect(e.message).toContain('ETH/WETH not found in position');
-    }
+    const token0 = '0x078D782b760474a361dDA0AF3839290b0EF57AD6';
+    const token1 = '0x588CE4F028D8e7B53B687865d6A67b3A54C75518';
+    const fee = 500;
+    const tickSpacing = 10;
+    const hooks = '0x0000000000000000000000000000000000000000';
+
+    await moduleMocker.mock('../src/actions/getV4Position.ts', () => ({
+      getV4Position: mock(() => {
+        const tickCurrent = 10;
+        const liquidity = 1000n;
+        const pool = new V4Pool(
+          new Token(1, token0, 18, 'RANDOM1'),
+          new Token(1, token1, 18, 'RANDOM2'),
+          fee,
+          tickSpacing,
+          hooks,
+          BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+          liquidity.toString(),
+          tickCurrent
+        );
+        return {
+          owner: ownerAddress,
+          position: new V4Position({
+            pool,
+            liquidity: liquidity.toString(),
+            tickLower: 0,
+            tickUpper: 100,
+          }),
+          uncollectedFees: {
+            amount0: CurrencyAmount.fromRawAmount(pool.token0, '0'),
+            amount1: CurrencyAmount.fromRawAmount(pool.token1, '0'),
+          },
+        };
+      }),
+    }));
+    const params: RequestV4toV4MigrationParams = {
+      sourceChainId: 8453,
+      destinationChainId: 130,
+      tokenId: 10249n,
+      sourceProtocol: Protocol.UniswapV4,
+      destinationProtocol: Protocol.UniswapV4,
+      bridgeType: BridgeType.Across,
+      migrationMethod: MigrationMethod.SingleToken,
+      token0,
+      token1,
+      tickLower: -88700,
+      tickUpper: 88700,
+      fee,
+      tickSpacing,
+      hooks,
+    };
+    expect(async () => await client.requestMigration(params)).toThrow('ETH/WETH not found in position');
   });
 });
 
@@ -383,7 +461,7 @@ describe('in-range v3→ migrations', () => {
 
   beforeAll(async () => {
     v3ChainId = 1;
-    v3TokenId = 963499n;
+    v3TokenId = 963499n; // https://app.uniswap.org/positions/v3/ethereum/963499
     v3Response = await client.getV3Position({
       chainId: v3ChainId,
       tokenId: v3TokenId,
@@ -512,7 +590,7 @@ describe('in-range v4→ migrations', () => {
 
   beforeAll(async () => {
     v4ChainId = 130;
-    v4TokenId = 64594n;
+    v4TokenId = 5000n; // https://app.uniswap.org/positions/v4/unichain/5000
     v4Response = await client.getV4Position({
       chainId: v4ChainId,
       tokenId: v4TokenId,
@@ -528,11 +606,11 @@ describe('in-range v4→ migrations', () => {
       destinationProtocol: Protocol.UniswapV3,
       bridgeType: BridgeType.Across,
       migrationMethod: MigrationMethod.SingleToken,
-      token0: '0x4200000000000000000000000000000000000006',
-      token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+      token0: client.chainConfigs[8453].wethAddress,
+      token1: client.chainConfigs[8453].usdcAddress,
       tickLower: v4Response.position.tickLower,
       tickUpper: v4Response.position.tickUpper,
-      fee: v4Response.position.pool.fee,
+      fee: 100,
     };
     validateMigrationResponse(params, await client.requestMigration(params));
   });
@@ -564,19 +642,16 @@ describe('in-range v4→ migrations', () => {
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: BridgeType.Across,
       migrationMethod: MigrationMethod.SingleToken,
-      token0: '0x4200000000000000000000000000000000000006',
-      token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+      token0: zeroAddress,
+      token1: client.chainConfigs[8453].usdcAddress,
       tickLower: v4Response.position.tickLower,
       tickUpper: v4Response.position.tickUpper,
-      fee: v4Response.position.pool.fee,
-      hooks: '0x0000000000000000000000000000000000000000',
-      tickSpacing: v4Response.position.pool.tickSpacing,
+      fee: 10000,
+      hooks: zeroAddress,
+      tickSpacing: 200,
+      slippageInBps: 6,
     };
-    try {
-      validateMigrationResponse(params, await client.requestMigration(params));
-    } catch (e) {
-      expect(e.message).toBe('Price impact exceeds slippage');
-    }
+    expect(async () => await client.requestMigration(params)).toThrow('Price impact exceeds slippage');
   });
 
   test('generate valid unichain v4 → base v4 dual-token migration', async () => {
@@ -588,12 +663,12 @@ describe('in-range v4→ migrations', () => {
       destinationProtocol: Protocol.UniswapV4,
       bridgeType: BridgeType.Across,
       migrationMethod: MigrationMethod.DualToken,
-      token0: '0x4200000000000000000000000000000000000006',
-      token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+      token0: zeroAddress,
+      token1: client.chainConfigs[8453].usdcAddress,
       tickLower: v4Response.position.tickLower,
       tickUpper: v4Response.position.tickUpper,
       fee: v4Response.position.pool.fee,
-      hooks: '0x0000000000000000000000000000000000000000',
+      hooks: zeroAddress,
       tickSpacing: v4Response.position.pool.tickSpacing,
     };
     validateMigrationResponse(params, await client.requestMigration(params));
@@ -605,7 +680,7 @@ describe('flipped token order between chains', () => {
     const params: RequestV4toV3MigrationParams = {
       sourceChainId: 8453,
       destinationChainId: 130,
-      tokenId: 46001n,
+      tokenId: 17447n,
       sourceProtocol: Protocol.UniswapV4,
       destinationProtocol: Protocol.UniswapV3,
       bridgeType: BridgeType.Across,
@@ -743,8 +818,44 @@ describe('out of range v4→ migrations', () => {
   describe('single token', () => {
     describe('current price below requested range', () => {
       test('generate valid unichain v4 → base v4 migration', async () => {
+        const sourceChainId = 130;
+        // const token0 = NATIVE_ETH_ADDRESS;
+        const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+        const fee = 500;
+        const tickSpacing = 10;
+        const hooks = '0x0000000000000000000000000000000000000000';
+
+        await moduleMocker.mock('../src/actions/getV4Position.ts', () => ({
+          getV4Position: mock(() => {
+            const tickCurrent = 10;
+            const liquidity = 1_000_000_000n;
+            const pool = new V4Pool(
+              Ether.onChain(sourceChainId),
+              new Token(sourceChainId, token1, 18, 'USDC'),
+              fee,
+              tickSpacing,
+              hooks,
+              BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+              liquidity.toString(),
+              tickCurrent
+            );
+            return {
+              owner: ownerAddress,
+              position: new V4Position({
+                pool,
+                liquidity: 1_000_000_000_000_000_000,
+                tickLower: 50,
+                tickUpper: 100,
+              }),
+              uncollectedFees: {
+                amount0: CurrencyAmount.fromRawAmount(pool.token0, '0'),
+                amount1: CurrencyAmount.fromRawAmount(pool.token1, '0'),
+              },
+            };
+          }),
+        }));
         const params: RequestV4toV4MigrationParams = {
-          sourceChainId: 130,
+          sourceChainId,
           destinationChainId: 8453,
           tokenId: v4TokenId,
           sourceProtocol: Protocol.UniswapV4,
@@ -764,6 +875,42 @@ describe('out of range v4→ migrations', () => {
     });
     describe('current price above requested range', () => {
       test('generate valid unichain v4 → base v4 migration', async () => {
+        const sourceChainId = 130;
+        // const token0 = NATIVE_ETH_ADDRESS;
+        const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+        const fee = 500;
+        const tickSpacing = 10;
+        const hooks = '0x0000000000000000000000000000000000000000';
+
+        await moduleMocker.mock('../src/actions/getV4Position.ts', () => ({
+          getV4Position: mock(() => {
+            const tickCurrent = 100;
+            const liquidity = 1_000_000_000n;
+            const pool = new V4Pool(
+              Ether.onChain(sourceChainId),
+              new Token(sourceChainId, token1, 18, 'USDC'),
+              fee,
+              tickSpacing,
+              hooks,
+              BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+              liquidity.toString(),
+              tickCurrent
+            );
+            return {
+              owner: ownerAddress,
+              position: new V4Position({
+                pool,
+                liquidity: 1_000_000_000_000,
+                tickLower: 10,
+                tickUpper: 50,
+              }),
+              uncollectedFees: {
+                amount0: CurrencyAmount.fromRawAmount(pool.token0, '0'),
+                amount1: CurrencyAmount.fromRawAmount(pool.token1, '0'),
+              },
+            };
+          }),
+        }));
         const params: RequestV4toV4MigrationParams = {
           sourceChainId: 130,
           destinationChainId: 8453,
@@ -786,28 +933,62 @@ describe('out of range v4→ migrations', () => {
   });
 
   describe('dual token', () => {
-    test('mainnet v3 → unichain v4 migration throws unsupported token address', async () => {
-      try {
-        const params: RequestV4toV4MigrationParams = {
-          sourceChainId: 130,
-          destinationChainId: 8453,
-          tokenId: v4TokenId,
-          sourceProtocol: Protocol.UniswapV4,
-          destinationProtocol: Protocol.UniswapV4,
-          bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.DualToken,
-          token0: NATIVE_ETH_ADDRESS,
-          token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-          tickLower: -206230,
-          tickUpper: -202230,
-          fee: v4Response.position.pool.fee,
-          tickSpacing: v4Response.position.pool.tickSpacing,
-          hooks: '0x0000000000000000000000000000000000000000',
-        };
-        validateMigrationResponse(params, await client.requestMigration(params));
-      } catch (e) {
-        expect(e.message).toContain('Unsupported token address on given destination chain');
-      }
+    test('mainnet v4 → unichain v4 migration throws unsupported token address', async () => {
+      const sourceChainId = 130;
+      const token0 = client.chainConfigs[sourceChainId].wethAddress;
+      const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+      const fee = 500;
+      const tickSpacing = 10;
+      const hooks = '0x0000000000000000000000000000000000000000';
+
+      await moduleMocker.mock('../src/actions/getV4Position.ts', () => ({
+        getV4Position: mock(() => {
+          const tickCurrent = 100;
+          const liquidity = 1_000_000_000n;
+          const pool = new V4Pool(
+            new Token(sourceChainId, token0, 18, 'WETH'),
+            new Token(sourceChainId, token1, 18, 'USDC'),
+            fee,
+            tickSpacing,
+            hooks,
+            BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+            liquidity.toString(),
+            tickCurrent
+          );
+          return {
+            owner: ownerAddress,
+            position: new V4Position({
+              pool,
+              liquidity: 1_000_000_000,
+              tickLower: 10,
+              tickUpper: 500,
+            }),
+            uncollectedFees: {
+              amount0: CurrencyAmount.fromRawAmount(pool.token0, 1_000_000_000_000_000),
+              amount1: CurrencyAmount.fromRawAmount(pool.token1, 1_000_000_00),
+            },
+          };
+        }),
+      }));
+      const params: RequestV4toV4MigrationParams = {
+        sourceChainId: 130,
+        destinationChainId: 8453,
+        tokenId: v4TokenId,
+        sourceProtocol: Protocol.UniswapV4,
+        destinationProtocol: Protocol.UniswapV4,
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.DualToken,
+        token0: NATIVE_ETH_ADDRESS,
+        token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+        tickLower: -206230,
+        tickUpper: -202230,
+        fee: v4Response.position.pool.fee,
+        tickSpacing: v4Response.position.pool.tickSpacing,
+        hooks: '0x0000000000000000000000000000000000000000',
+      };
+      expect(async () => await client.requestMigration(params)).toThrow(
+        'Unsupported token address on given destination chain'
+      );
     });
   });
 });
