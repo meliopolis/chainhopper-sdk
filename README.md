@@ -47,11 +47,11 @@ const migrationParams: RequestV3toV4MigrationParams = {
   destinationProtocol: Protocol.UniswapV4, // can be v3 or v4
 
   // destination pool info
-  token0: zeroAddress, // native ETH on destination chain; can be any ERC20 address as well
-  token1: chainConfigs[130].usdcAddress, // can be any ERC20 token address
-  fee: 500, // set the fee for the pool
-  tickSpacing: 10, // set the tick spacing for your pool
-  hooks: zeroAddress, // set the address of the hooks for your pool
+  token0: zeroAddress, // native ETH on destination chain; can be any ERC20;
+  token1: chainConfigs[130].usdcAddress, // any ERC20; must be sorted token0 < token1
+  fee: 500, // specify the fee for the pool
+  tickSpacing: 10, // specify the tick spacing for the pool; only needed for v4
+  hooks: zeroAddress, // specify the address of the hooks for the pool; only needed for v4
 
   // destination position info
   tickLower: -250000, // SDK will automatically calculate the nearest usable tick
@@ -68,6 +68,8 @@ console.log(migrationResponse);
   sourcePosition: Position, // from @uniswap/v3-sdk
   sourceTokenId: 1806423n,
   sourceChainId: 8453,
+
+  // owner is needed to specify the recipient on the destination chain
   owner: '0x4bD047CA72fa05F0B89ad08FE5Ba5ccdC07DFFBF',
 
   // destination chain, protocol and Position that could be created
@@ -86,6 +88,20 @@ console.log(migrationResponse);
     mintAmount1Min: 348933n, // min amount of token1 after minting on destination chain
     routeMinAmountOuts: [89939399n] // min amount that the bridge must output
   },
+
+  // Routes: each bridged route
+  // one route for singleToken and two for dualToken
+  routes: [{
+    inputToken: '0x4200000000000000000000000000000000000006', // WETH on source chain
+    outputToken: '0x4200000000000000000000000000000000000006', // WETH on destination chain (even though final position uses native token)
+    inputAmount: 8439903000303483n, // amount of WETH sent to the bridge
+    outputAmount: 843209999393939n, // amount of WETH expected at the output
+    minOutputAmount: 843509999393939n, // slippage check on the route
+    maxFees: 383922n, // max fees allowed to be charged by Across, based on quote
+    fillDeadlineOffset: 3000, // used by Across
+    exclusivityDeadline: 9, // seconds that exclusivity is valid; used by Across
+    exclusiveRelayer: '0x...', // If there is an exclusive relayer on Across
+  }]
 
   // execution params. Use these to submit the migration
   executionParams: {
@@ -122,6 +138,8 @@ const { request } = await walletClient.simulateContract({
 // verify `request`
 const result = await writeContract(config, request);
 ```
+
+This will open up a wallet window to sign transaction and kickoff the migration.
 
 ## Advance Options
 
