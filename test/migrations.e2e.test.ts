@@ -461,7 +461,7 @@ describe('in-range v3→ migrations', () => {
 
   beforeAll(async () => {
     v3ChainId = 1;
-    v3TokenId = 37n; // https://app.uniswap.org/positions/v3/ethereum/37
+    v3TokenId = 963499n; // https://app.uniswap.org/positions/v3/ethereum/963499
     v3Response = await client.getV3Position({
       chainId: v3ChainId,
       tokenId: v3TokenId,
