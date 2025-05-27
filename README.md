@@ -125,6 +125,20 @@ const result = await writeContract(config, request);
 
 ## Advance Options
 
+### Sender fees
+
+ChainHopper protocol charges 10bps (0.1%) for any completed migration. In addition, an integrator (or an interface) can specify their own fees and the protocol takes a small cut of those fees and passes the rest to an address specified in the calldata. To add fees:
+
+```typescript
+const migrationParams: RequestV3toV4MigrationParams = {
+  // ... previous params
+  senderShareBps: 15,
+  senderFeeRecipient: '0x...';
+}
+```
+
+This will add an additional 15bps for fees that will be split between protocol and sender. Currently, the protocol takes 15% of the sender fees. So, in this scenario, user will pay 25bps (0.25%) total *for a completed migration*. If a migration fails, user pays nothing. Of that 25bps, protocol will receive 12.25bps (10bps protocol fee and 15% of sender's 15bps) and sender will take 12.75bps.
+
 ### Single Token vs Dual Token migrations
 
 ChainHopper Protocol supports two different methods to migrate a position.
