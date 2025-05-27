@@ -137,7 +137,7 @@ const migrationParams: RequestV3toV4MigrationParams = {
 }
 ```
 
-This will add an additional 15bps for fees that will be split between protocol and sender. Currently, the protocol takes 15% of the sender fees. So, in this scenario, user will pay 25bps (0.25%) total *for a completed migration*. If a migration fails, user pays nothing. Of that 25bps, protocol will receive 12.25bps (10bps protocol fee and 15% of sender's 15bps) and sender will take 12.75bps.
+This will add an additional 15bps for fees that will be split between protocol and sender. Currently, the protocol takes 15% of the sender fees. So, in this scenario, user will pay 25bps (0.25%) total _for a completed migration_. If a migration fails, user pays nothing. Of that 25bps, protocol will receive 12.25bps (10bps protocol fee and 15% of sender's 15bps) and sender will take 12.75bps.
 
 ### Single Token vs Dual Token migrations
 
