@@ -56,9 +56,6 @@ const migrationParams: RequestV3toV4MigrationParams = {
   // destination position info
   tickLower: -250000, // SDK will automatically calculate the nearest usable tick
   tickUpper: -150000, // SDK will automatically calculate the nearest usable tick
-
-  // optional
-  slippageInBps: 100, // default set to 100bps or 1%
   }
 
 const migrationResponse = await client.requestMigration(requestParams);
@@ -70,24 +67,36 @@ console.log(migrationResponse);
   sourcePosition: {
     owner: '0x4bD047CA72fa05F0B89ad08FE5Ba5ccdC07DFFBF',
     tokenId: 1806423n,
-    pool: { // v3 or v4 pool
+    pool: { // v3 or v4 pool object
       protocol: Protocol.UniswapV3,
       chainId: 8453,
-      token0: '0x...',
-      token1: '0x...',
+      token0: { // token0 info
+        address: "0x4200000000000000000000000000000000000006"
+        chainId: 8453
+        decimals: 18
+        name: "Wrapped Ether"
+        symbol: "WETH"
+      },
+      token1: { // token1 info
+        address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        chainId: 8453,
+        decimals: 6,
+        name: "USD Coin",
+        symbol: "USDC"
+      },
       fee: 3000,
       tickSpacing: 60,
-      sqrtPriceX96: 38...n,
-      liquidity: 338183823922020n, // current tick's liquidity
-      tick: 35, // current tick
-      poolAddress: '0x...', // only for v3 Pool
+      sqrtPriceX96: 4105828726027126556352508n,
+      liquidity: 1082505696438362025n, // current tick's liquidity
+      tick: -197364, // current tick
+      poolAddress: '0x6c561B446416E1A00E8E93E221854d6eA4171372', // only for v3 Pool
     },
-    tickLower: ...,
-    tickUpper: ...,
-    liquidity: ...,
-    amount0: 0n,
-    amount1: 0n,
-    feeAmount0: 3282832n, // uncollected fees for token0
+    tickLower: -200340,
+    tickUpper: -194700,
+    liquidity: 34702496678031n,
+    amount0: 83490622982773580n, // token0 amount
+    amount1: 248671239n, // token1 amount
+    feeAmount0: 15657622399553202n, // uncollected fees for token0
     feeAmount1: 23282n, // uncollected fees for token1
   },
   // destination Position that will be created under current conditions on both chains
@@ -114,8 +123,7 @@ console.log(migrationResponse);
     amount1Min: 38282n, // min amount of token1 after minting on destination chain
   },
 
-  // Routes: each bridged route
-  // one route for singleToken and two for dualToken
+  // Routes: each bridged route is listed; one route for singleToken and two for dualToken
   routes: [{
     inputToken: '0x4200000000000000000000000000000000000006', // WETH on source chain
     outputToken: '0x4200000000000000000000000000000000000006', // WETH on destination chain (even though final position uses native token)
