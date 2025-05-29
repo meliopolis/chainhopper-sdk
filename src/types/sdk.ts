@@ -75,11 +75,6 @@ export type RequestMigrationParams = RequestV3MigrationParams | RequestV4Migrati
 //   };
 // };
 
-// export type SlippageCalcs = {
-//   swapAmountInMilliBps: number;
-//   routeMinAmountOuts: bigint[];
-// };
-
 export type Route = {
   inputToken: `0x${string}`;
   outputToken: `0x${string}`;
@@ -99,51 +94,60 @@ export type ExecutionParams = {
   args: [`0x${string}`, `0x${string}`, bigint, `0x${string}`];
 };
 
-export type pool = {
+export type Token = {
   chainId: number;
-  token0: `0x${string}`;
-  token1: `0x${string}`;
+  address: `0x${string}`;
+  decimals: number;
+  symbol?: string;
+  name?: string;
+};
+
+export type Pool = {
+  chainId: number;
+  token0: Token;
+  token1: Token;
   fee: number;
+  tickSpacing: number;
   sqrtPriceX96?: bigint;
   liquidity?: bigint;
   tick?: number;
-}
+};
 
-export type v3Pool = pool & {
+export type v3Pool = Pool & {
   protocol: Protocol.UniswapV3;
   poolAddress: `0x${string}`;
 };
 
-export type v4Pool = pool & {
+export type v4Pool = Pool & {
   protocol: Protocol.UniswapV4;
   hooks: `0x${string}`;
-  tickSpacing: number;
   poolId: `0x${string}`;
 };
 
-export type Position = (v3Pool | v4Pool) & {
+export type Position = {
+  pool: v3Pool | v4Pool;
   tickLower: number;
   tickUpper: number;
   liquidity: bigint;
   amount0: bigint;
   amount1: bigint;
-  amount0Min: bigint; // encodes slippage
-  amount1Min: bigint; // encodes slippage
+  amount0Min?: bigint; // encodes slippage
+  amount1Min?: bigint; // encodes slippage
 };
 
 export type PositionWithFees = Position & {
-  tokenId?: bigint; // could also see a case for this to be under Position
+  owner: `0x${string}`;
+  tokenId: bigint; // could also see a case for this to be under Position
   feeAmount0: bigint;
   feeAmount1: bigint;
 };
 
 export type RequestMigrationResponse = {
   sourcePosition: PositionWithFees;
-  owner: `0x${string}`;
-  destPosition: Position;
   routes: Route[];
+  destPosition: Position;
   executionParams: ExecutionParams;
-  // if debug set, this will be populated
+  // if debug flag set, these will be populated
   settlerExecutionParams?: ExecutionParams;
   swapAmountInMilliBps?: number;
 };
