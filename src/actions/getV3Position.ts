@@ -5,7 +5,7 @@ import { computePoolAddress, Pool, Position } from '@uniswap/v3-sdk';
 import { Token as UniswapSDKToken } from '@uniswap/sdk-core';
 import { erc20Abi } from 'viem';
 import type { IUniswapPositionParams, PositionWithFees } from '../types';
-import { toSDKPosition } from '@/utils/position';
+import { toSDKPosition } from '../utils/position';
 const MAX_UINT128: bigint = BigInt(2) ** BigInt(127);
 
 type IPositionsCallResult = [
