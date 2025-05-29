@@ -11,6 +11,7 @@ import type { InternalSettleMigrationParams, InternalSettleMigrationResult } fro
 import { getSettlerFees } from './getSettlerFees';
 import type { RequestV3toV4MigrationParams, RequestV4toV4MigrationParams } from '../types';
 import type { Position } from '@uniswap/v4-sdk';
+import JSBI from 'jsbi';
 
 export const settleUniswapV4Migration = async ({
   sourceChainConfig,
@@ -25,14 +26,19 @@ export const settleUniswapV4Migration = async ({
   const { tickSpacing, hooks } = externalParams as RequestV3toV4MigrationParams | RequestV4toV4MigrationParams;
   const slippageInBps = externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS;
 
-  // now we need fetch the pool on the destination chain
-  const pool = await getV4Pool(destinationChainConfig, {
-    currency0: externalParams.token0,
-    currency1: externalParams.token1,
-    fee: externalParams.fee,
-    tickSpacing: tickSpacing,
-    hooks: hooks,
-  });
+  // now we need fetch the pool on the destination chain, or specify a sqrtPriceX96 to initialize one
+  const pool = await getV4Pool(
+    destinationChainConfig,
+    {
+      currency0: externalParams.token0,
+      currency1: externalParams.token1,
+      fee: externalParams.fee,
+      tickSpacing: tickSpacing,
+      hooks: hooks,
+    },
+    externalParams.sqrtPriceX96
+  );
+
   // get the settler fees
   const { protocolShareBps } = await getSettlerFees(
     destinationChainConfig,
@@ -41,6 +47,14 @@ export const settleUniswapV4Migration = async ({
   const settlerFeesInBps = BigInt(protocolShareBps) + BigInt(externalParams.senderShareBps || 0);
 
   if (routes.length === 1) {
+    if (
+      JSBI.equal(pool.liquidity, JSBI.BigInt(0)) &&
+      pool.tickCurrent < externalParams.tickUpper &&
+      pool.tickCurrent >= externalParams.tickLower
+    ) {
+      throw new Error('No liquidity for required swap in destination pool');
+    }
+
     const route = routes[0];
     const routeMinAmountOut = route.minOutputAmount;
 

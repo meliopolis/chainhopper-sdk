@@ -563,24 +563,6 @@ describe('in-range v3→ migrations', () => {
     };
     validateMigrationResponse(params, await client.requestMigration(params));
   });
-
-  // TODO: this example actually be used to test pool creation path when needed
-  //   const params: RequestV3toV4MigrationParams = {
-  //     sourceChainId: 1,
-  //     destinationChainId: 130,
-  //     tokenId: 35119n,
-  //     sourceProtocol: Protocol.UniswapV3,
-  //     destinationProtocol: Protocol.UniswapV4,
-  //     bridgeType: BridgeType.Across,
-  //     migrationMethod: MigrationMethod.SingleToken,
-  //     token0: NATIVE_ETH_ADDRESS,
-  //     token1: '0x927B51f251480a681271180DA4de28D44EC4AfB8',
-  //     tickLower: -292400,
-  //     tickUpper: -230200,
-  //     fee: 10000,
-  //     tickSpacing: 200,
-  //     hooks: '0x0000000000000000000000000000000000000000',
-  //   }
 });
 
 describe('in-range v4→ migrations', () => {
@@ -996,6 +978,213 @@ describe('out of range v4→ migrations', () => {
       expect(async () => await client.requestMigration(params)).toThrow(
         'Unsupported token address on given destination chain'
       );
+    });
+  });
+});
+
+describe('pool creation:', () => {
+  describe('v4 settler ', () => {
+    const mockNoV4Pool = async (): Promise<void> => {
+      await moduleMocker.mock('../src/actions/getV4Pool.ts', () => ({
+        fetchRawV4PoolData: mock(async () => {
+          return [
+            { result: [0n, 0, 0, 0], status: 'success' },
+            { result: 0n, status: 'success' },
+          ];
+        }),
+      }));
+    };
+
+    test('does not create pool if no sqrtPriceX96 provided', async () => {
+      mockNoV4Pool();
+      const params: RequestV3toV4MigrationParams = {
+        sourceChainId: 1,
+        destinationChainId: 42161,
+        tokenId: 891583n,
+        sourceProtocol: Protocol.UniswapV3,
+        destinationProtocol: Protocol.UniswapV4,
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.DualToken,
+        token0: NATIVE_ETH_ADDRESS,
+        token1: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
+        tickLower: -887220,
+        tickUpper: 887220,
+        fee: 10000,
+        tickSpacing: 200,
+        hooks: '0x0000000000000000000000000000000000000000',
+      };
+      expect(async () => await client.requestMigration(params)).toThrow(
+        'Destination pool does not exist and no sqrtPriceX96 provided for initialization'
+      );
+    });
+
+    test('single token migration does not create pool if swap needed', async () => {
+      mockNoV4Pool();
+      const params: RequestV3toV4MigrationParams = {
+        sourceChainId: 1,
+        destinationChainId: 42161,
+        tokenId: 891583n,
+        sourceProtocol: Protocol.UniswapV3,
+        destinationProtocol: Protocol.UniswapV4,
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.SingleToken,
+        token0: NATIVE_ETH_ADDRESS,
+        token1: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
+        tickLower: -887220,
+        tickUpper: 887220,
+        fee: 10000,
+        tickSpacing: 200,
+        hooks: '0x0000000000000000000000000000000000000000',
+        sqrtPriceX96: 736087614829673861315061733n,
+      };
+      expect(async () => await client.requestMigration(params)).toThrow(
+        'No liquidity for required swap in destination pool'
+      );
+    });
+
+    test('dual token migration creates pool if sqrtPriceX96 provided', async () => {
+      mockNoV4Pool();
+      const params: RequestV3toV4MigrationParams = {
+        sourceChainId: 1,
+        destinationChainId: 42161,
+        tokenId: 891583n,
+        sourceProtocol: Protocol.UniswapV3,
+        destinationProtocol: Protocol.UniswapV4,
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.DualToken,
+        token0: NATIVE_ETH_ADDRESS,
+        token1: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
+        tickLower: -887200,
+        tickUpper: 887200,
+        fee: 10000,
+        tickSpacing: 200,
+        hooks: '0x0000000000000000000000000000000000000000',
+        sqrtPriceX96: 736087614829673861315061733n,
+      };
+      const response = await client.requestMigration(params);
+      expect(response.destPosition.pool.liquidity).toBe(0n);
+      validateMigrationResponse(params, response);
+    });
+
+    test('single token migration creates pool if no swap is needed', async () => {
+      mockNoV4Pool();
+      const params: RequestV3toV4MigrationParams = {
+        sourceChainId: 1,
+        destinationChainId: 42161,
+        tokenId: 891583n,
+        sourceProtocol: Protocol.UniswapV3,
+        destinationProtocol: Protocol.UniswapV4,
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.SingleToken,
+        token0: NATIVE_ETH_ADDRESS,
+        token1: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
+        tickLower: 887000,
+        tickUpper: 887200,
+        fee: 10000,
+        tickSpacing: 200,
+        hooks: '0x0000000000000000000000000000000000000000',
+        sqrtPriceX96: 736087614829673861315061733n,
+      };
+      const response = await client.requestMigration(params);
+      expect(response.destPosition.pool.liquidity).toBe(0n);
+      validateMigrationResponse(params, response);
+    });
+  });
+
+  const mockNoV3Pool = async (): Promise<void> => {
+    await moduleMocker.mock('../src/actions/getV3Pool.ts', () => ({
+      fetchRawV3PoolData: mock(async () => {
+        return [{ status: 'failure' }, { status: 'failure' }];
+      }),
+    }));
+  };
+
+  describe('v3 settler ', () => {
+    test('does not create pool if no sqrtPriceX96 provided', async () => {
+      await mockNoV3Pool();
+      const params: RequestV3toV3MigrationParams = {
+        sourceChainId: 1,
+        destinationChainId: 42161,
+        tokenId: 891583n,
+        sourceProtocol: Protocol.UniswapV3,
+        destinationProtocol: Protocol.UniswapV3,
+        bridgeType: BridgeType.Across,
+        token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
+        token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+        migrationMethod: MigrationMethod.DualToken,
+        tickLower: -887220,
+        tickUpper: 887220,
+        fee: 500,
+      };
+      expect(async () => await client.requestMigration(params)).toThrow(
+        'Destination pool does not exist and no sqrtPriceX96 provided for initialization'
+      );
+    });
+
+    test('single token migration does not create pool if swap needed', async () => {
+      await mockNoV3Pool();
+      const params: RequestV3toV3MigrationParams = {
+        sourceChainId: 1,
+        destinationChainId: 42161,
+        tokenId: 891583n,
+        sourceProtocol: Protocol.UniswapV3,
+        destinationProtocol: Protocol.UniswapV3,
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.SingleToken,
+        token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
+        token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+        tickLower: -887220,
+        tickUpper: 887220,
+        fee: 500,
+        sqrtPriceX96: 736087614829673861315061733n,
+      };
+      expect(async () => await client.requestMigration(params)).toThrow(
+        'No liquidity for required swap in destination pool'
+      );
+    });
+
+    test('dual token migration creates pool if sqrtPriceX96 provided', async () => {
+      await mockNoV3Pool();
+      const params: RequestV3toV3MigrationParams = {
+        sourceChainId: 1,
+        destinationChainId: 42161,
+        tokenId: 891583n,
+        sourceProtocol: Protocol.UniswapV3,
+        destinationProtocol: Protocol.UniswapV3,
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.DualToken,
+        token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
+        token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+        tickLower: -887200,
+        tickUpper: 887200,
+        fee: 500,
+        sqrtPriceX96: 736087614829673861315061733n,
+      };
+      const response = await client.requestMigration(params);
+      expect(response.destPosition.pool.liquidity).toBe(0n);
+      validateMigrationResponse(params, response);
+    });
+
+    test('single token migration creates pool if no swap is needed', async () => {
+      await mockNoV3Pool();
+      const params: RequestV3toV3MigrationParams = {
+        sourceChainId: 1,
+        destinationChainId: 42161,
+        tokenId: 891583n,
+        sourceProtocol: Protocol.UniswapV3,
+        destinationProtocol: Protocol.UniswapV3,
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.SingleToken,
+        token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
+        token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+        tickLower: -887200,
+        tickUpper: -887000,
+        fee: 500,
+        sqrtPriceX96: 736087614829673861315061733n,
+      };
+      const response = await client.requestMigration(params);
+      expect(response.destPosition.pool.liquidity).toBe(0n);
+      validateMigrationResponse(params, response);
     });
   });
 });
