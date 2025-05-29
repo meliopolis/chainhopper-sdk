@@ -56,6 +56,9 @@ const migrationParams: RequestV3toV4MigrationParams = {
   // destination position info
   tickLower: -250000, // SDK will automatically calculate the nearest usable tick
   tickUpper: -150000, // SDK will automatically calculate the nearest usable tick
+
+  // optional
+  slippageInBps: 100, // default set to 100bps or 1%
   }
 
 const migrationResponse = await client.requestMigration(requestParams);
@@ -87,8 +90,7 @@ console.log(migrationResponse);
     feeAmount0: 3282832n, // uncollected fees for token0
     feeAmount1: 23282n, // uncollected fees for token1
   },
-  // destination Position that could be created
-
+  // destination Position that will be created under current conditions on both chains
   destPosition: {
     pool: { // v3 or v4 pool
       protocol: Protocol.UniswapV4,
@@ -108,8 +110,8 @@ console.log(migrationResponse);
     liquidity: ..., // max possible given token amounts
     amount0: 5853820000n,
     amount1: 838202n,
-
     amount0Min: 84393483n, // min amount of token0 after minting on destination chain
+    amount1Min: 38282n, // min amount of token1 after minting on destination chain
   },
 
   // Routes: each bridged route
