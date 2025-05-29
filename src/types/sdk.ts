@@ -1,9 +1,5 @@
 import type { Abi } from 'viem';
-import type { IV3PositionWithUncollectedFees } from '../actions/getV3Position';
-import type { IV4PositionWithUncollectedFees } from '../actions/getV4Position';
 import { BridgeType, MigrationMethod, Protocol } from '../utils/constants';
-import type { Position as V3Position } from '@uniswap/v3-sdk';
-import type { Position as V4Position } from '@uniswap/v4-sdk';
 
 export type IUniswapPositionParams = {
   chainId: number;
@@ -25,6 +21,7 @@ export type BaseRequestMigrationParams = {
   senderShareBps?: number;
   senderFeeRecipient?: `0x${string}`;
   slippageInBps?: number;
+  debug?: boolean;
 };
 
 export type UniswapV3Params = {
@@ -78,13 +75,6 @@ export type RequestMigrationParams = RequestV3MigrationParams | RequestV4Migrati
 //   };
 // };
 
-export type SlippageCalcs = {
-  swapAmountInMilliBps: number;
-  mintAmount0Min: bigint;
-  mintAmount1Min: bigint;
-  routeMinAmountOuts: bigint[];
-};
-
 export type Route = {
   inputToken: `0x${string}`;
   outputToken: `0x${string}`;
@@ -104,18 +94,60 @@ export type ExecutionParams = {
   args: [`0x${string}`, `0x${string}`, bigint, `0x${string}`];
 };
 
-export type RequestMigrationResponse = {
-  sourceProtocol: Protocol;
-  sourcePosition: IV3PositionWithUncollectedFees | IV4PositionWithUncollectedFees;
-  sourceTokenId: bigint;
-  sourceChainId: number;
+export type Token = {
+  chainId: number;
+  address: `0x${string}`;
+  decimals: number;
+  symbol?: string;
+  name?: string;
+};
+
+export type Pool = {
+  chainId: number;
+  token0: Token;
+  token1: Token;
+  fee: number;
+  tickSpacing: number;
+  sqrtPriceX96?: bigint;
+  liquidity?: bigint;
+  tick?: number;
+};
+
+export type v3Pool = Pool & {
+  protocol: Protocol.UniswapV3;
+  poolAddress: `0x${string}`;
+};
+
+export type v4Pool = Pool & {
+  protocol: Protocol.UniswapV4;
+  hooks: `0x${string}`;
+  poolId: `0x${string}`;
+};
+
+export type Position = {
+  pool: v3Pool | v4Pool;
+  tickLower: number;
+  tickUpper: number;
+  liquidity: bigint;
+  amount0: bigint;
+  amount1: bigint;
+  amount0Min?: bigint; // encodes slippage
+  amount1Min?: bigint; // encodes slippage
+};
+
+export type PositionWithFees = Position & {
   owner: `0x${string}`;
-  destProtocol: Protocol;
-  destPosition: V3Position | V4Position;
-  destChainId: number;
-  migratorMessage: `0x${string}`;
-  settlerMessage: `0x${string}`;
-  slippageCalcs: SlippageCalcs;
+  tokenId: bigint; // could also see a case for this to be under Position
+  feeAmount0: bigint;
+  feeAmount1: bigint;
+};
+
+export type RequestMigrationResponse = {
+  sourcePosition: PositionWithFees;
   routes: Route[];
+  destPosition: Position;
   executionParams: ExecutionParams;
+  // if debug flag set, these will be populated
+  settlerExecutionParams?: ExecutionParams;
+  swapAmountInMilliBps?: number;
 };

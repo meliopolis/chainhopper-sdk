@@ -1,19 +1,10 @@
-import { type Currency, CurrencyAmount } from '@uniswap/sdk-core';
 import { Pool, Position, type PoolKey } from '@uniswap/v4-sdk';
 import type { ChainConfig } from '../chains';
-import type { IUniswapPositionParams } from '../types';
+import type { IUniswapPositionParams, PositionWithFees } from '../types';
 import { getV4Pool } from './getV4Pool';
 import { encodePacked, keccak256, pad } from 'viem';
 import { subIn256 } from '../utils/helpers';
-
-export type IV4PositionWithUncollectedFees = {
-  owner: `0x${string}`;
-  position: Position;
-  uncollectedFees: {
-    amount0: CurrencyAmount<Currency>;
-    amount1: CurrencyAmount<Currency>;
-  };
-};
+import { toSDKPosition } from '../utils/position';
 
 type IPoolAndPositionCallResult = [PoolKey, bigint];
 
@@ -36,7 +27,7 @@ const extract24BitsAsSigned = (positionInfo: bigint, shift: bigint): number => {
 export const getV4Position = async (
   chainConfig: ChainConfig,
   params: IUniswapPositionParams
-): Promise<IV4PositionWithUncollectedFees> => {
+): Promise<PositionWithFees> => {
   const { tokenId } = params;
 
   // get position details
@@ -67,6 +58,7 @@ export const getV4Position = async (
   const tickUpper = extract24BitsAsSigned(poolAndPositionCallResult[0][1], 32n);
   const liquidity = poolAndPositionCallResult[1];
   const owner = poolAndPositionCallResult[2];
+
   // get pool data
   const pool = await getV4Pool(chainConfig, poolKey);
 
@@ -110,17 +102,18 @@ export const getV4Position = async (
   const uncollectedFees0 = (liquidity * feeGrowthDelta0) / 2n ** 128n;
   const uncollectedFees1 = (liquidity * feeGrowthDelta1) / 2n ** 128n;
 
+  const position = new Position({
+    pool,
+    liquidity: (liquidity || 0n).toString(),
+    tickLower: tickLower || 0,
+    tickUpper: tickUpper || 0,
+  });
+
   return {
     owner: owner,
-    position: new Position({
-      pool,
-      liquidity: (liquidity || 0n).toString(),
-      tickLower: tickLower || 0,
-      tickUpper: tickUpper || 0,
-    }),
-    uncollectedFees: {
-      amount0: CurrencyAmount.fromRawAmount(pool.token0, uncollectedFees0.toString()),
-      amount1: CurrencyAmount.fromRawAmount(pool.token1, uncollectedFees1.toString()),
-    },
+    tokenId: params.tokenId,
+    ...toSDKPosition(chainConfig, position),
+    feeAmount0: uncollectedFees0,
+    feeAmount1: uncollectedFees1,
   };
 };

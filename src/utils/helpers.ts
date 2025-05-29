@@ -2,6 +2,7 @@ import { CurrencyAmount, Fraction, Percent, Price, Token, type Currency } from '
 import { DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, Protocol } from './constants';
 import { nearestUsableTick, Pool as V3Pool, SqrtPriceMath, TickMath, Position as V3Position } from '@uniswap/v3-sdk';
 import { Position as V4Position, Pool as V4Pool } from '@uniswap/v4-sdk';
+import type { Position } from '../types/sdk';
 
 import {
   encodeMigrationParams,
@@ -19,6 +20,7 @@ import { chainConfigs, type ChainConfig } from '../chains';
 import { getV4CombinedQuote } from '../actions/getV4CombinedQuote';
 import { NFTSafeTransferFrom } from '../abis/NFTSafeTransferFrom';
 import type { InternalGenerateMigrationParamsInput } from '../types/internal';
+import { toSDKPosition } from './position';
 
 export const generateSettlerData = (
   sourceChainConfig: ChainConfig,
@@ -87,13 +89,8 @@ export const generateMigrationParams = async ({
   owner,
   swapAmountInMilliBps,
 }: InternalGenerateMigrationParamsInput): Promise<{
-  destPosition: V3Position | V4Position;
-  slippageCalcs: {
-    routeMinAmountOuts: bigint[];
-    swapAmountInMilliBps: number;
-    mintAmount0Min: bigint;
-    mintAmount1Min: bigint;
-  };
+  destPosition: Position;
+  swapAmountInMilliBps: number;
   migratorMessage: `0x${string}`;
   settlerMessage: `0x${string}`;
 }> => {
@@ -143,13 +140,8 @@ export const generateMigrationParams = async ({
   );
 
   return {
-    destPosition: maxPosition,
-    slippageCalcs: {
-      routeMinAmountOuts: routes.map((r) => r.minOutputAmount),
-      swapAmountInMilliBps: swapAmountInMilliBps ? swapAmountInMilliBps : 0,
-      mintAmount0Min: BigInt(amount0Min.toString()),
-      mintAmount1Min: BigInt(amount1Min.toString()),
-    },
+    destPosition: toSDKPosition(destinationChainConfig, maxPosition, maxPositionUsingRouteMinAmountOut),
+    swapAmountInMilliBps: swapAmountInMilliBps ? swapAmountInMilliBps : 0,
     migratorMessage,
     settlerMessage,
   };

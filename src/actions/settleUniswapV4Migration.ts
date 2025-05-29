@@ -33,7 +33,6 @@ export const settleUniswapV4Migration = async ({
     tickSpacing: tickSpacing,
     hooks: hooks,
   });
-
   // get the settler fees
   const { protocolShareBps } = await getSettlerFees(
     destinationChainConfig,

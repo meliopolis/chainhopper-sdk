@@ -34,7 +34,7 @@ export const getAcrossQuote = async (
   sourceChainConfig: ChainConfig,
   destinationChainConfig: ChainConfig,
   inputTokenAddress: `0x${string}`,
-  inputTokenAmount: string,
+  inputTokenAmount: bigint,
   outputTokenAddress: `0x${string}`,
   externalParams: RequestMigrationParams,
   interimMessageForSettler: `0x${string}`

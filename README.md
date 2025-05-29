@@ -56,6 +56,9 @@ const migrationParams: RequestV3toV4MigrationParams = {
   // destination position info
   tickLower: -250000, // SDK will automatically calculate the nearest usable tick
   tickUpper: -150000, // SDK will automatically calculate the nearest usable tick
+
+  // optional
+  slippageInBps: 100, // default set to 100bps or 1%
   }
 
 const migrationResponse = await client.requestMigration(requestParams);
@@ -63,30 +66,52 @@ const migrationResponse = await client.requestMigration(requestParams);
 console.log(migrationResponse);
 // this will look like the following
 {
-  // source chain params (returned for confirmation purposes)
-  sourceProtocol: Protocol.UniswapV3,
-  sourcePosition: Position, // from @uniswap/v3-sdk
-  sourceTokenId: 1806423n,
-  sourceChainId: 8453,
-
-  // owner is needed to specify the recipient on the destination chain
-  owner: '0x4bD047CA72fa05F0B89ad08FE5Ba5ccdC07DFFBF',
-
-  // destination chain, protocol and Position that could be created
-  destProtocol: Protocol.UniswapV4,
-  destPosition: Position, // from @uniswap/v4-sdk (note it's a Uniswap v4 position)
-  destChainId: 130,
-
-  // messages
-  migratorMessage: '0x...', // message sent to the migrator on the source chain
-  settlerMessage: '0x...', // useful to simulate settler receiving message from the bridge
-
-  // slippage calcs that can be used to give messages to the user
-  slippageCalcs: {
-    swapAmountInMilliBps: 40_000_000, // amount of WETH to be swapped on destination chain
-    mintAmount0Min: 84393483n, // min amount of token0 after minting on destination chain
-    mintAmount1Min: 348933n, // min amount of token1 after minting on destination chain
-    routeMinAmountOuts: [89939399n] // min amount that the bridge must output
+  // details of the position at above tokenId
+  sourcePosition: {
+    owner: '0x4bD047CA72fa05F0B89ad08FE5Ba5ccdC07DFFBF',
+    tokenId: 1806423n,
+    pool: { // v3 or v4 pool
+      protocol: Protocol.UniswapV3,
+      chainId: 8453,
+      token0: '0x...',
+      token1: '0x...',
+      fee: 3000,
+      tickSpacing: 60,
+      sqrtPriceX96: 38...n,
+      liquidity: 338183823922020n, // current tick's liquidity
+      tick: 35, // current tick
+      poolAddress: '0x...', // only for v3 Pool
+    },
+    tickLower: ...,
+    tickUpper: ...,
+    liquidity: ...,
+    amount0: 0n,
+    amount1: 0n,
+    feeAmount0: 3282832n, // uncollected fees for token0
+    feeAmount1: 23282n, // uncollected fees for token1
+  },
+  // destination Position that will be created under current conditions on both chains
+  destPosition: {
+    pool: { // v3 or v4 pool
+      protocol: Protocol.UniswapV4,
+      chainId: 130,
+      token0: zeroAddress,
+      token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+      fee: 500,
+      tickSpacing: 10,
+      hooks: zeroAddress,
+      sqrtPriceX96: 38...n, // current value from pool
+      liquidity: 338183823922020n, // current tick's liquidity
+      tick: 35, // current tick
+      poolId: '0x...', // only for v4 pool
+    },
+    tickLower: -250000,
+    tickUpper: -150000,
+    liquidity: ..., // max possible given token amounts
+    amount0: 5853820000n,
+    amount1: 838202n,
+    amount0Min: 84393483n, // min amount of token0 after minting on destination chain
+    amount1Min: 38282n, // min amount of token1 after minting on destination chain
   },
 
   // Routes: each bridged route
@@ -114,7 +139,7 @@ console.log(migrationResponse);
       1806423n, // tokenId
       '0x...', // migratorMessage (this also encodes the `settlerMessage` and passes it directly through the bridge)
     ]
-  }
+  },
 }
 ```
 
