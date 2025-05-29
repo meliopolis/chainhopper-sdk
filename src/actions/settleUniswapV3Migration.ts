@@ -8,6 +8,7 @@ import {
 } from '../utils/helpers';
 import type { InternalSettleMigrationParams, InternalSettleMigrationResult } from '../types/internal';
 import { getSettlerFees } from './getSettlerFees';
+import JSBI from 'jsbi';
 
 export const settleUniswapV3Migration = async ({
   sourceChainConfig,
@@ -24,7 +25,8 @@ export const settleUniswapV3Migration = async ({
     destinationChainConfig,
     externalParams.token0,
     externalParams.token1,
-    externalParams.fee
+    externalParams.fee,
+    externalParams.sqrtPriceX96
   );
 
   // get the settler fees
@@ -35,6 +37,14 @@ export const settleUniswapV3Migration = async ({
   const settlerFeesInBps = BigInt(protocolShareBps) + BigInt(externalParams.senderShareBps || 0);
 
   if (routes.length === 1) {
+    if (
+      JSBI.equal(pool.liquidity, JSBI.BigInt(0)) &&
+      pool.tickCurrent < externalParams.tickUpper &&
+      pool.tickCurrent >= externalParams.tickLower
+    ) {
+      throw new Error('No liquidity for required swap in destination pool');
+    }
+
     const isWethToken0 = externalParams.token0 === destinationChainConfig.wethAddress;
     const route = routes[0];
     const routeMinAmountOut = route.minOutputAmount;
