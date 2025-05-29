@@ -1,6 +1,6 @@
 import { configurePublicClients } from './utils/configurePublicClients';
 import { chainConfigs } from './chains';
-import { getV3Position, type IV3PositionWithUncollectedFees } from './actions/getV3Position';
+import { getV3Position } from './actions/getV3Position';
 import { BridgeType, MigrationMethod, Protocol } from './utils/constants';
 import type { ChainConfig } from './chains';
 import type {
@@ -13,9 +13,10 @@ import type {
   RequestV3toV4MigrationParams,
   RequestV4toV4MigrationParams,
   RequestMigrationResponse,
+  PositionWithFees,
 } from './types';
 import { startUniswapV3Migration, settleUniswapV3Migration } from './actions';
-import { getV4Position, type IV4PositionWithUncollectedFees } from './actions/getV4Position';
+import { getV4Position } from './actions/getV4Position';
 import { startUniswapV4Migration } from './actions/startUniswapV4Migration';
 import { settleUniswapV4Migration } from './actions/settleUniswapV4Migration';
 import { isAddress, checksumAddress } from 'viem';
@@ -58,11 +59,11 @@ export class ChainHopperClient {
     if (address !== checksumAddress(address)) throw new Error(`${address} is not a checksummed address`);
   }
 
-  public getV3Position(params: IUniswapPositionParams): Promise<IV3PositionWithUncollectedFees> {
+  public getV3Position(params: IUniswapPositionParams): Promise<PositionWithFees> {
     return getV3Position(this.chainConfigs[params.chainId], params);
   }
 
-  public getV4Position(params: IUniswapPositionParams): Promise<IV4PositionWithUncollectedFees> {
+  public getV4Position(params: IUniswapPositionParams): Promise<PositionWithFees> {
     return getV4Position(this.chainConfigs[params.chainId], params);
   }
 
@@ -137,11 +138,7 @@ export class ChainHopperClient {
     });
 
     // make sure position has liquidity or fees
-    if (
-      BigInt(v3Position.position?.liquidity.toString() ?? '0') === BigInt(0) &&
-      (v3Position.uncollectedFees?.amount0.quotient.toString() ?? '0') === '0' &&
-      (v3Position.uncollectedFees?.amount1.quotient.toString() ?? '0') === '0'
-    ) {
+    if (v3Position.liquidity === 0n && v3Position.feeAmount0 === 0n && v3Position.feeAmount1 === 0n) {
       throw new Error('Position has no liquidity or fees');
     }
 
@@ -149,16 +146,12 @@ export class ChainHopperClient {
     const { routes } = await startUniswapV3Migration({
       sourceChainConfig: this.chainConfigs[sourceChainId],
       destinationChainConfig: this.chainConfigs[destinationChainId],
-      positionWithUncollectedFees: v3Position,
+      positionWithFees: v3Position,
       externalParams: params,
     });
-
     // settle migration on destination chain
     const returnResponse = {
-      sourceProtocol: Protocol.UniswapV3,
       sourcePosition: v3Position,
-      sourceTokenId: tokenId,
-      destChainId: destinationChainId,
       routes,
     };
     if (destinationProtocol === Protocol.UniswapV3) {
@@ -170,9 +163,6 @@ export class ChainHopperClient {
         owner: v3Position.owner,
       });
       return {
-        destProtocol: Protocol.UniswapV3,
-        owner: v3Position.owner,
-        sourceChainId,
         ...returnResponse,
         ...v3Settlement,
         executionParams: generateExecutionParams({
@@ -192,9 +182,6 @@ export class ChainHopperClient {
         owner: v3Position.owner,
       });
       return {
-        destProtocol: Protocol.UniswapV4,
-        owner: v3Position.owner,
-        sourceChainId,
         ...returnResponse,
         ...v4Settlement,
         executionParams: generateExecutionParams({
@@ -220,11 +207,7 @@ export class ChainHopperClient {
     });
 
     // make sure position has liquidity or fees
-    if (
-      BigInt(v4Position.position?.liquidity.toString() ?? '0') === BigInt(0) &&
-      (v4Position.uncollectedFees?.amount0.quotient.toString() ?? '0') === '0' &&
-      (v4Position.uncollectedFees?.amount1.quotient.toString() ?? '0') === '0'
-    ) {
+    if (v4Position.liquidity === 0n && v4Position.feeAmount0 === 0n && v4Position.feeAmount1 === 0n) {
       throw new Error('Position has no liquidity or fees');
     }
 
@@ -232,7 +215,7 @@ export class ChainHopperClient {
     const { routes } = await startUniswapV4Migration({
       sourceChainConfig: this.chainConfigs[sourceChainId],
       destinationChainConfig: this.chainConfigs[destinationChainId],
-      positionWithUncollectedFees: v4Position,
+      positionWithFees: v4Position,
       externalParams: params,
     });
 
@@ -255,8 +238,6 @@ export class ChainHopperClient {
       });
       return {
         ...returnResponse,
-        owner: v4Position.owner,
-        sourceChainId,
         ...v3Settlement,
         executionParams: generateExecutionParams({
           sourceChainId,
@@ -276,8 +257,6 @@ export class ChainHopperClient {
       });
       return {
         ...returnResponse,
-        owner: v4Position.owner,
-        sourceChainId,
         ...v4Settlement,
         executionParams: generateExecutionParams({
           sourceChainId,

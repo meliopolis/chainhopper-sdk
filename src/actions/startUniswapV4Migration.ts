@@ -5,59 +5,60 @@ import {
   MigrationMethod,
   NATIVE_ETH_ADDRESS,
 } from '../utils/constants';
-import { CurrencyAmount } from '@uniswap/sdk-core';
-import type { IV4PositionWithUncollectedFees } from './getV4Position';
 import { generateSettlerData } from '../utils/helpers';
 import { getV4Quote } from './getV4Quote';
 import type { InternalStartMigrationParams, InternalStartMigrationResult } from '../types/internal';
 import { getAcrossQuote } from '../lib/acrossClient';
+import type { v4Pool } from '../types/sdk';
+import type { PoolKey } from '@uniswap/v4-sdk';
 
 export const startUniswapV4Migration = async ({
   sourceChainConfig,
   destinationChainConfig,
-  positionWithUncollectedFees,
+  positionWithFees,
   externalParams,
 }: InternalStartMigrationParams): Promise<InternalStartMigrationResult> => {
-  const positionWithFees = positionWithUncollectedFees as IV4PositionWithUncollectedFees;
-  const { position, uncollectedFees } = positionWithFees;
+  const { pool } = positionWithFees as { pool: v4Pool };
 
   // find ETH/WETH in position
   const isToken0EthOrWeth =
-    position.amount0.currency.isNative || position.amount0.currency.address === sourceChainConfig.wethAddress;
-  const isToken1Weth =
-    position.amount1.currency.isNative || position.amount1.currency.address === sourceChainConfig.wethAddress;
+    pool.token0.address === NATIVE_ETH_ADDRESS || pool.token0.address === sourceChainConfig.wethAddress;
+  const isToken1Weth = pool.token1.address === sourceChainConfig.wethAddress;
 
   if (!isToken0EthOrWeth && !isToken1Weth) {
     throw new Error('ETH/WETH not found in position');
   }
-
   // calculate total token0 and token1 available
-  const totalToken0 = position.amount0.add(uncollectedFees.amount0);
-  const totalToken1 = position.amount1.add(uncollectedFees.amount1);
+  const totalToken0 = positionWithFees.amount0 + positionWithFees.feeAmount0;
+  const totalToken1 = positionWithFees.amount1 + positionWithFees.feeAmount1;
 
   // if migration Method is single-token
   if (externalParams.migrationMethod === MigrationMethod.SingleToken) {
     // get a quote from Uniswap Router to trade otherToken
-    const exactAmount = isToken0EthOrWeth ? totalToken1.asFraction.toFixed(0) : totalToken0.asFraction.toFixed(0);
-    let amountOut = CurrencyAmount.fromRawAmount(isToken0EthOrWeth ? totalToken0.currency : totalToken1.currency, 0);
+    const exactAmount = isToken0EthOrWeth ? totalToken1 : totalToken0;
+    let amountOut = 0n;
+    const poolKey = {
+      currency0: pool.token0.address,
+      currency1: pool.token1.address,
+      fee: pool.fee,
+      tickSpacing: pool.tickSpacing,
+      hooks: pool.hooks,
+    } as PoolKey;
 
-    if (BigInt(exactAmount) > 0n) {
+    if (exactAmount > 0n) {
       const quote = await getV4Quote(
         sourceChainConfig,
-        position.pool.poolKey,
+        poolKey,
         BigInt(exactAmount),
         !isToken0EthOrWeth,
-        position.pool.hooks as `0x${string}`
+        '0x' as `0x${string}`
       );
       // calculate total amount of WETH available
-      amountOut = CurrencyAmount.fromRawAmount(
-        isToken0EthOrWeth ? totalToken0.currency : totalToken1.currency,
-        quote.toString()
-      );
+      amountOut = quote;
     }
 
     // TODO check that quote price is not much worse than current price
-    const totalWethAvailable = isToken0EthOrWeth ? totalToken0.add(amountOut) : totalToken1.add(amountOut);
+    const totalWethAvailable = isToken0EthOrWeth ? totalToken0 + amountOut : totalToken1 + amountOut;
 
     if (externalParams.bridgeType === BridgeType.Across) {
       const { interimMessageForSettler } = generateSettlerData(
@@ -71,7 +72,7 @@ export const startUniswapV4Migration = async ({
         sourceChainConfig,
         destinationChainConfig,
         sourceChainConfig.wethAddress,
-        totalWethAvailable.asFraction.toFixed(0),
+        totalWethAvailable,
         destinationChainConfig.wethAddress,
         externalParams,
         interimMessageForSettler
@@ -83,7 +84,7 @@ export const startUniswapV4Migration = async ({
           {
             inputToken: acrossQuote.deposit.inputToken,
             outputToken: acrossQuote.deposit.outputToken,
-            inputAmount: BigInt(totalWethAvailable.asFraction.toFixed(0)),
+            inputAmount: totalWethAvailable,
             outputAmount: acrossQuote.deposit.outputAmount,
             minOutputAmount:
               (acrossQuote.deposit.outputAmount *
@@ -117,8 +118,8 @@ export const startUniswapV4Migration = async ({
       const acrossQuote0 = await getAcrossQuote(
         sourceChainConfig,
         destinationChainConfig,
-        totalToken0.currency.wrapped.address as `0x${string}`,
-        totalToken0.asFraction.toFixed(0),
+        pool.token0.address !== NATIVE_ETH_ADDRESS ? pool.token0.address : sourceChainConfig.wethAddress,
+        totalToken0,
         isToken0EthOrWeth
           ? destinationChainConfig.wethAddress
           : flipTokens
@@ -131,8 +132,8 @@ export const startUniswapV4Migration = async ({
       const acrossQuote1 = await getAcrossQuote(
         sourceChainConfig,
         destinationChainConfig,
-        totalToken1.currency.wrapped.address as `0x${string}`,
-        totalToken1.asFraction.toFixed(0),
+        pool.token1.address,
+        totalToken1,
         isToken1Weth ? destinationChainConfig.wethAddress : flipTokens ? externalParams.token0 : externalParams.token1,
         externalParams,
         interimMessageForSettler
@@ -144,7 +145,7 @@ export const startUniswapV4Migration = async ({
           {
             inputToken: acrossQuote0.deposit.inputToken,
             outputToken: acrossQuote0.deposit.outputToken,
-            inputAmount: BigInt(totalToken0.asFraction.toFixed(0)),
+            inputAmount: totalToken0,
             outputAmount: acrossQuote0.deposit.outputAmount,
             minOutputAmount:
               (acrossQuote0.deposit.outputAmount *
@@ -158,7 +159,7 @@ export const startUniswapV4Migration = async ({
           {
             inputToken: acrossQuote1.deposit.inputToken,
             outputToken: acrossQuote1.deposit.outputToken,
-            inputAmount: BigInt(totalToken1.asFraction.toFixed(0)),
+            inputAmount: totalToken1,
             outputAmount: acrossQuote1.deposit.outputAmount,
             minOutputAmount:
               (acrossQuote1.deposit.outputAmount *

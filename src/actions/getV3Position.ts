@@ -2,9 +2,10 @@ import { type Abi } from 'viem';
 import { type ChainConfig } from '../chains';
 import PoolContract from '@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json';
 import { computePoolAddress, Pool, Position } from '@uniswap/v3-sdk';
-import { CurrencyAmount, Token } from '@uniswap/sdk-core';
+import { Token as UniswapSDKToken } from '@uniswap/sdk-core';
 import { erc20Abi } from 'viem';
-import type { IUniswapPositionParams } from '../types';
+import type { IUniswapPositionParams, PositionWithFees } from '../types';
+import { toSDKPosition } from '../utils/position';
 const MAX_UINT128: bigint = BigInt(2) ** BigInt(127);
 
 type IPositionsCallResult = [
@@ -33,19 +34,10 @@ export type IV3PositionsCallType = {
   liquidity: bigint;
 };
 
-export type IV3PositionWithUncollectedFees = {
-  owner: `0x${string}`;
-  position: Position;
-  uncollectedFees: {
-    amount0: CurrencyAmount<Token>;
-    amount1: CurrencyAmount<Token>;
-  };
-};
-
 export const getV3Position = async (
   chainConfig: ChainConfig,
   params: IUniswapPositionParams
-): Promise<IV3PositionWithUncollectedFees> => {
+): Promise<PositionWithFees> => {
   const publicClient = chainConfig.publicClient;
   const positionManagerResult = await publicClient?.multicall({
     contracts: [
@@ -97,8 +89,8 @@ export const getV3Position = async (
   // fetch pool data
   const poolAddress = computePoolAddress({
     factoryAddress: chainConfig.v3FactoryAddress as `0x${string}`,
-    tokenA: new Token(chainConfig.chain.id, positionsCallData.token0, 18), // only address is needed for computePoolAddress
-    tokenB: new Token(chainConfig.chain.id, positionsCallData.token1, 18), // only address is needed for computePoolAddress
+    tokenA: new UniswapSDKToken(chainConfig.chain.id, positionsCallData.token0, 18), // only address is needed for computePoolAddress
+    tokenB: new UniswapSDKToken(chainConfig.chain.id, positionsCallData.token1, 18), // only address is needed for computePoolAddress
     fee: positionsCallData.feeTier,
   });
   const poolContract = {
@@ -174,14 +166,14 @@ export const getV3Position = async (
     );
 
   const pool = new Pool(
-    new Token(
+    new UniswapSDKToken(
       params.chainId,
       positionsCallData.token0,
       tokenData?.[0]?.[0] as number,
       tokenData?.[0]?.[1] as string,
       tokenData?.[0]?.[2] as string
     ),
-    new Token(
+    new UniswapSDKToken(
       params.chainId,
       positionsCallData.token1,
       tokenData?.[1]?.[0] as number,
@@ -193,18 +185,18 @@ export const getV3Position = async (
     poolData.liquidity.toString(),
     poolData.tick
   );
+  const position = new Position({
+    pool,
+    tickLower: positionsCallData.tickLower,
+    tickUpper: positionsCallData.tickUpper,
+    liquidity: positionsCallData.liquidity.toString(),
+  });
 
   return {
     owner,
-    position: new Position({
-      pool,
-      liquidity: positionsCallData.liquidity.toString(),
-      tickLower: positionsCallData.tickLower,
-      tickUpper: positionsCallData.tickUpper,
-    }),
-    uncollectedFees: {
-      amount0: CurrencyAmount.fromRawAmount(pool.token0, LPFeeData[0].toString()),
-      amount1: CurrencyAmount.fromRawAmount(pool.token1, LPFeeData[1].toString()),
-    },
+    tokenId: params.tokenId,
+    ...toSDKPosition(chainConfig, position),
+    feeAmount0: LPFeeData[0],
+    feeAmount1: LPFeeData[1],
   };
 };

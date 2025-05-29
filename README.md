@@ -47,11 +47,11 @@ const migrationParams: RequestV3toV4MigrationParams = {
   destinationProtocol: Protocol.UniswapV4, // can be v3 or v4
 
   // destination pool info
-  token0: zeroAddress, // native ETH on destination chain; can be any ERC20 address as well
-  token1: chainConfigs[130].usdcAddress, // can be any ERC20 token address
-  fee: 500, // set the fee for the pool
-  tickSpacing: 10, // set the tick spacing for your pool
-  hooks: zeroAddress, // set the address of the hooks for your pool
+  token0: zeroAddress, // native ETH on destination chain; can be any ERC20;
+  token1: chainConfigs[130].usdcAddress, // any ERC20; must be sorted token0 < token1
+  fee: 500, // specify the fee for the pool
+  tickSpacing: 10, // specify the tick spacing for the pool; only needed for v4
+  hooks: zeroAddress, // specify the address of the hooks for the pool; only needed for v4
 
   // destination position info
   tickLower: -250000, // SDK will automatically calculate the nearest usable tick
@@ -63,29 +63,78 @@ const migrationResponse = await client.requestMigration(requestParams);
 console.log(migrationResponse);
 // this will look like the following
 {
-  // source chain params (returned for confirmation purposes)
-  sourceProtocol: Protocol.UniswapV3,
-  sourcePosition: Position, // from @uniswap/v3-sdk
-  sourceTokenId: 1806423n,
-  sourceChainId: 8453,
-  owner: '0x4bD047CA72fa05F0B89ad08FE5Ba5ccdC07DFFBF',
-
-  // destination chain, protocol and Position that could be created
-  destProtocol: Protocol.UniswapV4,
-  destPosition: Position, // from @uniswap/v4-sdk (note it's a Uniswap v4 position)
-  destChainId: 130,
-
-  // messages
-  migratorMessage: '0x...', // message sent to the migrator on the source chain
-  settlerMessage: '0x...', // useful to simulate settler receiving message from the bridge
-
-  // slippage calcs that can be used to give messages to the user
-  slippageCalcs: {
-    swapAmountInMilliBps: 40_000_000, // amount of WETH to be swapped on destination chain
-    mintAmount0Min: 84393483n, // min amount of token0 after minting on destination chain
-    mintAmount1Min: 348933n, // min amount of token1 after minting on destination chain
-    routeMinAmountOuts: [89939399n] // min amount that the bridge must output
+  // details of the position at above tokenId
+  sourcePosition: {
+    owner: '0x4bD047CA72fa05F0B89ad08FE5Ba5ccdC07DFFBF',
+    tokenId: 1806423n,
+    pool: { // v3 or v4 pool object
+      protocol: Protocol.UniswapV3,
+      chainId: 8453,
+      token0: { // token0 info
+        address: "0x4200000000000000000000000000000000000006"
+        chainId: 8453
+        decimals: 18
+        name: "Wrapped Ether"
+        symbol: "WETH"
+      },
+      token1: { // token1 info
+        address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        chainId: 8453,
+        decimals: 6,
+        name: "USD Coin",
+        symbol: "USDC"
+      },
+      fee: 3000,
+      tickSpacing: 60,
+      sqrtPriceX96: 4105828726027126556352508n,
+      liquidity: 1082505696438362025n, // current tick's liquidity
+      tick: -197364, // current tick
+      poolAddress: '0x6c561B446416E1A00E8E93E221854d6eA4171372', // only for v3 Pool
+    },
+    tickLower: -200340,
+    tickUpper: -194700,
+    liquidity: 34702496678031n,
+    amount0: 83490622982773580n, // token0 amount
+    amount1: 248671239n, // token1 amount
+    feeAmount0: 15657622399553202n, // uncollected fees for token0
+    feeAmount1: 23282n, // uncollected fees for token1
   },
+  // destination Position that will be created under current conditions on both chains
+  destPosition: {
+    pool: { // v3 or v4 pool
+      protocol: Protocol.UniswapV4,
+      chainId: 130,
+      token0: zeroAddress,
+      token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+      fee: 500,
+      tickSpacing: 10,
+      hooks: zeroAddress,
+      sqrtPriceX96: 38...n, // current value from pool
+      liquidity: 338183823922020n, // current tick's liquidity
+      tick: 35, // current tick
+      poolId: '0x...', // only for v4 pool
+    },
+    tickLower: -250000,
+    tickUpper: -150000,
+    liquidity: ..., // max possible given token amounts
+    amount0: 5853820000n,
+    amount1: 838202n,
+    amount0Min: 84393483n, // min amount of token0 after minting on destination chain
+    amount1Min: 38282n, // min amount of token1 after minting on destination chain
+  },
+
+  // Routes: each bridged route is listed; one route for singleToken and two for dualToken
+  routes: [{
+    inputToken: '0x4200000000000000000000000000000000000006', // WETH on source chain
+    outputToken: '0x4200000000000000000000000000000000000006', // WETH on destination chain (even though final position uses native token)
+    inputAmount: 8439903000303483n, // amount of WETH sent to the bridge
+    outputAmount: 843209999393939n, // amount of WETH expected at the output
+    minOutputAmount: 843509999393939n, // slippage check on the route
+    maxFees: 383922n, // max fees allowed to be charged by Across, based on quote
+    fillDeadlineOffset: 3000, // used by Across
+    exclusivityDeadline: 9, // seconds that exclusivity is valid; used by Across
+    exclusiveRelayer: '0x...', // If there is an exclusive relayer on Across
+  }]
 
   // execution params. Use these to submit the migration
   executionParams: {
@@ -98,7 +147,7 @@ console.log(migrationResponse);
       1806423n, // tokenId
       '0x...', // migratorMessage (this also encodes the `settlerMessage` and passes it directly through the bridge)
     ]
-  }
+  },
 }
 ```
 
@@ -123,7 +172,23 @@ const { request } = await walletClient.simulateContract({
 const result = await writeContract(config, request);
 ```
 
+This will open up a wallet window to sign transaction and kickoff the migration.
+
 ## Advance Options
+
+### Sender fees
+
+ChainHopper protocol charges 10bps (0.1%) for any completed migration. In addition, an integrator (or an interface) can specify their own fees and the protocol takes a small cut of those fees and passes the rest to an address specified in the calldata. To add fees:
+
+```typescript
+const migrationParams: RequestV3toV4MigrationParams = {
+  // ... previous params
+  senderShareBps: 15,
+  senderFeeRecipient: '0x...';
+}
+```
+
+This will add an additional 15bps for fees that will be split between protocol and sender. Currently, the protocol takes 15% of the sender fees. So, in this scenario, user will pay 25bps (0.25%) total _for a completed migration_. If a migration fails, user pays nothing. Of that 25bps, protocol will receive 12.25bps (10bps protocol fee and 15% of sender's 15bps) and sender will take 12.75bps.
 
 ### Single Token vs Dual Token migrations
 

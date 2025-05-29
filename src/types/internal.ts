@@ -1,21 +1,15 @@
 import type { Quote } from '@across-protocol/app-sdk';
-import type {
-  RequestMigrationParams,
-  RequestV3MigrationParams,
-  RequestV4MigrationParams,
-  Route,
-  SlippageCalcs,
-} from './sdk';
 import type { Position as V3Position } from '@uniswap/v3-sdk';
 import type { Position as V4Position } from '@uniswap/v4-sdk';
+
+import type { RequestMigrationParams, RequestV3MigrationParams, RequestV4MigrationParams, Route } from './sdk';
 import type { ChainConfig } from '../chains';
-import type { IV3PositionWithUncollectedFees } from '../actions/getV3Position';
-import type { IV4PositionWithUncollectedFees } from '../actions/getV4Position';
+import type { PositionWithFees, Position } from './sdk';
 
 export type InternalStartMigrationParams = {
   sourceChainConfig: ChainConfig;
   destinationChainConfig: ChainConfig;
-  positionWithUncollectedFees: IV3PositionWithUncollectedFees | IV4PositionWithUncollectedFees;
+  positionWithFees: PositionWithFees;
   externalParams: RequestV3MigrationParams | RequestV4MigrationParams;
 };
 
@@ -33,8 +27,7 @@ export type InternalSettleMigrationParams = {
 };
 
 export type InternalSettleMigrationResult = {
-  destPosition: V3Position | V4Position;
-  slippageCalcs: SlippageCalcs;
+  destPosition: Position;
   migratorMessage: `0x${string}`;
   settlerMessage: `0x${string}`;
 };

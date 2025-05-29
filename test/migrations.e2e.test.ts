@@ -8,16 +8,16 @@ import type {
   RequestV4toV4MigrationParams,
   RequestMigrationResponse,
   RequestMigrationParams,
+  PositionWithFees,
 } from '../src/types/sdk';
 import { Position as V4Position, Pool as V4Pool } from '@uniswap/v4-sdk';
 import { Position as V3Position, Pool as V3Pool } from '@uniswap/v3-sdk';
-import { IV3PositionWithUncollectedFees, IV4PositionWithUncollectedFees } from '../src/actions';
 import { Quote } from '@across-protocol/app-sdk';
 import { ModuleMocker } from './ModuleMocker';
 import { zeroAddress } from 'viem';
-import { CurrencyAmount, Ether, Token } from '@uniswap/sdk-core';
+import { Ether, Token } from '@uniswap/sdk-core';
 import { TickMath } from '@uniswap/v3-sdk';
-import JSBI from 'jsbi';
+import { toSDKPosition } from '../src/utils/position';
 
 let client: ReturnType<typeof ChainHopperClient.create>;
 const moduleMocker = new ModuleMocker();
@@ -41,44 +41,45 @@ afterEach(() => {
 
 const validateMigrationResponse = (params: RequestMigrationParams, result: RequestMigrationResponse): void => {
   // check correct output chain
-  expect(result.destChainId).toBe(params.destinationChainId);
-  expect(result.sourceChainId).toBe(params.sourceChainId);
+  expect(result.sourcePosition.pool.chainId).toBe(params.sourceChainId);
+  expect(result.destPosition.pool.chainId).toBe(params.destinationChainId);
 
   // check correct output protocol
-  expect(result.destProtocol).toBe(params.destinationProtocol);
+  expect(result.destPosition.pool.protocol).toBe(params.destinationProtocol);
 
   const position = result.destPosition;
   if (params.token0 == NATIVE_ETH_ADDRESS) {
-    expect(position.pool.token0.isNative).toBe(true);
+    expect(position.pool.token0.address === NATIVE_ETH_ADDRESS).toBe(true);
   } else {
-    expect(position.pool.token0.wrapped.address).toBe(params.token0);
+    expect(position.pool.token0.address).toBe(params.token0);
   }
-  expect(position.pool.token1.wrapped.address).toBe(params.token1);
+  expect(position.pool.token1.address).toBe(params.token1);
 
   // check correct output ticks
   expect(position.tickLower).toBe(params.tickLower);
   expect(position.tickUpper).toBe(params.tickUpper);
 
   // check correct output pool
-  const pool: V4Pool = result.destPosition.pool as V4Pool;
+  const pool: V4Pool = result.destPosition.pool as unknown as V4Pool;
   expect(pool.fee).toBe(params.fee);
   if ('hooks' in params) expect(pool.hooks).toBe(params.hooks);
   if ('tickSpacing' in params) expect(pool.tickSpacing).toBe(params.tickSpacing);
 
-  const amount0 = BigInt(result.destPosition.amount0.quotient.toString());
-  const amount1 = BigInt(result.destPosition.amount1.quotient.toString());
+  const amount0 = result.destPosition.amount0;
+  const amount1 = result.destPosition.amount1;
+  const amount0Min = result.destPosition.amount0Min ? result.destPosition.amount0Min : 0;
+  const amount1Min = result.destPosition.amount1Min ? result.destPosition.amount1Min : 0;
 
   // check correct output amounts within slippage
-  expect(amount0).toBeGreaterThanOrEqual(result.slippageCalcs.mintAmount0Min);
-  expect(amount1).toBeGreaterThanOrEqual(result.slippageCalcs.mintAmount1Min);
+  expect(amount0).toBeGreaterThanOrEqual(amount0Min);
+  expect(amount1).toBeGreaterThanOrEqual(amount1Min);
 
   // check execution params
   const executionParams = result.executionParams;
   expect(executionParams.functionName).toBe('safeTransferFrom');
-  expect(executionParams.args[0]).toBe(result.owner);
+  expect(executionParams.args[0]).toBe(result.sourcePosition.owner);
   expect(executionParams.args[1]).toBeDefined();
   expect(executionParams.args[2]).toBe(params.tokenId);
-  expect(executionParams.args[3]).toBe(result.migratorMessage);
   if (params.sourceProtocol === Protocol.UniswapV3) {
     expect(executionParams.address).toBe(
       client.chainConfigs[params.sourceChainId].v3NftPositionManagerContract.address
@@ -244,16 +245,17 @@ describe('invalid migrations', () => {
         );
         return {
           owner: ownerAddress,
-          position: new V3Position({
-            pool,
-            liquidity: 1_000_000_000_000,
-            tickLower: 10,
-            tickUpper: 500,
-          }),
-          uncollectedFees: {
-            amount0: CurrencyAmount.fromRawAmount(pool.token0, '0'),
-            amount1: CurrencyAmount.fromRawAmount(pool.token1, '0'),
-          },
+          ...toSDKPosition(
+            client.chainConfigs[8453],
+            new V3Position({
+              pool,
+              liquidity: 1_000_000_000_000,
+              tickLower: 10,
+              tickUpper: 500,
+            })
+          ),
+          feeAmount0: 0n,
+          feeAmount1: 0n,
         };
       }),
     }));
@@ -354,25 +356,21 @@ describe('invalid migrations', () => {
   });
 
   test('reject migration to v3 requesting native token', async () => {
-    try {
-      const params: RequestV4toV3MigrationParams = {
-        sourceChainId: 130,
-        destinationChainId: 8453,
-        tokenId: 1000n,
-        sourceProtocol: Protocol.UniswapV4,
-        destinationProtocol: Protocol.UniswapV3,
-        bridgeType: BridgeType.Across,
-        migrationMethod: MigrationMethod.SingleToken,
-        token0: '0x0000000000000000000000000000000000000000',
-        token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-        tickLower: -202230,
-        tickUpper: -199380,
-        fee: 500,
-      };
-      await client.requestMigration(params);
-    } catch (e) {
-      expect(e.message).toContain('Native tokens not supported on Uniswap v3');
-    }
+    const params: RequestV4toV3MigrationParams = {
+      sourceChainId: 130,
+      destinationChainId: 8453,
+      tokenId: 1000n,
+      sourceProtocol: Protocol.UniswapV4,
+      destinationProtocol: Protocol.UniswapV3,
+      bridgeType: BridgeType.Across,
+      migrationMethod: MigrationMethod.SingleToken,
+      token0: NATIVE_ETH_ADDRESS,
+      token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+      tickLower: -202230,
+      tickUpper: -199380,
+      fee: 500,
+    };
+    expect(async () => await client.requestMigration(params)).toThrow('Native tokens not supported on Uniswap v3');
   });
 
   test('reject migration from v3 where neither token is weth', async () => {
@@ -422,16 +420,17 @@ describe('invalid migrations', () => {
         );
         return {
           owner: ownerAddress,
-          position: new V4Position({
-            pool,
-            liquidity: liquidity.toString(),
-            tickLower: 0,
-            tickUpper: 100,
-          }),
-          uncollectedFees: {
-            amount0: CurrencyAmount.fromRawAmount(pool.token0, '0'),
-            amount1: CurrencyAmount.fromRawAmount(pool.token1, '0'),
-          },
+          ...toSDKPosition(
+            client.chainConfigs[130],
+            new V4Position({
+              pool,
+              liquidity: liquidity.toString(),
+              tickLower: 0,
+              tickUpper: 100,
+            })
+          ),
+          feeAmount0: 0n,
+          feeAmount1: 0n,
         };
       }),
     }));
@@ -458,7 +457,7 @@ describe('invalid migrations', () => {
 describe('in-range v3→ migrations', () => {
   let v3ChainId: number;
   let v3TokenId: bigint;
-  let v3Response: IV3PositionWithUncollectedFees;
+  let v3Response: PositionWithFees;
 
   beforeAll(async () => {
     v3ChainId = 1;
@@ -480,10 +479,10 @@ describe('in-range v3→ migrations', () => {
       migrationMethod: MigrationMethod.SingleToken,
       token0: NATIVE_ETH_ADDRESS,
       token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
-      tickLower: -1 * v3Response.position.tickUpper,
-      tickUpper: -1 * v3Response.position.tickLower,
-      fee: v3Response.position.pool.fee,
-      tickSpacing: v3Response.position.pool.tickSpacing,
+      tickLower: -1 * v3Response.tickUpper,
+      tickUpper: -1 * v3Response.tickLower,
+      fee: v3Response.pool.fee,
+      tickSpacing: v3Response.pool.tickSpacing,
       hooks: '0x0000000000000000000000000000000000000000',
     };
     validateMigrationResponse(params, await client.requestMigration(params));
@@ -500,10 +499,10 @@ describe('in-range v3→ migrations', () => {
       migrationMethod: MigrationMethod.DualToken,
       token0: NATIVE_ETH_ADDRESS,
       token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
-      tickLower: -1 * v3Response.position.tickUpper,
-      tickUpper: -1 * v3Response.position.tickLower,
-      fee: v3Response.position.pool.fee,
-      tickSpacing: v3Response.position.pool.tickSpacing,
+      tickLower: -1 * v3Response.tickUpper,
+      tickUpper: -1 * v3Response.tickLower,
+      fee: v3Response.pool.fee,
+      tickSpacing: v3Response.pool.tickSpacing,
       hooks: '0x0000000000000000000000000000000000000000',
     };
     validateMigrationResponse(params, await client.requestMigration(params));
@@ -520,9 +519,9 @@ describe('in-range v3→ migrations', () => {
       migrationMethod: MigrationMethod.SingleToken,
       token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
       token1: '0x4200000000000000000000000000000000000006',
-      tickLower: v3Response.position.tickLower,
-      tickUpper: v3Response.position.tickUpper,
-      fee: v3Response.position.pool.fee,
+      tickLower: v3Response.tickLower,
+      tickUpper: v3Response.tickUpper,
+      fee: v3Response.pool.fee,
     };
     validateMigrationResponse(params, await client.requestMigration(params));
   });
@@ -538,9 +537,9 @@ describe('in-range v3→ migrations', () => {
       migrationMethod: MigrationMethod.DualToken,
       token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
       token1: '0x4200000000000000000000000000000000000006',
-      tickLower: v3Response.position.tickLower,
-      tickUpper: v3Response.position.tickUpper,
-      fee: v3Response.position.pool.fee,
+      tickLower: v3Response.tickLower,
+      tickUpper: v3Response.tickUpper,
+      fee: v3Response.pool.fee,
     };
     validateMigrationResponse(params, await client.requestMigration(params));
   });
@@ -569,7 +568,8 @@ describe('in-range v3→ migrations', () => {
 describe('in-range v4→ migrations', () => {
   let v4ChainId: number;
   let v4TokenId: bigint;
-  let v4Response: IV4PositionWithUncollectedFees;
+  let v4Response: PositionWithFees;
+  let v4Pool: V4Pool;
 
   beforeAll(async () => {
     v4ChainId = 130;
@@ -578,6 +578,7 @@ describe('in-range v4→ migrations', () => {
       chainId: v4ChainId,
       tokenId: v4TokenId,
     });
+    v4Pool = v4Response.pool as unknown as V4Pool;
   });
 
   test('generate valid unichain v4 → base v3 single-token migration', async () => {
@@ -591,9 +592,9 @@ describe('in-range v4→ migrations', () => {
       migrationMethod: MigrationMethod.SingleToken,
       token0: client.chainConfigs[8453].wethAddress,
       token1: client.chainConfigs[8453].usdcAddress,
-      tickLower: v4Response.position.tickLower,
-      tickUpper: v4Response.position.tickUpper,
-      fee: 100,
+      tickLower: v4Response.tickLower,
+      tickUpper: v4Response.tickUpper,
+      fee: v4Pool.fee,
     };
     validateMigrationResponse(params, await client.requestMigration(params));
   });
@@ -609,9 +610,9 @@ describe('in-range v4→ migrations', () => {
       migrationMethod: MigrationMethod.DualToken,
       token0: '0x4200000000000000000000000000000000000006',
       token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-      tickLower: v4Response.position.tickLower,
-      tickUpper: v4Response.position.tickUpper,
-      fee: v4Response.position.pool.fee,
+      tickLower: v4Response.tickLower,
+      tickUpper: v4Response.tickUpper,
+      fee: v4Pool.fee,
     };
     validateMigrationResponse(params, await client.requestMigration(params));
   });
@@ -627,8 +628,8 @@ describe('in-range v4→ migrations', () => {
       migrationMethod: MigrationMethod.SingleToken,
       token0: zeroAddress,
       token1: client.chainConfigs[8453].usdcAddress,
-      tickLower: v4Response.position.tickLower,
-      tickUpper: v4Response.position.tickUpper,
+      tickLower: v4Response.tickLower,
+      tickUpper: v4Response.tickUpper,
       fee: 10000,
       hooks: zeroAddress,
       tickSpacing: 200,
@@ -648,11 +649,11 @@ describe('in-range v4→ migrations', () => {
       migrationMethod: MigrationMethod.DualToken,
       token0: zeroAddress,
       token1: client.chainConfigs[8453].usdcAddress,
-      tickLower: v4Response.position.tickLower,
-      tickUpper: v4Response.position.tickUpper,
-      fee: v4Response.position.pool.fee,
+      tickLower: v4Response.tickLower,
+      tickUpper: v4Response.tickUpper,
+      fee: v4Pool.fee,
       hooks: zeroAddress,
-      tickSpacing: v4Response.position.pool.tickSpacing,
+      tickSpacing: v4Pool.tickSpacing,
     };
     validateMigrationResponse(params, await client.requestMigration(params));
   });
@@ -701,7 +702,7 @@ describe('flipped token order between chains', () => {
 describe('out of range v3→ migrations', () => {
   let v3ChainId: number;
   let v3TokenId: bigint;
-  let v3Response: IV3PositionWithUncollectedFees;
+  let v3Response: PositionWithFees;
 
   beforeAll(async () => {
     v3ChainId = 1;
@@ -725,10 +726,10 @@ describe('out of range v3→ migrations', () => {
           migrationMethod: MigrationMethod.SingleToken,
           token0: NATIVE_ETH_ADDRESS,
           token1: '0x927B51f251480a681271180DA4de28D44EC4AfB8',
-          tickLower: -1 * v3Response.position.tickUpper,
-          tickUpper: -1 * v3Response.position.tickLower,
-          fee: v3Response.position.pool.fee,
-          tickSpacing: v3Response.position.pool.tickSpacing,
+          tickLower: -1 * v3Response.tickUpper,
+          tickUpper: -1 * v3Response.tickLower,
+          fee: v3Response.pool.fee,
+          tickSpacing: v3Response.pool.tickSpacing,
           hooks: '0x0000000000000000000000000000000000000000',
         };
         validateMigrationResponse(params, await client.requestMigration(params));
@@ -748,8 +749,8 @@ describe('out of range v3→ migrations', () => {
           token1: '0x927B51f251480a681271180DA4de28D44EC4AfB8',
           tickLower: -299990,
           tickUpper: -289990,
-          fee: v3Response.position.pool.fee,
-          tickSpacing: v3Response.position.pool.tickSpacing,
+          fee: v3Response.pool.fee,
+          tickSpacing: v3Response.pool.tickSpacing,
           hooks: '0x0000000000000000000000000000000000000000',
         };
         validateMigrationResponse(params, await client.requestMigration(params));
@@ -769,10 +770,10 @@ describe('out of range v3→ migrations', () => {
         migrationMethod: MigrationMethod.DualToken,
         token0: NATIVE_ETH_ADDRESS,
         token1: '0x927B51f251480a681271180DA4de28D44EC4AfB8',
-        tickLower: -1 * v3Response.position.tickUpper,
-        tickUpper: -1 * v3Response.position.tickLower,
-        fee: v3Response.position.pool.fee,
-        tickSpacing: v3Response.position.pool.tickSpacing,
+        tickLower: -1 * v3Response.tickUpper,
+        tickUpper: -1 * v3Response.tickLower,
+        fee: v3Response.pool.fee,
+        tickSpacing: v3Response.pool.tickSpacing,
         hooks: '0x0000000000000000000000000000000000000000',
       };
       try {
@@ -787,7 +788,8 @@ describe('out of range v3→ migrations', () => {
 describe('out of range v4→ migrations', () => {
   let v4ChainId: number;
   let v4TokenId: bigint;
-  let v4Response: IV4PositionWithUncollectedFees;
+  let v4Response: PositionWithFees;
+  let v4Pool: V4Pool;
 
   beforeAll(async () => {
     v4ChainId = 130;
@@ -796,6 +798,7 @@ describe('out of range v4→ migrations', () => {
       chainId: v4ChainId,
       tokenId: v4TokenId,
     });
+    v4Pool = v4Response.pool as unknown as V4Pool;
   });
 
   describe('single token', () => {
@@ -824,16 +827,17 @@ describe('out of range v4→ migrations', () => {
             );
             return {
               owner: ownerAddress,
-              position: new V4Position({
-                pool,
-                liquidity: 1_000_000_000_000_000_000,
-                tickLower: 50,
-                tickUpper: 100,
-              }),
-              uncollectedFees: {
-                amount0: CurrencyAmount.fromRawAmount(pool.token0, '0'),
-                amount1: CurrencyAmount.fromRawAmount(pool.token1, '0'),
-              },
+              ...toSDKPosition(
+                client.chainConfigs[130],
+                new V4Position({
+                  pool,
+                  liquidity: 1_000_000_000_000_000_000,
+                  tickLower: 50,
+                  tickUpper: 100,
+                })
+              ),
+              feeAmount0: 0n,
+              feeAmount1: 0n,
             };
           }),
         }));
@@ -849,8 +853,8 @@ describe('out of range v4→ migrations', () => {
           token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
           tickLower: -199230,
           tickUpper: -197230,
-          fee: v4Response.position.pool.fee,
-          tickSpacing: v4Response.position.pool.tickSpacing,
+          fee: v4Pool.fee,
+          tickSpacing: v4Pool.tickSpacing,
           hooks: '0x0000000000000000000000000000000000000000',
         };
         validateMigrationResponse(params, await client.requestMigration(params));
@@ -881,16 +885,17 @@ describe('out of range v4→ migrations', () => {
             );
             return {
               owner: ownerAddress,
-              position: new V4Position({
-                pool,
-                liquidity: 1_000_000_000_000,
-                tickLower: 10,
-                tickUpper: 50,
-              }),
-              uncollectedFees: {
-                amount0: CurrencyAmount.fromRawAmount(pool.token0, '0'),
-                amount1: CurrencyAmount.fromRawAmount(pool.token1, '0'),
-              },
+              ...toSDKPosition(
+                client.chainConfigs[130],
+                new V4Position({
+                  pool,
+                  liquidity: 1_000_000_000_000,
+                  tickLower: 10,
+                  tickUpper: 50,
+                })
+              ),
+              feeAmount0: 0n,
+              feeAmount1: 0n,
             };
           }),
         }));
@@ -906,8 +911,8 @@ describe('out of range v4→ migrations', () => {
           token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
           tickLower: -206230,
           tickUpper: -202230,
-          fee: v4Response.position.pool.fee,
-          tickSpacing: v4Response.position.pool.tickSpacing,
+          fee: v4Pool.fee,
+          tickSpacing: v4Pool.tickSpacing,
           hooks: '0x0000000000000000000000000000000000000000',
         };
         validateMigrationResponse(params, await client.requestMigration(params));
@@ -940,16 +945,17 @@ describe('out of range v4→ migrations', () => {
           );
           return {
             owner: ownerAddress,
-            position: new V4Position({
-              pool,
-              liquidity: 1_000_000_000,
-              tickLower: 10,
-              tickUpper: 500,
-            }),
-            uncollectedFees: {
-              amount0: CurrencyAmount.fromRawAmount(pool.token0, 1_000_000_000_000_000),
-              amount1: CurrencyAmount.fromRawAmount(pool.token1, 1_000_000_00),
-            },
+            ...toSDKPosition(
+              client.chainConfigs[130],
+              new V4Position({
+                pool,
+                liquidity: 1_000_000_000,
+                tickLower: 10,
+                tickUpper: 500,
+              })
+            ),
+            feeAmount0: 0n,
+            feeAmount1: 0n,
           };
         }),
       }));
@@ -965,8 +971,8 @@ describe('out of range v4→ migrations', () => {
         token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
         tickLower: -206230,
         tickUpper: -202230,
-        fee: v4Response.position.pool.fee,
-        tickSpacing: v4Response.position.pool.tickSpacing,
+        fee: v4Pool.fee,
+        tickSpacing: v4Pool.tickSpacing,
         hooks: '0x0000000000000000000000000000000000000000',
       };
       expect(async () => await client.requestMigration(params)).toThrow(
@@ -1056,7 +1062,7 @@ describe('pool creation:', () => {
         sqrtPriceX96: 736087614829673861315061733n,
       };
       const response = await client.requestMigration(params);
-      expect(JSBI.equal(response.destPosition.pool.liquidity, JSBI.BigInt(0))).toBeTrue;
+      expect(response.destPosition.pool.liquidity).toBe(0n);
       validateMigrationResponse(params, response);
     });
 
@@ -1080,7 +1086,7 @@ describe('pool creation:', () => {
         sqrtPriceX96: 736087614829673861315061733n,
       };
       const response = await client.requestMigration(params);
-      expect(JSBI.equal(response.destPosition.pool.liquidity, JSBI.BigInt(0))).toBeTrue;
+      expect(response.destPosition.pool.liquidity).toBe(0n);
       validateMigrationResponse(params, response);
     });
   });
@@ -1088,7 +1094,7 @@ describe('pool creation:', () => {
   const mockNoV3Pool = async (): Promise<void> => {
     await moduleMocker.mock('../src/actions/getV3Pool.ts', () => ({
       fetchRawV3PoolData: mock(async () => {
-        return [{ status: 'failure2' }, { status: 'failure2' }];
+        return [{ status: 'failure' }, { status: 'failure' }];
       }),
     }));
   };
@@ -1155,7 +1161,7 @@ describe('pool creation:', () => {
         sqrtPriceX96: 736087614829673861315061733n,
       };
       const response = await client.requestMigration(params);
-      expect(JSBI.equal(response.destPosition.pool.liquidity, JSBI.BigInt(0))).toBeTrue;
+      expect(response.destPosition.pool.liquidity).toBe(0n);
       validateMigrationResponse(params, response);
     });
 
@@ -1177,7 +1183,7 @@ describe('pool creation:', () => {
         sqrtPriceX96: 736087614829673861315061733n,
       };
       const response = await client.requestMigration(params);
-      expect(JSBI.equal(response.destPosition.pool.liquidity, JSBI.BigInt(0))).toBeTrue;
+      expect(response.destPosition.pool.liquidity).toBe(0n);
       validateMigrationResponse(params, response);
     });
   });
