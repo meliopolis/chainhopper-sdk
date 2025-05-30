@@ -2,6 +2,30 @@
 
 [ChainHopper Protocol](https://github.com/meliopolis/chainhopper-protocol) allows Uniswap v3 and v4 LP positions to migrate between supported chains with a single click.
 
+Supports:
+
+- One-click migration from any v3/v4 pool to any v3/v4 pool
+- Smart bridging: Single or Dual Token migrations
+- Native token support for v4
+- Initialize new pools through the migration, if needed
+- Live on: Mainnet, Unichain, Base, Arbitrum, Optimism
+
+We are grateful to [Uniswap Foundation](https://www.uniswapfoundation.org/) for funding and support!
+
+## Why use ChainHopper?
+
+To move an LP position to another chain, it takes 4-5 manual steps:
+
+1. Remove liquidity & collect fees
+2. Swap/bridge "other" token
+3. Bridge WETH [Wait for confirmations...]
+4. Swap back, if needed
+5. Mint new position
+
+Plus: you need gas tokens on destination chain 😫.
+
+With ChainHopper, you can do all this with one transaction.
+
 Use this Typescript SDK to quickly and integrate with ChainHopper protocol with a few lines of code.
 
 ## Installation
@@ -33,7 +57,7 @@ export const client = ChainHopperClient.create({
 Now, you can pass in a source LP position and parameters of a destination LP position and retrieve all the relevant data.
 
 ```typescript
-import { RequestV3toV4MigrationParams, Protocol, chainConfigs } from "chainhopper-sdk";
+import { RequestV3toV4MigrationParams, Protocol, chainConfigs } from 'chainhopper-sdk';
 import { zeroAddress } from 'viem';
 
 const migrationParams: RequestV3toV4MigrationParams = {
@@ -56,10 +80,14 @@ const migrationParams: RequestV3toV4MigrationParams = {
   // destination position info
   tickLower: -250000, // SDK will automatically calculate the nearest usable tick
   tickUpper: -150000, // SDK will automatically calculate the nearest usable tick
-  }
+};
 
 const migrationResponse = await client.requestMigration(requestParams);
+```
 
+Let's print the response to get the details:
+
+```typescript
 console.log(migrationResponse);
 // this will look like the following
 {
