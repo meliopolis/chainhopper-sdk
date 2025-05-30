@@ -30,6 +30,7 @@ export type InternalSettleMigrationResult = {
   destPosition: Position;
   migratorMessage: `0x${string}`;
   settlerMessage: `0x${string}`;
+  swapAmountInMilliBps?: number;
 };
 
 export type InternalGenerateMigrationParamsInput = {

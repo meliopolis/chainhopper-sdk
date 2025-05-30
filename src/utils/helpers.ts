@@ -2,7 +2,13 @@ import { CurrencyAmount, Fraction, Percent, Price, Token, type Currency } from '
 import { DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, Protocol } from './constants';
 import { nearestUsableTick, Pool as V3Pool, SqrtPriceMath, TickMath, Position as V3Position } from '@uniswap/v3-sdk';
 import { Position as V4Position, Pool as V4Pool } from '@uniswap/v4-sdk';
-import type { Position } from '../types/sdk';
+import type {
+  RequestMigrationParams,
+  MigratorExecutionParams,
+  Position,
+  Route,
+  SettlerExecutionParams,
+} from '../types/sdk';
 
 import {
   encodeMigrationParams,
@@ -11,8 +17,7 @@ import {
   encodeSettlementParams,
   encodeParamsForSettler,
 } from '../actions/encode';
-import { zeroAddress } from 'viem';
-import type { ExecutionParams, RequestMigrationParams } from '../types/sdk';
+import { zeroAddress, type Abi } from 'viem';
 
 import JSBI from 'jsbi';
 import { getV3Quote } from '../actions/getV3Quote';
@@ -21,6 +26,7 @@ import { getV4CombinedQuote } from '../actions/getV4CombinedQuote';
 import { NFTSafeTransferFrom } from '../abis/NFTSafeTransferFrom';
 import type { InternalGenerateMigrationParamsInput } from '../types/internal';
 import { toSDKPosition } from './position';
+import { SpokePoolABI } from '../abis';
 
 export const generateSettlerData = (
   sourceChainConfig: ChainConfig,
@@ -425,7 +431,7 @@ export const generateExecutionParams = ({
   protocol: Protocol;
   tokenId: bigint;
   message: `0x${string}`;
-}): ExecutionParams => {
+}): MigratorExecutionParams => {
   let positionManagerAddress: `0x${string}`;
   let migratorAddress: `0x${string}` | undefined;
   const sourceChainConfig = chainConfigs[sourceChainId];
@@ -445,4 +451,57 @@ export const generateExecutionParams = ({
     functionName: 'safeTransferFrom',
     args: [owner, migratorAddress, tokenId, message],
   };
+};
+
+export const generateSettlerExecutionParams = ({
+  sourceChainId,
+  destChainId,
+  owner,
+  destProtocol,
+  routes,
+  fillDeadline,
+  message,
+}: {
+  sourceChainId: number;
+  destChainId: number;
+  owner: `0x${string}`;
+  destProtocol: Protocol;
+  routes: Route[];
+  fillDeadline: number;
+  message: `0x${string}`;
+}): SettlerExecutionParams[] => {
+  const destChainConfig = chainConfigs[destChainId];
+  let recipient: `0x${string}` | undefined;
+  if (destProtocol === Protocol.UniswapV3) {
+    recipient = destChainConfig.UniswapV3AcrossSettler;
+  } else if (destProtocol === Protocol.UniswapV4) {
+    recipient = destChainConfig.UniswapV4AcrossSettler;
+  } else {
+    throw new Error('Unable to generate SettlerExecutionParams');
+  }
+  if (!recipient) {
+    throw new Error('Settler not found');
+  }
+  return routes.map((route) => ({
+    address: destChainConfig.spokePoolAddress,
+    abi: SpokePoolABI as Abi,
+    functionName: 'fillV3Relay',
+    args: [
+      {
+        depositor: owner,
+        recipient,
+        exclusiveRelayer: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+        inputToken: route.inputToken,
+        outputToken: route.outputToken,
+        inputAmount: route.inputAmount,
+        outputAmount: route.outputAmount,
+        originChainId: BigInt(sourceChainId),
+        depositId: 0, // hardcoded for now
+        exclusivityDeadline: 0, // can make it zero for now
+        fillDeadline: fillDeadline,
+        message,
+      },
+      BigInt(sourceChainId),
+    ],
+  }));
 };

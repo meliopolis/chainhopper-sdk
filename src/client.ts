@@ -20,7 +20,7 @@ import { getV4Position } from './actions/getV4Position';
 import { startUniswapV4Migration } from './actions/startUniswapV4Migration';
 import { settleUniswapV4Migration } from './actions/settleUniswapV4Migration';
 import { isAddress, checksumAddress } from 'viem';
-import { generateExecutionParams } from './utils/helpers';
+import { generateExecutionParams, generateSettlerExecutionParams } from './utils/helpers';
 
 export type ChainHopperClientOptions = {
   /**
@@ -155,7 +155,7 @@ export class ChainHopperClient {
       routes,
     };
     if (destinationProtocol === Protocol.UniswapV3) {
-      const v3Settlement = await settleUniswapV3Migration({
+      const { destPosition, migratorMessage, settlerMessage, swapAmountInMilliBps } = await settleUniswapV3Migration({
         sourceChainConfig: this.chainConfigs[sourceChainId],
         destinationChainConfig: this.chainConfigs[destinationChainId],
         routes,
@@ -164,17 +164,31 @@ export class ChainHopperClient {
       });
       return {
         ...returnResponse,
-        ...v3Settlement,
+        destPosition,
+        ...(params.debug
+          ? {
+              settlerExecutionParams: generateSettlerExecutionParams({
+                sourceChainId,
+                destChainId: destinationChainId,
+                owner: v3Position.owner,
+                destProtocol: destinationProtocol,
+                routes,
+                fillDeadline: Date.now() + 1000 * 60 * 60 * 24, // 1 day
+                message: settlerMessage,
+              }),
+              swapAmountInMilliBps,
+            }
+          : {}),
         executionParams: generateExecutionParams({
           sourceChainId,
           owner: v3Position.owner,
           protocol: Protocol.UniswapV3,
           tokenId,
-          message: v3Settlement.migratorMessage,
+          message: migratorMessage,
         }),
       };
     } else if (destinationProtocol === Protocol.UniswapV4) {
-      const v4Settlement = await settleUniswapV4Migration({
+      const { destPosition, migratorMessage, settlerMessage, swapAmountInMilliBps } = await settleUniswapV4Migration({
         sourceChainConfig: this.chainConfigs[sourceChainId],
         destinationChainConfig: this.chainConfigs[destinationChainId],
         routes,
@@ -183,13 +197,27 @@ export class ChainHopperClient {
       });
       return {
         ...returnResponse,
-        ...v4Settlement,
+        destPosition,
+        ...(params.debug
+          ? {
+              settlerExecutionParams: generateSettlerExecutionParams({
+                sourceChainId,
+                destChainId: destinationChainId,
+                owner: v3Position.owner,
+                destProtocol: destinationProtocol,
+                routes,
+                fillDeadline: Date.now() + 1000 * 60 * 60 * 24, // 1 day
+                message: settlerMessage,
+              }),
+              swapAmountInMilliBps,
+            }
+          : {}),
         executionParams: generateExecutionParams({
           sourceChainId,
           owner: v3Position.owner,
           protocol: Protocol.UniswapV3,
           tokenId,
-          message: v4Settlement.migratorMessage,
+          message: migratorMessage,
         }),
       };
     } else {
@@ -221,15 +249,11 @@ export class ChainHopperClient {
 
     // settle migration on destination chain
     const returnResponse = {
-      sourceProtocol: Protocol.UniswapV4,
       sourcePosition: v4Position,
-      sourceTokenId: tokenId,
-      destProtocol: destinationProtocol,
-      destChainId: destinationChainId,
       routes,
     };
     if (destinationProtocol === Protocol.UniswapV3) {
-      const v3Settlement = await settleUniswapV3Migration({
+      const { destPosition, migratorMessage, settlerMessage, swapAmountInMilliBps } = await settleUniswapV3Migration({
         sourceChainConfig: this.chainConfigs[sourceChainId],
         destinationChainConfig: this.chainConfigs[destinationChainId],
         routes,
@@ -238,17 +262,31 @@ export class ChainHopperClient {
       });
       return {
         ...returnResponse,
-        ...v3Settlement,
+        destPosition,
+        ...(params.debug
+          ? {
+              settlerExecutionParams: generateSettlerExecutionParams({
+                sourceChainId,
+                destChainId: destinationChainId,
+                owner: v4Position.owner,
+                destProtocol: destinationProtocol,
+                routes,
+                fillDeadline: Date.now() + 1000 * 60 * 60 * 24, // 1 day
+                message: settlerMessage,
+              }),
+              swapAmountInMilliBps,
+            }
+          : {}),
         executionParams: generateExecutionParams({
           sourceChainId,
           owner: v4Position.owner,
           protocol: Protocol.UniswapV4,
           tokenId,
-          message: v3Settlement.migratorMessage,
+          message: migratorMessage,
         }),
       };
     } else if (destinationProtocol === Protocol.UniswapV4) {
-      const v4Settlement = await settleUniswapV4Migration({
+      const { destPosition, migratorMessage, settlerMessage, swapAmountInMilliBps } = await settleUniswapV4Migration({
         sourceChainConfig: this.chainConfigs[sourceChainId],
         destinationChainConfig: this.chainConfigs[destinationChainId],
         routes,
@@ -257,13 +295,27 @@ export class ChainHopperClient {
       });
       return {
         ...returnResponse,
-        ...v4Settlement,
+        destPosition,
+        ...(params.debug
+          ? {
+              settlerExecutionParams: generateSettlerExecutionParams({
+                sourceChainId,
+                destChainId: destinationChainId,
+                owner: v4Position.owner,
+                destProtocol: destinationProtocol,
+                routes,
+                fillDeadline: Date.now() + 1000 * 60 * 60 * 24, // 1 day
+                message: settlerMessage,
+              }),
+              swapAmountInMilliBps,
+            }
+          : {}),
         executionParams: generateExecutionParams({
           sourceChainId,
           owner: v4Position.owner,
           protocol: Protocol.UniswapV4,
           tokenId,
-          message: v4Settlement.migratorMessage,
+          message: migratorMessage,
         }),
       };
     } else {

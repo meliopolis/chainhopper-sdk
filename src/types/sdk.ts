@@ -87,11 +87,34 @@ export type Route = {
   exclusiveRelayer: `0x${string}`;
 };
 
-export type ExecutionParams = {
+export type MigratorExecutionParams = {
   address: `0x${string}`;
   abi: Abi;
   functionName: string;
   args: [`0x${string}`, `0x${string}`, bigint, `0x${string}`];
+};
+
+export type SettlerExecutionParams = {
+  address: `0x${string}`;
+  abi: Abi;
+  functionName: string;
+  args: [
+    {
+      depositor: `0x${string}`;
+      recipient: `0x${string}`;
+      exclusiveRelayer: `0x${string}`;
+      inputToken: `0x${string}`;
+      outputToken: `0x${string}`;
+      inputAmount: bigint;
+      outputAmount: bigint;
+      originChainId: bigint;
+      depositId: number; // hardcoded for now
+      exclusivityDeadline: number; // can make it zero for now
+      fillDeadline: number;
+      message: `0x${string}`;
+    },
+    bigint,
+  ];
 };
 
 export type Token = {
@@ -146,8 +169,8 @@ export type RequestMigrationResponse = {
   sourcePosition: PositionWithFees;
   routes: Route[];
   destPosition: Position;
-  executionParams: ExecutionParams;
+  executionParams: MigratorExecutionParams;
   // if debug flag set, these will be populated
-  settlerExecutionParams?: ExecutionParams;
+  settlerExecutionParams?: SettlerExecutionParams[];
   swapAmountInMilliBps?: number;
 };
