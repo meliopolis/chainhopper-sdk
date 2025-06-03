@@ -173,7 +173,7 @@ export class ChainHopperClient {
                 owner: v3Position.owner,
                 destProtocol: destinationProtocol,
                 routes,
-                fillDeadline: Date.now() + 1000 * 60 * 60 * 24, // 1 day
+                fillDeadline: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // 1 day
                 message: settlerMessage,
               }),
               swapAmountInMilliBps,
@@ -206,7 +206,7 @@ export class ChainHopperClient {
                 owner: v3Position.owner,
                 destProtocol: destinationProtocol,
                 routes,
-                fillDeadline: Date.now() + 1000 * 60 * 60 * 24, // 1 day
+                fillDeadline: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // 1 day
                 message: settlerMessage,
               }),
               swapAmountInMilliBps,
@@ -271,7 +271,7 @@ export class ChainHopperClient {
                 owner: v4Position.owner,
                 destProtocol: destinationProtocol,
                 routes,
-                fillDeadline: Date.now() + 1000 * 60 * 60 * 24, // 1 day
+                fillDeadline: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // 1 day
                 message: settlerMessage,
               }),
               swapAmountInMilliBps,
@@ -304,7 +304,7 @@ export class ChainHopperClient {
                 owner: v4Position.owner,
                 destProtocol: destinationProtocol,
                 routes,
-                fillDeadline: Date.now() + 1000 * 60 * 60 * 24, // 1 day
+                fillDeadline: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // 1 day
                 message: settlerMessage,
               }),
               swapAmountInMilliBps,
