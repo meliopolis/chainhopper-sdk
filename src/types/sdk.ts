@@ -11,7 +11,7 @@ export type TokenAmount = {
   amount: bigint;
 };
 
-export type RequestMigrationDestination = (UniswapV3Params | UniswapV4Params) & {
+export type DestinationSearch = (UniswapV3Params | UniswapV4Params) & {
   bridgeType?: BridgeType;
   migrationMethod?: MigrationMethod;
 };
@@ -19,7 +19,7 @@ export type RequestMigrationDestination = (UniswapV3Params | UniswapV4Params) & 
 export type BaseRequestMigrationParams = {
   sourceChainId: number;
   tokenId: bigint;
-  destinations: RequestMigrationDestination[];
+  destinations: DestinationSearch[];
   senderShareBps?: number;
   senderFeeRecipient?: `0x${string}`;
   slippageInBps?: number;
@@ -69,6 +69,16 @@ export type RequestV3MigrationParams = RequestV3toV3MigrationParams | RequestV3t
 export type RequestV4MigrationParams = RequestV4toV3MigrationParams | RequestV4toV4MigrationParams;
 
 export type RequestMigrationParams = RequestV3MigrationParams | RequestV4MigrationParams;
+
+export type RequestSingleDestinationSearchParams = Omit<RequestMigrationParams, 'destinations'> & {
+  destination: DestinationSearch;
+};
+
+export type RequestExactDestination = DestinationSearch & { bridgeType: BridgeType; migrationMethod: MigrationMethod };
+
+export type RequestExactMigrationParams = Omit<RequestMigrationParams, 'destinations'> & {
+  destination: RequestExactDestination;
+};
 
 // type AcrossFeeBreakdown = {
 //   [K in 'lpFee' | 'relayerGasFee' | 'relayerCapitalFee' | 'totalRelayFee']: {
@@ -177,13 +187,24 @@ export type ResponseDestination = (v3Pool | v4Pool) & {
   swapAmountInMilliBps?: number;
 };
 
-export type ResponseDestinationError = {
-  destination: RequestMigrationDestination;
-  errors: Error[];
+export type UnavailableResponseDestination = {
+  destination: RequestExactDestination;
+  reasons: string[];
 };
 
 export type RequestMigrationResponse = {
   sourcePosition: PositionWithFees;
   destinations: ResponseDestination[];
-  errors: ResponseDestinationError[];
+  unavailableDestinations: UnavailableResponseDestination[];
+};
+
+export type RequestMigrationsResponse = {
+  sourcePosition: PositionWithFees;
+  destinations: ResponseDestination[][];
+  unavailableDestinations: UnavailableResponseDestination[];
+};
+
+export type RequestExactMigrationResponse = {
+  sourcePosition: PositionWithFees;
+  destination: ResponseDestination;
 };

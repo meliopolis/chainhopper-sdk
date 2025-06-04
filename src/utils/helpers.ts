@@ -8,7 +8,7 @@ import type {
   Position,
   Route,
   SettlerExecutionParams,
-  RequestMigrationDestination,
+  RequestExactDestination,
 } from '../types/sdk';
 
 import {
@@ -32,7 +32,7 @@ import type { UniswapV4MintParams } from '@/types';
 
 export const generateSettlerData = (
   sourceChainConfig: ChainConfig,
-  destination: RequestMigrationDestination,
+  destination: RequestExactDestination,
   externalParams: RequestMigrationParams,
   owner: `0x${string}`
 ): { interimMessageForSettler: `0x${string}` } => {

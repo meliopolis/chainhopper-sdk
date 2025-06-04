@@ -3,7 +3,7 @@ import type { Position as V3Position } from '@uniswap/v3-sdk';
 import type { Position as V4Position } from '@uniswap/v4-sdk';
 
 import type {
-  RequestMigrationDestination,
+  RequestExactDestination,
   RequestMigrationParams,
   RequestV3MigrationParams,
   RequestV4MigrationParams,
@@ -15,7 +15,7 @@ import type { PositionWithFees, Position } from './sdk';
 export type InternalStartMigrationParams = {
   sourceChainConfig: ChainConfig;
   destinationChainConfig: ChainConfig;
-  destination: RequestMigrationDestination;
+  destination: RequestExactDestination;
   positionWithFees: PositionWithFees;
   externalParams: RequestV3MigrationParams | RequestV4MigrationParams;
 };
@@ -29,7 +29,7 @@ export type InternalSettleMigrationParams = {
   sourceChainConfig: ChainConfig;
   destinationChainConfig: ChainConfig;
   routes: Route[];
-  destination: RequestMigrationDestination;
+  destination: RequestExactDestination;
   externalParams: RequestMigrationParams;
   owner: `0x${string}`;
 };
@@ -45,7 +45,7 @@ export type InternalGenerateMigrationParamsInput = {
   externalParams: RequestMigrationParams;
   sourceChainConfig: ChainConfig;
   destinationChainConfig: ChainConfig;
-  destination: RequestMigrationDestination;
+  destination: RequestExactDestination;
   routes: Route[];
   maxPosition: V3Position | V4Position;
   maxPositionUsingRouteMinAmountOut: V3Position | V4Position;
