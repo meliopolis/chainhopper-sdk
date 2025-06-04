@@ -14,6 +14,7 @@ export const startUniswapV3Migration = async ({
   sourceChainConfig,
   destinationChainConfig,
   positionWithFees,
+  destination,
   externalParams,
 }: InternalStartMigrationParams): Promise<InternalStartMigrationResult> => {
   const { pool } = positionWithFees;
@@ -31,7 +32,7 @@ export const startUniswapV3Migration = async ({
   const totalToken1 = positionWithFees.amount1 + positionWithFees.feeAmount1;
 
   // if migration Method is single-token
-  if (externalParams.migrationMethod === MigrationMethod.SingleToken) {
+  if (destination.migrationMethod === MigrationMethod.SingleToken) {
     // get a quote from Uniswap Router to trade otherToken
     const amountIn = isWethToken0 ? totalToken1 : totalToken0;
     let amountOut = 0n;
@@ -53,12 +54,12 @@ export const startUniswapV3Migration = async ({
     // todo check that quote price is not much worse than current price
     // otherwise trigger a slippage warning
 
-    if (externalParams.bridgeType === BridgeType.Across) {
+    if (destination.bridgeType === BridgeType.Across) {
       // generate the message that will be passed to the settler on the destination chain
       // note that this is different than the message that is passed to Migrator on the source chain
       const { interimMessageForSettler } = generateSettlerData(
         sourceChainConfig,
-        MigrationMethod.SingleToken,
+        destination,
         externalParams,
         positionWithFees.owner
       );
@@ -68,7 +69,7 @@ export const startUniswapV3Migration = async ({
         sourceChainConfig.wethAddress,
         totalWethAvailable,
         destinationChainConfig.wethAddress,
-        externalParams,
+        destination.protocol,
         interimMessageForSettler
       );
 
@@ -94,11 +95,11 @@ export const startUniswapV3Migration = async ({
     } else {
       throw new Error('Bridge type not supported');
     }
-  } else if (externalParams.migrationMethod === MigrationMethod.DualToken) {
-    if (externalParams.bridgeType === BridgeType.Across) {
+  } else if (destination.migrationMethod === MigrationMethod.DualToken) {
+    if (destination.bridgeType === BridgeType.Across) {
       const { interimMessageForSettler } = generateSettlerData(
         sourceChainConfig,
-        MigrationMethod.DualToken,
+        destination,
         externalParams,
         positionWithFees.owner
       );
@@ -115,7 +116,7 @@ export const startUniswapV3Migration = async ({
         pool.token0.address,
         totalToken0,
         isWethToken0 ? destinationChainConfig.wethAddress : flipTokens ? externalParams.token1 : externalParams.token0,
-        externalParams,
+        destination.protocol,
         interimMessageForSettler
       );
 
@@ -125,7 +126,7 @@ export const startUniswapV3Migration = async ({
         pool.token1.address,
         totalToken1,
         isWethToken1 ? destinationChainConfig.wethAddress : flipTokens ? externalParams.token0 : externalParams.token1,
-        externalParams,
+        destination.protocol,
         interimMessageForSettler
       );
 

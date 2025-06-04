@@ -11,13 +11,15 @@ export type TokenAmount = {
   amount: bigint;
 };
 
-export type BaseRequestMigrationParams = {
-  sourceChainId: number;
-  destinationChainId: number;
-  tokenId: bigint;
-  destinationProtocol: Protocol;
+export type RequestMigrationDestination = (UniswapV3Params | UniswapV4Params) & {
   bridgeType?: BridgeType;
   migrationMethod?: MigrationMethod;
+};
+
+export type BaseRequestMigrationParams = {
+  sourceChainId: number;
+  tokenId: bigint;
+  destinations: RequestMigrationDestination[];
   senderShareBps?: number;
   senderFeeRecipient?: `0x${string}`;
   slippageInBps?: number;
@@ -25,6 +27,8 @@ export type BaseRequestMigrationParams = {
 };
 
 export type UniswapV3Params = {
+  protocol: Protocol.UniswapV3;
+  chainId: number;
   token0: `0x${string}`;
   token1: `0x${string}`;
   fee: number;
@@ -34,6 +38,8 @@ export type UniswapV3Params = {
 };
 
 export type UniswapV4Params = UniswapV3Params & {
+  protocol: Protocol.UniswapV4;
+  chainId: number;
   hooks: `0x${string}`;
   tickSpacing: number;
 };
@@ -41,25 +47,21 @@ export type UniswapV4Params = UniswapV3Params & {
 export type RequestV3toV3MigrationParams = BaseRequestMigrationParams &
   UniswapV3Params & {
     sourceProtocol: Protocol.UniswapV3;
-    destinationProtocol: Protocol.UniswapV3;
   };
 
 export type RequestV3toV4MigrationParams = BaseRequestMigrationParams &
   UniswapV4Params & {
     sourceProtocol: Protocol.UniswapV3;
-    destinationProtocol: Protocol.UniswapV4;
   };
 
 export type RequestV4toV4MigrationParams = BaseRequestMigrationParams &
   UniswapV4Params & {
     sourceProtocol: Protocol.UniswapV4;
-    destinationProtocol: Protocol.UniswapV4;
   };
 
 export type RequestV4toV3MigrationParams = BaseRequestMigrationParams &
   UniswapV3Params & {
     sourceProtocol: Protocol.UniswapV4;
-    destinationProtocol: Protocol.UniswapV3;
   };
 
 export type RequestV3MigrationParams = RequestV3toV3MigrationParams | RequestV3toV4MigrationParams;
@@ -165,12 +167,23 @@ export type PositionWithFees = Position & {
   feeAmount1: bigint;
 };
 
-export type RequestMigrationResponse = {
-  sourcePosition: PositionWithFees;
+export type ResponseDestination = (v3Pool | v4Pool) & {
   routes: Route[];
-  destPosition: Position;
+  bridgeType: BridgeType;
+  migrationMethod: MigrationMethod;
   executionParams: MigratorExecutionParams;
   // if debug flag set, these will be populated
   settlerExecutionParams?: SettlerExecutionParams[];
   swapAmountInMilliBps?: number;
+};
+
+export type ResponseDestinationError = {
+  destination: RequestMigrationDestination;
+  errors: Error[];
+};
+
+export type RequestMigrationResponse = {
+  sourcePosition: PositionWithFees;
+  destinations: ResponseDestination[];
+  errors: ResponseDestinationError[];
 };

@@ -14,6 +14,7 @@ export const settleUniswapV3Migration = async ({
   sourceChainConfig,
   destinationChainConfig,
   routes,
+  destination,
   externalParams,
   owner,
 }: InternalSettleMigrationParams): Promise<InternalSettleMigrationResult> => {
@@ -115,6 +116,7 @@ export const settleUniswapV3Migration = async ({
       sourceChainConfig,
       destinationChainConfig,
       routes,
+      destination,
       maxPosition: maxPositionWithSwap,
       maxPositionUsingRouteMinAmountOut: maxPositionWithSwapUsingRouteMinAmountOut,
       owner,
@@ -168,6 +170,7 @@ export const settleUniswapV3Migration = async ({
       sourceChainConfig,
       destinationChainConfig,
       routes,
+      destination,
       maxPosition,
       maxPositionUsingRouteMinAmountOut: maxPositionUsingSettleMinAmountsOut,
       owner,

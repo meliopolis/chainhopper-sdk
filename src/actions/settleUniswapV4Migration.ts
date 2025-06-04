@@ -17,6 +17,7 @@ export const settleUniswapV4Migration = async ({
   sourceChainConfig,
   destinationChainConfig,
   routes,
+  destination,
   externalParams,
   owner,
 }: InternalSettleMigrationParams): Promise<InternalSettleMigrationResult> => {
@@ -36,7 +37,7 @@ export const settleUniswapV4Migration = async ({
       tickSpacing: tickSpacing,
       hooks: hooks,
     },
-    externalParams.sqrtPriceX96
+    destination.sqrtPriceX96
   );
 
   // get the settler fees
@@ -122,6 +123,7 @@ export const settleUniswapV4Migration = async ({
       sourceChainConfig,
       destinationChainConfig,
       routes,
+      destination,
       maxPosition,
       maxPositionUsingRouteMinAmountOut,
       owner,
@@ -177,6 +179,7 @@ export const settleUniswapV4Migration = async ({
       sourceChainConfig,
       destinationChainConfig,
       routes,
+      destination,
       maxPosition,
       maxPositionUsingRouteMinAmountOut: maxPositionUsingSettleMinAmountsOut,
       owner,

@@ -1,7 +1,7 @@
 import { type Quote, AcrossClient } from '@across-protocol/app-sdk';
 import { type ChainConfig, chainConfigs } from '../chains';
-import type { RequestMigrationParams } from '../types/sdk';
 import { resolveSettler } from '../utils/helpers';
+import type { Protocol } from '@/utils/constants';
 
 const acrossClient = ({ testnet }: { testnet: boolean }): AcrossClient => {
   // fetch chains from chainConfigs
@@ -36,7 +36,7 @@ export const getAcrossQuote = async (
   inputTokenAddress: `0x${string}`,
   inputTokenAmount: bigint,
   outputTokenAddress: `0x${string}`,
-  externalParams: RequestMigrationParams,
+  protocol: Protocol,
   interimMessageForSettler: `0x${string}`
 ): Promise<Quote> => {
   return await acrossClient({ testnet: sourceChainConfig.testnet }).getQuote({
@@ -47,7 +47,7 @@ export const getAcrossQuote = async (
       outputToken: outputTokenAddress,
     },
     inputAmount: inputTokenAmount,
-    recipient: resolveSettler(externalParams, destinationChainConfig),
+    recipient: resolveSettler(protocol, destinationChainConfig),
     crossChainMessage: interimMessageForSettler,
   });
 };
