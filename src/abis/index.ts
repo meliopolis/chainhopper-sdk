@@ -1,3 +1,5 @@
+export * from './IMigrator';
+export * from './ISettler';
 export * from './MigrationData';
 export * from './MigrationParams';
 export * from './NFTSafeTransferFrom';
