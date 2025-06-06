@@ -9,34 +9,36 @@ import {
 } from '../utils/helpers';
 import type { InternalSettleMigrationParams, InternalSettleMigrationResult } from '../types/internal';
 import { getSettlerFees } from './getSettlerFees';
-import type { RequestV3toV4MigrationParams, RequestV4toV4MigrationParams } from '../types';
 import type { Position } from '@uniswap/v4-sdk';
 import JSBI from 'jsbi';
+import type { UniswapV4Params } from '@/types/sdk';
 
 export const settleUniswapV4Migration = async ({
   sourceChainConfig,
   destinationChainConfig,
   routes,
+  migration,
   externalParams,
   owner,
 }: InternalSettleMigrationParams): Promise<InternalSettleMigrationResult> => {
+  const { destination, exactPath } = migration;
   if (routes.length === 0) throw new Error('No routes found');
   if (routes.length > 2) throw new Error('Invalid number of routes');
 
-  const { tickSpacing, hooks } = externalParams as RequestV3toV4MigrationParams | RequestV4toV4MigrationParams;
-  const slippageInBps = externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS;
+  const { tickSpacing, hooks } = destination as UniswapV4Params;
+  const slippageInBps = exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS;
 
   // now we need fetch the pool on the destination chain, or specify a sqrtPriceX96 to initialize one
   const pool = await getV4Pool(
     destinationChainConfig,
     {
-      currency0: externalParams.token0,
-      currency1: externalParams.token1,
-      fee: externalParams.fee,
+      currency0: destination.token0,
+      currency1: destination.token1,
+      fee: destination.fee,
       tickSpacing: tickSpacing,
       hooks: hooks,
     },
-    externalParams.sqrtPriceX96
+    destination.sqrtPriceX96
   );
 
   // get the settler fees
@@ -49,8 +51,8 @@ export const settleUniswapV4Migration = async ({
   if (routes.length === 1) {
     if (
       JSBI.equal(pool.liquidity, JSBI.BigInt(0)) &&
-      pool.tickCurrent < externalParams.tickUpper &&
-      pool.tickCurrent >= externalParams.tickLower
+      pool.tickCurrent < destination.tickUpper &&
+      pool.tickCurrent >= destination.tickLower
     ) {
       throw new Error('No liquidity for required swap in destination pool');
     }
@@ -72,8 +74,8 @@ export const settleUniswapV4Migration = async ({
       pool,
       baseTokenAvailable,
       maxOtherTokenAvailable,
-      externalParams.tickLower,
-      externalParams.tickUpper,
+      destination.tickLower,
+      destination.tickUpper,
       new Fraction(slippageInBps, 10000).divide(20),
       10
     )) as Position;
@@ -97,15 +99,15 @@ export const settleUniswapV4Migration = async ({
       pool,
       baseTokenAvailableUsingRouteMinAmountOut,
       maxOtherTokenAvailableUsingRouteMinAmountOut,
-      externalParams.tickLower,
-      externalParams.tickUpper,
+      destination.tickLower,
+      destination.tickUpper,
       new Fraction(slippageInBps, 10000).divide(20),
       10
     )) as Position;
 
     // calculate swapAmountInMilliBps
     const swapAmountInMilliBps =
-      externalParams.token0 === destinationChainConfig.wethAddress || externalParams.token0 === zeroAddress
+      destination.token0 === destinationChainConfig.wethAddress || destination.token0 === zeroAddress
         ? maxPosition.amount0.asFraction
             .divide(baseTokenAvailable.asFraction)
             .multiply(10_000_000)
@@ -122,6 +124,7 @@ export const settleUniswapV4Migration = async ({
       sourceChainConfig,
       destinationChainConfig,
       routes,
+      migration,
       maxPosition,
       maxPositionUsingRouteMinAmountOut,
       owner,
@@ -131,8 +134,8 @@ export const settleUniswapV4Migration = async ({
     // logically has to be (routes.length) === 2 but needs to look exhaustive for ts compiler
     // make sure both tokens are found in routes
     const token0Address =
-      externalParams.token0 === NATIVE_ETH_ADDRESS ? destinationChainConfig.wethAddress : externalParams.token0;
-    const token1Address = externalParams.token1;
+      destination.token0 === NATIVE_ETH_ADDRESS ? destinationChainConfig.wethAddress : destination.token0;
+    const token1Address = destination.token1;
     if (token0Address != routes[0].outputToken && token0Address != routes[1].outputToken)
       throw new Error('Requested token0 not found in routes');
     if (token1Address != routes[0].outputToken && token1Address != routes[1].outputToken)
@@ -161,15 +164,15 @@ export const settleUniswapV4Migration = async ({
       pool,
       settleAmountOut0,
       settleAmountOut1,
-      externalParams.tickLower,
-      externalParams.tickUpper
+      destination.tickLower,
+      destination.tickUpper
     );
     const maxPositionUsingSettleMinAmountsOut = generateMaxV4Position(
       pool,
       settleMinAmountOut0,
       settleMinAmountOut1,
-      externalParams.tickLower,
-      externalParams.tickUpper
+      destination.tickLower,
+      destination.tickUpper
     );
 
     return generateMigrationParams({
@@ -177,6 +180,7 @@ export const settleUniswapV4Migration = async ({
       sourceChainConfig,
       destinationChainConfig,
       routes,
+      migration,
       maxPosition,
       maxPositionUsingRouteMinAmountOut: maxPositionUsingSettleMinAmountsOut,
       owner,

@@ -1,10 +1,11 @@
 import { Pool, Position, type PoolKey } from '@uniswap/v4-sdk';
 import type { ChainConfig } from '../chains';
-import type { IUniswapPositionParams, PositionWithFees } from '../types';
+import type { PositionWithFees } from '../types';
 import { getV4Pool } from './getV4Pool';
 import { encodePacked, keccak256, pad } from 'viem';
 import { subIn256 } from '../utils/helpers';
 import { toSDKPosition } from '../utils/position';
+import type { IUniswapPositionParams } from '@/types/internal';
 
 type IPoolAndPositionCallResult = [PoolKey, bigint];
 

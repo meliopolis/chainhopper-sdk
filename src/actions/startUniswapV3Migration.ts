@@ -14,8 +14,10 @@ export const startUniswapV3Migration = async ({
   sourceChainConfig,
   destinationChainConfig,
   positionWithFees,
+  migration,
   externalParams,
 }: InternalStartMigrationParams): Promise<InternalStartMigrationResult> => {
+  const { destination, exactPath } = migration;
   const { pool } = positionWithFees;
 
   // find WETH in position
@@ -31,7 +33,7 @@ export const startUniswapV3Migration = async ({
   const totalToken1 = positionWithFees.amount1 + positionWithFees.feeAmount1;
 
   // if migration Method is single-token
-  if (externalParams.migrationMethod === MigrationMethod.SingleToken) {
+  if (exactPath.migrationMethod === MigrationMethod.SingleToken) {
     // get a quote from Uniswap Router to trade otherToken
     const amountIn = isWethToken0 ? totalToken1 : totalToken0;
     let amountOut = 0n;
@@ -53,12 +55,12 @@ export const startUniswapV3Migration = async ({
     // todo check that quote price is not much worse than current price
     // otherwise trigger a slippage warning
 
-    if (externalParams.bridgeType === BridgeType.Across) {
+    if (exactPath.bridgeType === BridgeType.Across) {
       // generate the message that will be passed to the settler on the destination chain
       // note that this is different than the message that is passed to Migrator on the source chain
       const { interimMessageForSettler } = generateSettlerData(
         sourceChainConfig,
-        MigrationMethod.SingleToken,
+        migration,
         externalParams,
         positionWithFees.owner
       );
@@ -68,7 +70,7 @@ export const startUniswapV3Migration = async ({
         sourceChainConfig.wethAddress,
         totalWethAvailable,
         destinationChainConfig.wethAddress,
-        externalParams,
+        destination.protocol,
         interimMessageForSettler
       );
 
@@ -82,7 +84,7 @@ export const startUniswapV3Migration = async ({
             outputAmount: acrossQuote.deposit.outputAmount,
             minOutputAmount:
               (acrossQuote.deposit.outputAmount *
-                BigInt(10000 - (externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS) / 2)) /
+                BigInt(10000 - (exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS) / 2)) /
               10000n,
             maxFees: acrossQuote.fees.totalRelayFee.total,
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
@@ -94,11 +96,11 @@ export const startUniswapV3Migration = async ({
     } else {
       throw new Error('Bridge type not supported');
     }
-  } else if (externalParams.migrationMethod === MigrationMethod.DualToken) {
-    if (externalParams.bridgeType === BridgeType.Across) {
+  } else if (exactPath.migrationMethod === MigrationMethod.DualToken) {
+    if (exactPath.bridgeType === BridgeType.Across) {
       const { interimMessageForSettler } = generateSettlerData(
         sourceChainConfig,
-        MigrationMethod.DualToken,
+        migration,
         externalParams,
         positionWithFees.owner
       );
@@ -106,16 +108,16 @@ export const startUniswapV3Migration = async ({
       let flipTokens = false;
       if (isWethToken0)
         flipTokens =
-          externalParams.token0 != NATIVE_ETH_ADDRESS && externalParams.token0 != destinationChainConfig.wethAddress;
-      if (isWethToken1) flipTokens = externalParams.token1 != destinationChainConfig.wethAddress;
+          destination.token0 != NATIVE_ETH_ADDRESS && destination.token0 != destinationChainConfig.wethAddress;
+      if (isWethToken1) flipTokens = destination.token1 != destinationChainConfig.wethAddress;
 
       const acrossQuote0 = await getAcrossQuote(
         sourceChainConfig,
         destinationChainConfig,
         pool.token0.address,
         totalToken0,
-        isWethToken0 ? destinationChainConfig.wethAddress : flipTokens ? externalParams.token1 : externalParams.token0,
-        externalParams,
+        isWethToken0 ? destinationChainConfig.wethAddress : flipTokens ? destination.token1 : destination.token0,
+        destination.protocol,
         interimMessageForSettler
       );
 
@@ -124,8 +126,8 @@ export const startUniswapV3Migration = async ({
         destinationChainConfig,
         pool.token1.address,
         totalToken1,
-        isWethToken1 ? destinationChainConfig.wethAddress : flipTokens ? externalParams.token0 : externalParams.token1,
-        externalParams,
+        isWethToken1 ? destinationChainConfig.wethAddress : flipTokens ? destination.token0 : destination.token1,
+        destination.protocol,
         interimMessageForSettler
       );
 
@@ -139,7 +141,7 @@ export const startUniswapV3Migration = async ({
             outputAmount: acrossQuote0.deposit.outputAmount,
             minOutputAmount:
               (acrossQuote0.deposit.outputAmount *
-                BigInt(10000 - (externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS) / 2)) /
+                BigInt(10000 - (exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS) / 2)) /
               10000n,
             maxFees: acrossQuote0.fees.totalRelayFee.total,
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
@@ -153,7 +155,7 @@ export const startUniswapV3Migration = async ({
             outputAmount: acrossQuote1.deposit.outputAmount,
             minOutputAmount:
               (acrossQuote1.deposit.outputAmount *
-                BigInt(10000 - (externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS) / 2)) /
+                BigInt(10000 - (exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS) / 2)) /
               10000n,
             maxFees: acrossQuote1.fees.totalRelayFee.total,
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,

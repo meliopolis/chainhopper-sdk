@@ -1,19 +1,21 @@
 import { configurePublicClients } from './utils/configurePublicClients';
 import { chainConfigs } from './chains';
 import { getV3Position } from './actions/getV3Position';
-import { BridgeType, MigrationMethod, Protocol } from './utils/constants';
+import { BridgeType, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, Protocol } from './utils/constants';
 import type { ChainConfig } from './chains';
 import type {
   RequestMigrationParams,
-  RequestV3MigrationParams,
-  RequestV4MigrationParams,
-  IUniswapPositionParams,
-  RequestV3toV3MigrationParams,
-  RequestV4toV3MigrationParams,
-  RequestV3toV4MigrationParams,
-  RequestV4toV4MigrationParams,
-  RequestMigrationResponse,
   PositionWithFees,
+  PositionWithPath,
+  UnavailableMigration,
+  ExactMigrationRequest,
+  MigrationRequest,
+  RequestMigration,
+  RequestMigrations,
+  RequestExactMigration,
+  ExactMigrationResponse,
+  MigrationResponse,
+  MigrationsResponse,
 } from './types';
 import { startUniswapV3Migration, settleUniswapV3Migration } from './actions';
 import { getV4Position } from './actions/getV4Position';
@@ -21,6 +23,23 @@ import { startUniswapV4Migration } from './actions/startUniswapV4Migration';
 import { settleUniswapV4Migration } from './actions/settleUniswapV4Migration';
 import { isAddress, checksumAddress } from 'viem';
 import { generateExecutionParams, generateSettlerExecutionParams } from './utils/helpers';
+import type { IUniswapPositionParams } from './types/internal';
+
+const startFns = {
+  [Protocol.UniswapV3]: startUniswapV3Migration,
+  [Protocol.UniswapV4]: startUniswapV4Migration,
+};
+
+const settleFns = {
+  [Protocol.UniswapV3]: {
+    [Protocol.UniswapV3]: settleUniswapV3Migration,
+    [Protocol.UniswapV4]: settleUniswapV4Migration,
+  },
+  [Protocol.UniswapV4]: {
+    [Protocol.UniswapV3]: settleUniswapV3Migration,
+    [Protocol.UniswapV4]: settleUniswapV4Migration,
+  },
+};
 
 export type ChainHopperClientOptions = {
   /**
@@ -54,9 +73,9 @@ export class ChainHopperClient {
     return Object.values(chainConfigs).map((chainConfig) => chainConfig.chain.id);
   }
 
-  public validateAddress(address: string): void {
-    if (!isAddress(address)) throw new Error(`${address} is not a valid address`);
-    if (address !== checksumAddress(address)) throw new Error(`${address} is not a checksummed address`);
+  public validateAddress(address: string): string | undefined {
+    if (!isAddress(address)) return `${address} is not a valid address`;
+    if (address !== checksumAddress(address)) return `${address} is not a checksummed address`;
   }
 
   public getV3Position(params: IUniswapPositionParams): Promise<PositionWithFees> {
@@ -67,259 +86,234 @@ export class ChainHopperClient {
     return getV4Position(this.chainConfigs[params.chainId], params);
   }
 
-  public async requestMigration(params: RequestMigrationParams): Promise<RequestMigrationResponse> {
-    // make sure both chains are supported
-    if (!this.isChainSupported(params.sourceChainId) || !this.isChainSupported(params.destinationChainId)) {
-      throw new Error('chain not supported');
+  public async requestMigration(params: RequestMigration): Promise<MigrationResponse> {
+    const { migration, ...rest } = params;
+    const { sourcePosition, destPositions, unavailableMigrations } = await this.requestMigrations({
+      ...rest,
+      migrations: [migration],
+    });
+    return { sourcePosition, destPositions: destPositions[0], unavailableMigrations };
+  }
+
+  public async requestMigrations(params: RequestMigrations): Promise<MigrationsResponse> {
+    const unavailableMigrations: UnavailableMigration[] = [];
+
+    if (!this.isChainSupported(params.sourcePosition.chainId)) {
+      throw new Error('source chain not supported');
     }
 
-    // make sure source protocol is supported
-    if (params.sourceProtocol !== Protocol.UniswapV3 && params.sourceProtocol !== Protocol.UniswapV4) {
-      throw new Error('source protocol not supported');
-    }
-
-    // make sure destination protocol is supported
-    if (params.destinationProtocol !== Protocol.UniswapV3 && params.destinationProtocol !== Protocol.UniswapV4) {
-      throw new Error('destination protocol not supported');
-    }
-
-    // make sure bridge type is supported
-    if (params.bridgeType === undefined) {
-      params.bridgeType = BridgeType.Across;
-    } else if (params.bridgeType !== BridgeType.Across) {
-      throw new Error('bridge type not supported');
-    }
-
-    // check migration method
-    if (
-      params.migrationMethod !== MigrationMethod.SingleToken &&
-      params.migrationMethod !== MigrationMethod.DualToken
-    ) {
-      params.migrationMethod = MigrationMethod.SingleToken;
-    }
-
-    // make sure tokenId is valid
-    if (params.tokenId === BigInt(0)) {
+    if (params.sourcePosition.tokenId === BigInt(0)) {
       throw new Error('tokenId is not valid');
     }
 
-    // validate token addresses
-    this.validateAddress(params.token0);
-    this.validateAddress(params.token1);
-
-    if (params.token0.toLowerCase() >= params.token1.toLowerCase()) {
-      throw new Error('token0 and token1 must be distinct addresses in alphabetical order');
+    if (
+      params.sourcePosition.protocol !== Protocol.UniswapV3 &&
+      params.sourcePosition.protocol !== Protocol.UniswapV4
+    ) {
+      throw new Error('sourceProtocol not supported');
     }
 
-    if (params.token0.toLowerCase() >= params.token1.toLowerCase()) {
-      throw new Error('token0 and token1 must be distinct addresses in alphabetical order');
-    }
+    const migrationOptions: ExactMigrationRequest[][] = this.enumerateMigrations(params.migrations).map(
+      (migrations: ExactMigrationRequest[]) => {
+        return migrations
+          .map((migration) => {
+            const reasons = this.unavailableReasons(migration);
+            if (reasons.length > 1) {
+              unavailableMigrations.push({ migration: migration, reasons });
+            } else {
+              return migration;
+            }
+          })
+          .filter((m: ExactMigrationRequest | undefined) => m !== undefined);
+      }
+    );
 
-    if (params.tickLower > params.tickUpper) {
-      throw new Error('tickLower must be less than tickUpper');
-    }
+    const sourcePosition =
+      params.sourcePosition.protocol === Protocol.UniswapV3
+        ? await this.getV3Position(params.sourcePosition)
+        : await this.getV4Position(params.sourcePosition);
 
-    if (params.sourceProtocol === Protocol.UniswapV3) {
-      return await this.requestV3Migration(params);
-    } else if (params.sourceProtocol === Protocol.UniswapV4) {
-      return await this.requestV4Migration(params);
-    } else {
-      throw new Error('source protocol not supported');
-    }
+    const destPositions = await Promise.all(
+      migrationOptions.map(async (migration) => {
+        return (
+          await Promise.all(
+            migration.map(async (option) => {
+              try {
+                return await this.handleMigration(params, sourcePosition, option);
+              } catch (e) {
+                unavailableMigrations.push({
+                  migration: option,
+                  reasons: [e instanceof Error ? e.message : 'unexpected error in handleMigration'],
+                });
+              }
+              return;
+            })
+          )
+        ).filter((p: PositionWithPath | undefined) => p !== undefined);
+      })
+    );
+
+    return { sourcePosition, destPositions, unavailableMigrations };
   }
 
-  private async requestV3Migration(params: RequestV3MigrationParams): Promise<RequestMigrationResponse> {
-    const { sourceChainId, destinationChainId, tokenId, destinationProtocol } = params;
-
-    // get position details and estimate amount available to migrate
-    const v3Position = await getV3Position(this.chainConfigs[sourceChainId], {
-      chainId: sourceChainId,
-      tokenId,
+  public async requestExactMigration(params: RequestExactMigration): Promise<ExactMigrationResponse> {
+    const { migration, ...rest } = params;
+    const { sourcePosition, destPositions, unavailableMigrations } = await this.requestMigrations({
+      ...rest,
+      migrations: [{ ...migration, pathFilter: migration.exactPath }],
     });
+    if (unavailableMigrations.length > 0) {
+      throw new Error(`Specified destination not available:\n  - ${unavailableMigrations[0].reasons.join('\n  - ')}`);
+    }
+    return { sourcePosition, destPosition: destPositions[0][0] };
+  }
 
-    // make sure position has liquidity or fees
-    if (v3Position.liquidity === 0n && v3Position.feeAmount0 === 0n && v3Position.feeAmount1 === 0n) {
+  public async requestExactMigrations(params: RequestExactMigration[]): Promise<ExactMigrationResponse[]> {
+    return Promise.all(params.map(async (param) => await this.requestExactMigration(param)));
+  }
+
+  private unavailableReasons(migration: ExactMigrationRequest): string[] {
+    const reasons = [];
+    const { destination, exactPath } = migration;
+
+    if (!this.isChainSupported(destination.chainId)) reasons.push('chain not supported');
+
+    if (destination.protocol !== Protocol.UniswapV3 && destination.protocol !== Protocol.UniswapV4) {
+      reasons.push('destination protocol not supported');
+    }
+
+    if (exactPath.bridgeType === undefined) {
+      exactPath.bridgeType = BridgeType.Across;
+    } else if (exactPath.bridgeType !== BridgeType.Across) {
+      reasons.push('bridge type not supported');
+    }
+
+    if (
+      exactPath.migrationMethod &&
+      ![MigrationMethod.SingleToken, MigrationMethod.DualToken].includes(exactPath.migrationMethod)
+    ) {
+      reasons.push('invalid migration method specified');
+    }
+
+    const address0Error = this.validateAddress(destination.token0);
+    if (address0Error) reasons.push(address0Error);
+
+    const address1Error = this.validateAddress(destination.token1);
+    if (address1Error) reasons.push(address1Error);
+
+    if (destination.token0.toLowerCase() >= destination.token1.toLowerCase()) {
+      reasons.push('token0 and token1 must be distinct addresses in alphabetical order');
+    }
+
+    if (destination.token0.toLowerCase() >= destination.token1.toLowerCase()) {
+      reasons.push('token0 and token1 must be distinct addresses in alphabetical order');
+    }
+
+    if (destination.tickLower > destination.tickUpper) {
+      reasons.push('tickLower must be less than tickUpper');
+    }
+
+    // TODO: validate token bridgeability up front from across API
+
+    return reasons;
+  }
+
+  private enumerateMigrations(requests: MigrationRequest[]): ExactMigrationRequest[][] {
+    return requests.map(({ destination, pathFilter }) => {
+      const exactMigrationRequests: ExactMigrationRequest[] = [];
+      let bridgeTypes: BridgeType[];
+      let migrationMethods: MigrationMethod[];
+
+      if (pathFilter.bridgeType) {
+        bridgeTypes = [pathFilter.bridgeType];
+      } else {
+        bridgeTypes = [BridgeType.Across];
+      }
+
+      if (pathFilter.migrationMethod) {
+        migrationMethods = [pathFilter.migrationMethod];
+      } else {
+        migrationMethods = [MigrationMethod.SingleToken, MigrationMethod.DualToken];
+      }
+
+      for (const bridgeType of bridgeTypes) {
+        for (const migrationMethod of migrationMethods) {
+          exactMigrationRequests.push({
+            destination,
+            exactPath: {
+              migrationMethod,
+              bridgeType,
+              slippageInBps: pathFilter.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS,
+            },
+          });
+        }
+      }
+      return exactMigrationRequests;
+    });
+  }
+
+  private async handleMigration(
+    params: RequestMigrationParams,
+    sourcePosition: PositionWithFees,
+    migration: ExactMigrationRequest
+  ): Promise<PositionWithPath> {
+    const { destination, exactPath } = migration;
+    const sourceProtocol = params.sourcePosition.protocol;
+    const destProtocol = destination.protocol;
+    const sourceChainId = sourcePosition.pool.chainId;
+    const destChainId = destination.chainId;
+    const tokenId = sourcePosition.tokenId;
+
+    if (sourcePosition.liquidity === 0n && sourcePosition.feeAmount0 === 0n && sourcePosition.feeAmount1 === 0n) {
       throw new Error('Position has no liquidity or fees');
     }
 
-    // start migration on source chain
-    const { routes } = await startUniswapV3Migration({
+    const { routes } = await startFns[sourceProtocol]({
       sourceChainConfig: this.chainConfigs[sourceChainId],
-      destinationChainConfig: this.chainConfigs[destinationChainId],
-      positionWithFees: v3Position,
-      externalParams: params,
-    });
-    // settle migration on destination chain
-    const returnResponse = {
-      sourcePosition: v3Position,
-      routes,
-    };
-    if (destinationProtocol === Protocol.UniswapV3) {
-      const { destPosition, migratorMessage, settlerMessage, swapAmountInMilliBps } = await settleUniswapV3Migration({
-        sourceChainConfig: this.chainConfigs[sourceChainId],
-        destinationChainConfig: this.chainConfigs[destinationChainId],
-        routes,
-        externalParams: params as RequestV3toV3MigrationParams,
-        owner: v3Position.owner,
-      });
-      return {
-        ...returnResponse,
-        destPosition,
-        ...(params.debug
-          ? {
-              settlerExecutionParams: generateSettlerExecutionParams({
-                sourceChainId,
-                destChainId: destinationChainId,
-                owner: v3Position.owner,
-                destProtocol: destinationProtocol,
-                routes,
-                fillDeadline: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // 1 day
-                message: settlerMessage,
-              }),
-              swapAmountInMilliBps,
-            }
-          : {}),
-        executionParams: generateExecutionParams({
-          sourceChainId,
-          owner: v3Position.owner,
-          protocol: Protocol.UniswapV3,
-          tokenId,
-          message: migratorMessage,
-        }),
-      };
-    } else if (destinationProtocol === Protocol.UniswapV4) {
-      const { destPosition, migratorMessage, settlerMessage, swapAmountInMilliBps } = await settleUniswapV4Migration({
-        sourceChainConfig: this.chainConfigs[sourceChainId],
-        destinationChainConfig: this.chainConfigs[destinationChainId],
-        routes,
-        externalParams: params as RequestV3toV4MigrationParams,
-        owner: v3Position.owner,
-      });
-      return {
-        ...returnResponse,
-        destPosition,
-        ...(params.debug
-          ? {
-              settlerExecutionParams: generateSettlerExecutionParams({
-                sourceChainId,
-                destChainId: destinationChainId,
-                owner: v3Position.owner,
-                destProtocol: destinationProtocol,
-                routes,
-                fillDeadline: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // 1 day
-                message: settlerMessage,
-              }),
-              swapAmountInMilliBps,
-            }
-          : {}),
-        executionParams: generateExecutionParams({
-          sourceChainId,
-          owner: v3Position.owner,
-          protocol: Protocol.UniswapV3,
-          tokenId,
-          message: migratorMessage,
-        }),
-      };
-    } else {
-      throw new Error('Destination protocol not supported');
-    }
-  }
-
-  private async requestV4Migration(params: RequestV4MigrationParams): Promise<RequestMigrationResponse> {
-    const { sourceChainId, destinationChainId, tokenId, destinationProtocol } = params;
-
-    // get position details and estimate amount available to migrate
-    const v4Position = await getV4Position(this.chainConfigs[sourceChainId], {
-      chainId: sourceChainId,
-      tokenId,
-    });
-
-    // make sure position has liquidity or fees
-    if (v4Position.liquidity === 0n && v4Position.feeAmount0 === 0n && v4Position.feeAmount1 === 0n) {
-      throw new Error('Position has no liquidity or fees');
-    }
-
-    // start migration on source chain
-    const { routes } = await startUniswapV4Migration({
-      sourceChainConfig: this.chainConfigs[sourceChainId],
-      destinationChainConfig: this.chainConfigs[destinationChainId],
-      positionWithFees: v4Position,
+      destinationChainConfig: this.chainConfigs[destChainId],
+      migration,
+      positionWithFees: sourcePosition,
       externalParams: params,
     });
 
-    // settle migration on destination chain
-    const returnResponse = {
-      sourcePosition: v4Position,
+    const settle = settleFns[sourceProtocol][destProtocol];
+
+    const { destPosition, migratorMessage, settlerMessage, swapAmountInMilliBps } = await settle({
+      sourceChainConfig: this.chainConfigs[sourceChainId],
+      destinationChainConfig: this.chainConfigs[destChainId],
       routes,
+      migration,
+      externalParams: params,
+      owner: sourcePosition.owner,
+    });
+
+    const baseReturn = {
+      ...destPosition,
+      path: exactPath,
+      routes,
+      executionParams: generateExecutionParams({
+        sourceChainId,
+        owner: sourcePosition.owner,
+        protocol: sourceProtocol,
+        tokenId,
+        message: migratorMessage,
+      }),
     };
-    if (destinationProtocol === Protocol.UniswapV3) {
-      const { destPosition, migratorMessage, settlerMessage, swapAmountInMilliBps } = await settleUniswapV3Migration({
-        sourceChainConfig: this.chainConfigs[sourceChainId],
-        destinationChainConfig: this.chainConfigs[destinationChainId],
+
+    if (!params.debug) return baseReturn;
+
+    return {
+      ...baseReturn,
+      settlerExecutionParams: generateSettlerExecutionParams({
+        sourceChainId,
+        destChainId,
+        owner: sourcePosition.owner,
+        destProtocol: destProtocol,
         routes,
-        externalParams: params as RequestV4toV3MigrationParams,
-        owner: v4Position.owner,
-      });
-      return {
-        ...returnResponse,
-        destPosition,
-        ...(params.debug
-          ? {
-              settlerExecutionParams: generateSettlerExecutionParams({
-                sourceChainId,
-                destChainId: destinationChainId,
-                owner: v4Position.owner,
-                destProtocol: destinationProtocol,
-                routes,
-                fillDeadline: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // 1 day
-                message: settlerMessage,
-              }),
-              swapAmountInMilliBps,
-            }
-          : {}),
-        executionParams: generateExecutionParams({
-          sourceChainId,
-          owner: v4Position.owner,
-          protocol: Protocol.UniswapV4,
-          tokenId,
-          message: migratorMessage,
-        }),
-      };
-    } else if (destinationProtocol === Protocol.UniswapV4) {
-      const { destPosition, migratorMessage, settlerMessage, swapAmountInMilliBps } = await settleUniswapV4Migration({
-        sourceChainConfig: this.chainConfigs[sourceChainId],
-        destinationChainConfig: this.chainConfigs[destinationChainId],
-        routes,
-        externalParams: params as RequestV4toV4MigrationParams,
-        owner: v4Position.owner,
-      });
-      return {
-        ...returnResponse,
-        destPosition,
-        ...(params.debug
-          ? {
-              settlerExecutionParams: generateSettlerExecutionParams({
-                sourceChainId,
-                destChainId: destinationChainId,
-                owner: v4Position.owner,
-                destProtocol: destinationProtocol,
-                routes,
-                fillDeadline: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // 1 day
-                message: settlerMessage,
-              }),
-              swapAmountInMilliBps,
-            }
-          : {}),
-        executionParams: generateExecutionParams({
-          sourceChainId,
-          owner: v4Position.owner,
-          protocol: Protocol.UniswapV4,
-          tokenId,
-          message: migratorMessage,
-        }),
-      };
-    } else {
-      throw new Error('Destination protocol not supported');
-    }
+        fillDeadline: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+        message: settlerMessage,
+      }),
+      swapAmountInMilliBps,
+    };
   }
 }

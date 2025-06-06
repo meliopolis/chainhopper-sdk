@@ -1,5 +1,5 @@
 import { CurrencyAmount, Fraction, Percent, Price, Token, type Currency } from '@uniswap/sdk-core';
-import { DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, Protocol } from './constants';
+import { DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, Protocol } from './constants';
 import { nearestUsableTick, Pool as V3Pool, SqrtPriceMath, TickMath, Position as V3Position } from '@uniswap/v3-sdk';
 import { Position as V4Position, Pool as V4Pool } from '@uniswap/v4-sdk';
 import type {
@@ -8,6 +8,7 @@ import type {
   Position,
   Route,
   SettlerExecutionParams,
+  ExactMigrationRequest,
 } from '../types/sdk';
 
 import {
@@ -30,27 +31,30 @@ import { SpokePoolABI } from '../abis';
 
 export const generateSettlerData = (
   sourceChainConfig: ChainConfig,
-  migrationMethod: MigrationMethod,
+  migration: ExactMigrationRequest,
   externalParams: RequestMigrationParams,
   owner: `0x${string}`
 ): { interimMessageForSettler: `0x${string}` } => {
+  const { destination, exactPath } = migration;
   // generate mintParams first
   let mintParams: `0x${string}`;
   const additionalParams = {
     amount0Min: 1000n,
     amount1Min: 1000n,
     swapAmountInMilliBps: 0,
-    sqrtPriceX96: externalParams.sqrtPriceX96 || 0n,
+    sqrtPriceX96: destination.sqrtPriceX96 || 0n,
   };
-  if (externalParams.destinationProtocol === Protocol.UniswapV3) {
+  if (destination.protocol === Protocol.UniswapV3) {
     mintParams = encodeMintParamsForV3({
       ...additionalParams,
       ...externalParams, // get the rest of the params from the request
+      ...destination,
     });
-  } else if (externalParams.destinationProtocol === Protocol.UniswapV4 && 'hooks' in externalParams) {
+  } else if (destination.protocol === Protocol.UniswapV4 && 'hooks' in destination && 'tickSpacing' in destination) {
     mintParams = encodeMintParamsForV4({
       ...additionalParams,
-      ...externalParams, // get the rest of the params from the request
+      ...externalParams,
+      ...destination,
     });
   } else {
     throw new Error('Destination protocol not supported');
@@ -67,16 +71,16 @@ export const generateSettlerData = (
 
   // generate migrationdata to calculate hash
   const migratorAddress =
-    externalParams.sourceProtocol == Protocol.UniswapV3
+    externalParams.sourcePosition.protocol == Protocol.UniswapV3
       ? sourceChainConfig.UniswapV3AcrossMigrator || zeroAddress
       : sourceChainConfig.UniswapV4AcrossMigrator || zeroAddress;
   // todo fix routesData to account for dualToken
   const routesData = '0x' as `0x${string}`;
   const migrationData = {
-    sourceChainId: BigInt(externalParams.sourceChainId),
+    sourceChainId: BigInt(externalParams.sourcePosition.chainId),
     migrator: migratorAddress,
     nonce: BigInt(1), // hardcoded, as it doesn't matter
-    mode: migrationMethod,
+    mode: exactPath.migrationMethod,
     routesData: routesData,
     settlementData: settlementParams,
   };
@@ -90,6 +94,7 @@ export const generateMigrationParams = async ({
   sourceChainConfig,
   destinationChainConfig,
   routes,
+  migration,
   maxPosition,
   maxPositionUsingRouteMinAmountOut,
   owner,
@@ -100,14 +105,15 @@ export const generateMigrationParams = async ({
   migratorMessage: `0x${string}`;
   settlerMessage: `0x${string}`;
 }> => {
+  const { destination, exactPath } = migration;
   const { amount0: amount0Min, amount1: amount1Min } = maxPositionUsingRouteMinAmountOut.burnAmountsWithSlippage(
-    new Percent(externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000)
+    new Percent(exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000)
   );
 
   const { migratorMessage, settlerMessage } = encodeMigrationParams(
     {
       chainId: BigInt(destinationChainConfig.chainId),
-      settler: resolveSettler(externalParams, destinationChainConfig),
+      settler: resolveSettler(destination.protocol, destinationChainConfig),
       tokenRoutes: await Promise.all(
         routes.map(async (route) => ({
           ...route,
@@ -121,12 +127,12 @@ export const generateMigrationParams = async ({
         senderShareBps: externalParams.senderShareBps || 0,
         senderFeeRecipient: externalParams.senderFeeRecipient || zeroAddress,
         // mint params
-        token0: externalParams.token0,
-        token1: externalParams.token1,
-        fee: externalParams.fee,
-        sqrtPriceX96: externalParams.sqrtPriceX96 || 0n,
-        tickLower: externalParams.tickLower,
-        tickUpper: externalParams.tickUpper,
+        token0: destination.token0,
+        token1: destination.token1,
+        fee: destination.fee,
+        sqrtPriceX96: destination.sqrtPriceX96 || 0n,
+        tickLower: destination.tickLower,
+        tickUpper: destination.tickUpper,
         amount0Min: BigInt(amount0Min.toString()),
         amount1Min: BigInt(amount1Min.toString()),
         swapAmountInMilliBps: swapAmountInMilliBps ? swapAmountInMilliBps : 0,
@@ -135,13 +141,13 @@ export const generateMigrationParams = async ({
       },
     },
     {
-      sourceChainId: BigInt(externalParams.sourceChainId),
+      sourceChainId: BigInt(externalParams.sourcePosition.chainId),
       migrator:
-        externalParams.sourceProtocol == Protocol.UniswapV3
+        externalParams.sourcePosition.protocol == Protocol.UniswapV3
           ? sourceChainConfig.UniswapV3AcrossMigrator || zeroAddress
           : sourceChainConfig.UniswapV4AcrossMigrator || zeroAddress,
       nonce: BigInt(1), // hardcoded, as it doesn't matter
-      mode: externalParams.migrationMethod || MigrationMethod.SingleToken,
+      mode: exactPath.migrationMethod!,
     }
   );
 
@@ -153,12 +159,9 @@ export const generateMigrationParams = async ({
   };
 };
 
-export const resolveSettler = (
-  externalParams: RequestMigrationParams,
-  destinationChainConfig: ChainConfig
-): `0x${string}` => {
+export const resolveSettler = (destinationProtocol: Protocol, destinationChainConfig: ChainConfig): `0x${string}` => {
   let settler: `0x${string}`;
-  switch (externalParams.destinationProtocol) {
+  switch (destinationProtocol) {
     case Protocol.UniswapV3:
       if (destinationChainConfig.UniswapV3AcrossSettler) {
         settler = destinationChainConfig.UniswapV3AcrossSettler;
