@@ -14,20 +14,21 @@ export const settleUniswapV3Migration = async ({
   sourceChainConfig,
   destinationChainConfig,
   routes,
-  destination,
+  migration,
   externalParams,
   owner,
 }: InternalSettleMigrationParams): Promise<InternalSettleMigrationResult> => {
+  const { destination, exactPath } = migration;
   if (routes.length === 0) throw new Error('No routes found');
   if (routes.length > 2) throw new Error('Invalid number of routes');
 
   // fetch the pool on the destination chain
   const pool = await getV3Pool(
     destinationChainConfig,
-    externalParams.token0,
-    externalParams.token1,
-    externalParams.fee,
-    externalParams.sqrtPriceX96
+    destination.token0,
+    destination.token1,
+    destination.fee,
+    destination.sqrtPriceX96
   );
 
   // get the settler fees
@@ -40,13 +41,13 @@ export const settleUniswapV3Migration = async ({
   if (routes.length === 1) {
     if (
       JSBI.equal(pool.liquidity, JSBI.BigInt(0)) &&
-      pool.tickCurrent < externalParams.tickUpper &&
-      pool.tickCurrent >= externalParams.tickLower
+      pool.tickCurrent < destination.tickUpper &&
+      pool.tickCurrent >= destination.tickLower
     ) {
       throw new Error('No liquidity for required swap in destination pool');
     }
 
-    const isWethToken0 = externalParams.token0 === destinationChainConfig.wethAddress;
+    const isWethToken0 = destination.token0 === destinationChainConfig.wethAddress;
     const route = routes[0];
     const routeMinAmountOut = route.minOutputAmount;
     const numIterations = 5; // number of iterations to calculate the max position with swap
@@ -70,9 +71,9 @@ export const settleUniswapV3Migration = async ({
       pool,
       isWethToken0 ? baseTokenAvailable : otherTokenAvailable,
       isWethToken0 ? otherTokenAvailable : baseTokenAvailable,
-      externalParams.tickLower,
-      externalParams.tickUpper,
-      new Fraction(externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000).divide(20),
+      destination.tickLower,
+      destination.tickUpper,
+      new Fraction(exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000).divide(20),
       numIterations
     );
 
@@ -80,7 +81,7 @@ export const settleUniswapV3Migration = async ({
     const newRatio = Number(maxPositionWithSwap.pool.sqrtRatioX96.toString());
     const priceImpactBps = ((newRatio / originalRatio) ** 2 - 1) * 10000;
 
-    if (Math.abs(priceImpactBps) > (externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS)) {
+    if (Math.abs(priceImpactBps) > (exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS)) {
       throw new Error('Price impact exceeds slippage');
     }
 
@@ -98,16 +99,16 @@ export const settleUniswapV3Migration = async ({
       pool,
       isWethToken0 ? baseTokenAvailableUsingRouteMinAmountOut : otherTokenAvailableUsingRouteMinAmountOut,
       isWethToken0 ? otherTokenAvailableUsingRouteMinAmountOut : baseTokenAvailableUsingRouteMinAmountOut,
-      externalParams.tickLower,
-      externalParams.tickUpper,
-      new Fraction(externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000).divide(20),
+      destination.tickLower,
+      destination.tickUpper,
+      new Fraction(exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000).divide(20),
       numIterations
     );
 
     // calculate swapAmountInMilliBps
     // TODO improve this calculation
     const swapAmountInMilliBps =
-      externalParams.token0 === destinationChainConfig.wethAddress
+      destination.token0 === destinationChainConfig.wethAddress
         ? maxPositionWithSwap.amount0.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).quotient
         : maxPositionWithSwap.amount1.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).quotient;
 
@@ -116,7 +117,7 @@ export const settleUniswapV3Migration = async ({
       sourceChainConfig,
       destinationChainConfig,
       routes,
-      destination,
+      migration,
       maxPosition: maxPositionWithSwap,
       maxPositionUsingRouteMinAmountOut: maxPositionWithSwapUsingRouteMinAmountOut,
       owner,
@@ -125,9 +126,9 @@ export const settleUniswapV3Migration = async ({
   } else {
     // logically has to be (routes.length) === 2 but needs to look exhaustive for ts compiler
     // make sure both tokens are found in routes
-    if (externalParams.token0 != routes[0].outputToken && externalParams.token0 != routes[1].outputToken)
+    if (destination.token0 != routes[0].outputToken && destination.token0 != routes[1].outputToken)
       throw new Error('Requested token0 not found in routes');
-    if (externalParams.token1 != routes[0].outputToken && externalParams.token1 != routes[1].outputToken)
+    if (destination.token1 != routes[0].outputToken && destination.token1 != routes[1].outputToken)
       throw new Error('Requested token1 not found in routes');
 
     const token0Available = routes[0].outputAmount * (1n - settlerFeesInBps / 10_000n);
@@ -136,7 +137,7 @@ export const settleUniswapV3Migration = async ({
     const minToken1Available = routes[1].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
 
     let settleAmountOut0, settleAmountOut1, settleMinAmountOut0, settleMinAmountOut1;
-    if (externalParams.token0 !== routes[0].outputToken) {
+    if (destination.token0 !== routes[0].outputToken) {
       // the token order must be flipped if the token addresses sort in a different order on the destination chain
       settleAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, token1Available.toString());
       settleAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, token0Available.toString());
@@ -153,16 +154,16 @@ export const settleUniswapV3Migration = async ({
       pool,
       settleAmountOut0,
       settleAmountOut1,
-      externalParams.tickLower,
-      externalParams.tickUpper
+      destination.tickLower,
+      destination.tickUpper
     );
 
     const maxPositionUsingSettleMinAmountsOut = generateMaxV3Position(
       pool,
       settleMinAmountOut0,
       settleMinAmountOut1,
-      externalParams.tickLower,
-      externalParams.tickUpper
+      destination.tickLower,
+      destination.tickUpper
     );
 
     return generateMigrationParams({
@@ -170,7 +171,7 @@ export const settleUniswapV3Migration = async ({
       sourceChainConfig,
       destinationChainConfig,
       routes,
-      destination,
+      migration,
       maxPosition,
       maxPositionUsingRouteMinAmountOut: maxPositionUsingSettleMinAmountsOut,
       owner,

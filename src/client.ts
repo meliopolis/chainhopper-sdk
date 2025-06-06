@@ -1,21 +1,21 @@
 import { configurePublicClients } from './utils/configurePublicClients';
 import { chainConfigs } from './chains';
 import { getV3Position } from './actions/getV3Position';
-import { BridgeType, MigrationMethod, Protocol } from './utils/constants';
+import { BridgeType, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, Protocol } from './utils/constants';
 import type { ChainConfig } from './chains';
 import type {
   RequestMigrationParams,
-  IUniswapPositionParams,
-  RequestMigrationResponse,
   PositionWithFees,
-  ResponseDestination,
-  UnavailableResponseDestination,
-  RequestExactMigrationResponse,
-  RequestExactMigrationParams,
-  RequestExactDestination,
-  DestinationSearch,
-  RequestMigrationsResponse,
-  RequestSingleDestinationSearchParams,
+  PositionWithPath,
+  UnavailableMigration,
+  ExactMigrationRequest,
+  MigrationRequest,
+  RequestMigration,
+  RequestMigrations,
+  RequestExactMigration,
+  ExactMigrationResponse,
+  MigrationResponse,
+  MigrationsResponse,
 } from './types';
 import { startUniswapV3Migration, settleUniswapV3Migration } from './actions';
 import { getV4Position } from './actions/getV4Position';
@@ -23,6 +23,7 @@ import { startUniswapV4Migration } from './actions/startUniswapV4Migration';
 import { settleUniswapV4Migration } from './actions/settleUniswapV4Migration';
 import { isAddress, checksumAddress } from 'viem';
 import { generateExecutionParams, generateSettlerExecutionParams } from './utils/helpers';
+import type { IUniswapPositionParams } from './types/internal';
 
 const startFns = {
   [Protocol.UniswapV3]: startUniswapV3Migration,
@@ -85,91 +86,95 @@ export class ChainHopperClient {
     return getV4Position(this.chainConfigs[params.chainId], params);
   }
 
-  public async requestMigration(params: RequestSingleDestinationSearchParams): Promise<RequestMigrationResponse> {
-    const { destination, ...rest } = params;
-    const { sourcePosition, destinations, unavailableDestinations } = await this.requestMigrations({
+  public async requestMigration(params: RequestMigration): Promise<MigrationResponse> {
+    const { migration, ...rest } = params;
+    const { sourcePosition, destPositions, unavailableMigrations } = await this.requestMigrations({
       ...rest,
-      destinations: [destination],
+      migrations: [migration],
     });
-    return { sourcePosition, destinations: destinations[0], unavailableDestinations };
+    return { sourcePosition, destPositions: destPositions[0], unavailableMigrations };
   }
 
-  public async requestMigrations(params: RequestMigrationParams): Promise<RequestMigrationsResponse> {
-    const unavailableDestinations: UnavailableResponseDestination[] = [];
+  public async requestMigrations(params: RequestMigrations): Promise<MigrationsResponse> {
+    const unavailableMigrations: UnavailableMigration[] = [];
 
-    if (!this.isChainSupported(params.sourceChainId)) {
+    if (!this.isChainSupported(params.sourcePosition.chainId)) {
       throw new Error('source chain not supported');
     }
 
-    if (params.tokenId === BigInt(0)) {
+    if (params.sourcePosition.tokenId === BigInt(0)) {
       throw new Error('tokenId is not valid');
     }
 
-    if (params.sourceProtocol !== Protocol.UniswapV3 && params.sourceProtocol !== Protocol.UniswapV4) {
+    if (
+      params.sourcePosition.protocol !== Protocol.UniswapV3 &&
+      params.sourcePosition.protocol !== Protocol.UniswapV4
+    ) {
       throw new Error('sourceProtocol not supported');
     }
 
-    const destinationOptions: RequestExactDestination[][] = this.enumerateDestinations(params.destinations).map(
-      (dest) => {
-        return dest
-          .map((destOption) => {
-            const reasons = this.unavailableReasons(destOption);
+    const migrationOptions: ExactMigrationRequest[][] = this.enumerateMigrations(params.migrations).map(
+      (migrations: ExactMigrationRequest[]) => {
+        return migrations
+          .map((migration) => {
+            const reasons = this.unavailableReasons(migration);
             if (reasons.length > 1) {
-              unavailableDestinations.push({ destination: destOption, reasons });
+              unavailableMigrations.push({ migration: migration, reasons });
             } else {
-              return destOption;
+              return migration;
             }
           })
-          .filter((d: RequestExactDestination | undefined) => d !== undefined);
+          .filter((m: ExactMigrationRequest | undefined) => m !== undefined);
       }
     );
 
     const sourcePosition =
-      params.sourceProtocol === Protocol.UniswapV3
-        ? await this.getV3Position(params)
-        : await this.getV4Position(params);
+      params.sourcePosition.protocol === Protocol.UniswapV3
+        ? await this.getV3Position(params.sourcePosition)
+        : await this.getV4Position(params.sourcePosition);
 
-    const destinations = await Promise.all(
-      destinationOptions.map(async (dest) => {
+    const destPositions = await Promise.all(
+      migrationOptions.map(async (migration) => {
         return (
           await Promise.all(
-            dest.map(async (option) => {
+            migration.map(async (option) => {
               try {
                 return await this.handleMigration(params, sourcePosition, option);
               } catch (e) {
-                unavailableDestinations.push({
-                  destination: option,
+                unavailableMigrations.push({
+                  migration: option,
                   reasons: [e instanceof Error ? e.message : 'unexpected error in handleMigration'],
                 });
               }
               return;
             })
           )
-        ).filter((d: ResponseDestination | undefined) => d !== undefined);
+        ).filter((p: PositionWithPath | undefined) => p !== undefined);
       })
     );
 
-    return { sourcePosition, destinations, unavailableDestinations };
+    return { sourcePosition, destPositions, unavailableMigrations };
   }
 
-  public async requestExactMigration(params: RequestExactMigrationParams): Promise<RequestExactMigrationResponse> {
-    const { destination, ...rest } = params;
-    const { sourcePosition, destinations, unavailableDestinations } = await this.requestMigrations({
+  public async requestExactMigration(params: RequestExactMigration): Promise<ExactMigrationResponse> {
+    const { migration, ...rest } = params;
+    const { sourcePosition, destPositions, unavailableMigrations } = await this.requestMigrations({
       ...rest,
-      destinations: [destination],
+      migrations: [{ ...migration, pathFilter: migration.exactPath }],
     });
-    if (unavailableDestinations.length > 1) {
-      throw new Error(`Specified destination not available:\n  - ${unavailableDestinations[0].reasons.join('\n  - ')}`);
+    if (unavailableMigrations.length > 1) {
+      throw new Error(`Specified destination not available:\n  - ${unavailableMigrations[0].reasons.join('\n  - ')}`);
     }
-    return { sourcePosition, destination: destinations[0][0] };
+    return { sourcePosition, destPosition: destPositions[0][0] };
   }
 
-  public async requestExactMigrations(params: RequestExactMigrationParams[]): Promise<RequestExactMigrationResponse[]> {
+  public async requestExactMigrations(params: RequestExactMigration[]): Promise<ExactMigrationResponse[]> {
     return Promise.all(params.map(async (param) => await this.requestExactMigration(param)));
   }
 
-  private unavailableReasons(destination: RequestExactDestination): string[] {
+  private unavailableReasons(migration: ExactMigrationRequest): string[] {
     const reasons = [];
+    const { destination, exactPath } = migration;
 
     if (!this.isChainSupported(destination.chainId)) reasons.push('chain not supported');
 
@@ -177,15 +182,15 @@ export class ChainHopperClient {
       reasons.push('destination protocol not supported');
     }
 
-    if (destination.bridgeType === undefined) {
-      destination.bridgeType = BridgeType.Across;
-    } else if (destination.bridgeType !== BridgeType.Across) {
+    if (exactPath.bridgeType === undefined) {
+      exactPath.bridgeType = BridgeType.Across;
+    } else if (exactPath.bridgeType !== BridgeType.Across) {
       reasons.push('bridge type not supported');
     }
 
     if (
-      destination.migrationMethod &&
-      ![MigrationMethod.SingleToken, MigrationMethod.DualToken].includes(destination.migrationMethod)
+      exactPath.migrationMethod &&
+      ![MigrationMethod.SingleToken, MigrationMethod.DualToken].includes(exactPath.migrationMethod)
     ) {
       reasons.push('invalid migration method specified');
     }
@@ -213,39 +218,47 @@ export class ChainHopperClient {
     return reasons;
   }
 
-  private enumerateDestinations(search: DestinationSearch[]): RequestExactDestination[][] {
-    return search.map((dest) => {
-      const exactDestinations: RequestExactDestination[] = [];
+  private enumerateMigrations(requests: MigrationRequest[]): ExactMigrationRequest[][] {
+    return requests.map(({ destination, pathFilter }) => {
+      const exactMigrationRequests: ExactMigrationRequest[] = [];
       let bridgeTypes: BridgeType[];
       let migrationMethods: MigrationMethod[];
 
-      if (dest.bridgeType) {
-        bridgeTypes = [dest.bridgeType];
+      if (pathFilter.bridgeType) {
+        bridgeTypes = [pathFilter.bridgeType];
       } else {
         bridgeTypes = [BridgeType.Across];
       }
 
-      if (dest.migrationMethod) {
-        migrationMethods = [dest.migrationMethod];
+      if (pathFilter.migrationMethod) {
+        migrationMethods = [pathFilter.migrationMethod];
       } else {
         migrationMethods = [MigrationMethod.SingleToken, MigrationMethod.DualToken];
       }
 
       for (const bridgeType of bridgeTypes) {
         for (const migrationMethod of migrationMethods) {
-          exactDestinations.push({ ...dest, migrationMethod, bridgeType });
+          exactMigrationRequests.push({
+            destination,
+            exactPath: {
+              migrationMethod,
+              bridgeType,
+              slippageInBps: pathFilter.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS,
+            },
+          });
         }
       }
-      return exactDestinations;
+      return exactMigrationRequests;
     });
   }
 
   private async handleMigration(
     params: RequestMigrationParams,
     sourcePosition: PositionWithFees,
-    destination: RequestExactDestination
-  ): Promise<ResponseDestination> {
-    const sourceProtocol = params.sourceProtocol;
+    migration: ExactMigrationRequest
+  ): Promise<PositionWithPath> {
+    const { destination, exactPath } = migration;
+    const sourceProtocol = params.sourcePosition.protocol;
     const destProtocol = destination.protocol;
     const sourceChainId = sourcePosition.pool.chainId;
     const destChainId = destination.chainId;
@@ -258,7 +271,7 @@ export class ChainHopperClient {
     const { routes } = await startFns[sourceProtocol]({
       sourceChainConfig: this.chainConfigs[sourceChainId],
       destinationChainConfig: this.chainConfigs[destChainId],
-      destination: destination,
+      migration,
       positionWithFees: sourcePosition,
       externalParams: params,
     });
@@ -269,17 +282,15 @@ export class ChainHopperClient {
       sourceChainConfig: this.chainConfigs[sourceChainId],
       destinationChainConfig: this.chainConfigs[destChainId],
       routes,
-      destination,
+      migration,
       externalParams: params,
       owner: sourcePosition.owner,
     });
 
     const baseReturn = {
       ...destPosition,
-      ...destPosition.pool,
+      path: exactPath,
       routes,
-      migrationMethod: destination.migrationMethod!,
-      bridgeType: destination.bridgeType!,
       executionParams: generateExecutionParams({
         sourceChainId,
         owner: sourcePosition.owner,

@@ -8,7 +8,7 @@ import type {
   Position,
   Route,
   SettlerExecutionParams,
-  RequestExactDestination,
+  ExactMigrationRequest,
 } from '../types/sdk';
 
 import {
@@ -32,22 +32,24 @@ import type { UniswapV4MintParams } from '@/types';
 
 export const generateSettlerData = (
   sourceChainConfig: ChainConfig,
-  destination: RequestExactDestination,
+  migration: ExactMigrationRequest,
   externalParams: RequestMigrationParams,
   owner: `0x${string}`
 ): { interimMessageForSettler: `0x${string}` } => {
+  const { destination, exactPath } = migration;
   // generate mintParams first
   let mintParams: `0x${string}`;
   const additionalParams = {
     amount0Min: 1000n,
     amount1Min: 1000n,
     swapAmountInMilliBps: 0,
-    sqrtPriceX96: externalParams.sqrtPriceX96 || 0n,
+    sqrtPriceX96: destination.sqrtPriceX96 || 0n,
   };
   if (destination.protocol === Protocol.UniswapV3) {
     mintParams = encodeMintParamsForV3({
       ...additionalParams,
       ...externalParams, // get the rest of the params from the request
+      ...destination,
     });
   } else if (
     destination.protocol === Protocol.UniswapV4 &&
@@ -57,6 +59,7 @@ export const generateSettlerData = (
     mintParams = encodeMintParamsForV4({
       ...additionalParams,
       ...externalParams,
+      ...destination,
     } as UniswapV4MintParams);
   } else {
     throw new Error('Destination protocol not supported');
@@ -73,16 +76,16 @@ export const generateSettlerData = (
 
   // generate migrationdata to calculate hash
   const migratorAddress =
-    externalParams.sourceProtocol == Protocol.UniswapV3
+    externalParams.sourcePosition.protocol == Protocol.UniswapV3
       ? sourceChainConfig.UniswapV3AcrossMigrator || zeroAddress
       : sourceChainConfig.UniswapV4AcrossMigrator || zeroAddress;
   // todo fix routesData to account for dualToken
   const routesData = '0x' as `0x${string}`;
   const migrationData = {
-    sourceChainId: BigInt(externalParams.sourceChainId),
+    sourceChainId: BigInt(externalParams.sourcePosition.chainId),
     migrator: migratorAddress,
     nonce: BigInt(1), // hardcoded, as it doesn't matter
-    mode: destination.migrationMethod!,
+    mode: exactPath.migrationMethod,
     routesData: routesData,
     settlementData: settlementParams,
   };
@@ -96,7 +99,7 @@ export const generateMigrationParams = async ({
   sourceChainConfig,
   destinationChainConfig,
   routes,
-  destination,
+  migration,
   maxPosition,
   maxPositionUsingRouteMinAmountOut,
   owner,
@@ -107,8 +110,9 @@ export const generateMigrationParams = async ({
   migratorMessage: `0x${string}`;
   settlerMessage: `0x${string}`;
 }> => {
+  const { destination, exactPath } = migration;
   const { amount0: amount0Min, amount1: amount1Min } = maxPositionUsingRouteMinAmountOut.burnAmountsWithSlippage(
-    new Percent(externalParams.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000)
+    new Percent(exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000)
   );
 
   const { migratorMessage, settlerMessage } = encodeMigrationParams(
@@ -128,12 +132,12 @@ export const generateMigrationParams = async ({
         senderShareBps: externalParams.senderShareBps || 0,
         senderFeeRecipient: externalParams.senderFeeRecipient || zeroAddress,
         // mint params
-        token0: externalParams.token0,
-        token1: externalParams.token1,
-        fee: externalParams.fee,
-        sqrtPriceX96: externalParams.sqrtPriceX96 || 0n,
-        tickLower: externalParams.tickLower,
-        tickUpper: externalParams.tickUpper,
+        token0: destination.token0,
+        token1: destination.token1,
+        fee: destination.fee,
+        sqrtPriceX96: destination.sqrtPriceX96 || 0n,
+        tickLower: destination.tickLower,
+        tickUpper: destination.tickUpper,
         amount0Min: BigInt(amount0Min.toString()),
         amount1Min: BigInt(amount1Min.toString()),
         swapAmountInMilliBps: swapAmountInMilliBps ? swapAmountInMilliBps : 0,
@@ -142,13 +146,13 @@ export const generateMigrationParams = async ({
       },
     },
     {
-      sourceChainId: BigInt(externalParams.sourceChainId),
+      sourceChainId: BigInt(externalParams.sourcePosition.chainId),
       migrator:
-        externalParams.sourceProtocol == Protocol.UniswapV3
+        externalParams.sourcePosition.protocol == Protocol.UniswapV3
           ? sourceChainConfig.UniswapV3AcrossMigrator || zeroAddress
           : sourceChainConfig.UniswapV4AcrossMigrator || zeroAddress,
       nonce: BigInt(1), // hardcoded, as it doesn't matter
-      mode: destination.migrationMethod!,
+      mode: exactPath.migrationMethod!,
     }
   );
 
