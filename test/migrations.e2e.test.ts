@@ -1064,6 +1064,7 @@ describe('out of range v4→ migrations', () => {
             );
             return {
               owner: ownerAddress,
+              tokenId: v4TokenId,
               ...toSDKPosition(
                 client.chainConfigs[130],
                 new V4Position({
@@ -1131,6 +1132,7 @@ describe('out of range v4→ migrations', () => {
             );
             return {
               owner: ownerAddress,
+              tokenId: v4TokenId,
               ...toSDKPosition(
                 client.chainConfigs[130],
                 new V4Position({

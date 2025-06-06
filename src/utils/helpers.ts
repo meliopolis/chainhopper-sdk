@@ -28,7 +28,6 @@ import { NFTSafeTransferFrom } from '../abis/NFTSafeTransferFrom';
 import type { InternalGenerateMigrationParamsInput } from '../types/internal';
 import { toSDKPosition } from './position';
 import { SpokePoolABI } from '../abis';
-import type { UniswapV4MintParams } from '@/types';
 
 export const generateSettlerData = (
   sourceChainConfig: ChainConfig,
@@ -51,16 +50,12 @@ export const generateSettlerData = (
       ...externalParams, // get the rest of the params from the request
       ...destination,
     });
-  } else if (
-    destination.protocol === Protocol.UniswapV4 &&
-    'hooks' in externalParams &&
-    'tickSpacing' in externalParams
-  ) {
+  } else if (destination.protocol === Protocol.UniswapV4 && 'hooks' in destination && 'tickSpacing' in destination) {
     mintParams = encodeMintParamsForV4({
       ...additionalParams,
       ...externalParams,
       ...destination,
-    } as UniswapV4MintParams);
+    });
   } else {
     throw new Error('Destination protocol not supported');
   }
