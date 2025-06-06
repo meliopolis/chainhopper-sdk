@@ -361,13 +361,23 @@ describe('invalid migrations', () => {
         },
         exactPath: {
           bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.SingleToken,
+          migrationMethod: MigrationMethod.DualToken,
           slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
         },
       },
     };
+    await moduleMocker.mock('@across-protocol/app-sdk', () => ({
+      AcrossClient: {
+        create: mock(() => {
+          return {
+            getQuote: (): Promise<Quote> => {
+              throw new Error('Unsupported token on given origin chain');
+            },
+          };
+        }),
+      },
+    }));
     try {
-      params.migration.exactPath.migrationMethod = MigrationMethod.DualToken;
       await client.requestExactMigration(params);
     } catch (e) {
       expect(e.message).toContain('Unsupported token on given origin chain');

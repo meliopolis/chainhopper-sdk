@@ -14,7 +14,6 @@ export type UniswapV3Params = {
 
 export type UniswapV4Params = Omit<UniswapV3Params, 'protocol'> & {
   protocol: Protocol.UniswapV4;
-  chainId: number;
   hooks: `0x${string}`;
   tickSpacing: number;
 };
