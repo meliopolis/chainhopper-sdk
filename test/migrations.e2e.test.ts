@@ -43,20 +43,18 @@ afterEach(() => {
 });
 
 const validateMigrationResponse = (params: RequestExactMigration, result: ExactMigrationResponse): void => {
-  const {
-    sourcePosition,
-    migration: { destination },
-  } = params;
+  const { sourcePosition, destination } = params;
+  const { migration } = result;
+  const { position } = migration;
 
   // check correct output chain
 
   expect(result.sourcePosition.pool.chainId).toBe(sourcePosition.chainId);
-  expect(result.destPosition.pool.chainId).toBe(destination.chainId);
+  expect(position.pool.chainId).toBe(destination.chainId);
 
   // check correct output protocol
-  expect(result.destPosition.pool.protocol).toBe(destination.protocol);
+  expect(position.pool.protocol).toBe(destination.protocol);
 
-  const position = result.destPosition;
   if (destination.token0 == NATIVE_ETH_ADDRESS) {
     expect(position.pool.token0.address === NATIVE_ETH_ADDRESS).toBe(true);
   } else {
@@ -69,22 +67,22 @@ const validateMigrationResponse = (params: RequestExactMigration, result: ExactM
   expect(position.tickUpper).toBe(destination.tickUpper);
 
   // check correct output pool
-  const pool: V4Pool = result.destPosition.pool as unknown as V4Pool;
+  const pool: V4Pool = result.migration.position.pool as unknown as V4Pool;
   expect(pool.fee).toBe(destination.fee);
   if ('hooks' in destination) expect(pool.hooks).toBe(destination.hooks as string);
   if ('tickSpacing' in destination) expect(pool.tickSpacing).toBe(destination.tickSpacing as number);
 
-  const amount0 = result.destPosition.amount0;
-  const amount1 = result.destPosition.amount1;
-  const amount0Min = result.destPosition.amount0Min ? result.destPosition.amount0Min : 0;
-  const amount1Min = result.destPosition.amount1Min ? result.destPosition.amount1Min : 0;
+  const amount0 = position.amount0;
+  const amount1 = position.amount1;
+  const amount0Min = position.amount0Min ? position.amount0Min : 0;
+  const amount1Min = position.amount1Min ? position.amount1Min : 0;
 
   // check correct output amounts within slippage
   expect(amount0).toBeGreaterThanOrEqual(amount0Min);
   expect(amount1).toBeGreaterThanOrEqual(amount1Min);
 
   // check execution params
-  const executionParams = result.destPosition.executionParams;
+  const executionParams = migration.executionParams;
   expect(executionParams.functionName).toBe('safeTransferFrom');
   expect(executionParams.args[0]).toBe(result.sourcePosition.owner);
   expect(executionParams.args[1]).toBeDefined();
@@ -112,23 +110,21 @@ describe('invalid migrations', () => {
         tokenId: 104758n,
         protocol: Protocol.UniswapV3,
       },
-      migration: {
-        destination: {
-          chainId: 130,
-          protocol: Protocol.UniswapV4,
-          token0: NATIVE_ETH_ADDRESS,
-          token1: '0x532f27101965dd16442E59d40670FaF5eBB142E4',
-          tickLower: 62200,
-          tickUpper: 103800,
-          fee: 10000,
-          tickSpacing: 200,
-          hooks: '0x0000000000000000000000000000000000000000',
-        },
-        exactPath: {
-          bridgeType: 'nobridge' as BridgeType,
-          migrationMethod: MigrationMethod.SingleToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 130,
+        protocol: Protocol.UniswapV4,
+        token0: NATIVE_ETH_ADDRESS,
+        token1: '0x532f27101965dd16442E59d40670FaF5eBB142E4',
+        tickLower: 62200,
+        tickUpper: 103800,
+        fee: 10000,
+        tickSpacing: 200,
+        hooks: '0x0000000000000000000000000000000000000000',
+      },
+      exactPath: {
+        bridgeType: 'nobridge' as BridgeType,
+        migrationMethod: MigrationMethod.SingleToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     try {
@@ -145,23 +141,21 @@ describe('invalid migrations', () => {
         tokenId: 104758n,
         protocol: Protocol.UniswapV3,
       },
-      migration: {
-        destination: {
-          chainId: 130,
-          protocol: Protocol.UniswapV4,
-          token0: NATIVE_ETH_ADDRESS,
-          token1: '0x532f27101965dd16442E59d40670FaF5eBB142E4',
-          tickLower: 62200,
-          tickUpper: 103800,
-          fee: 10000,
-          tickSpacing: 200,
-          hooks: '0x0000000000000000000000000000000000000000',
-        },
-        exactPath: {
-          bridgeType: 'nobridge' as BridgeType,
-          migrationMethod: MigrationMethod.DualToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 130,
+        protocol: Protocol.UniswapV4,
+        token0: NATIVE_ETH_ADDRESS,
+        token1: '0x532f27101965dd16442E59d40670FaF5eBB142E4',
+        tickLower: 62200,
+        tickUpper: 103800,
+        fee: 10000,
+        tickSpacing: 200,
+        hooks: '0x0000000000000000000000000000000000000000',
+      },
+      exactPath: {
+        bridgeType: 'nobridge' as BridgeType,
+        migrationMethod: MigrationMethod.DualToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     try {
@@ -178,23 +172,21 @@ describe('invalid migrations', () => {
         tokenId: 104758n,
         protocol: Protocol.UniswapV4,
       },
-      migration: {
-        destination: {
-          chainId: 130,
-          protocol: Protocol.UniswapV4,
-          token0: NATIVE_ETH_ADDRESS,
-          token1: '0x532f27101965dd16442E59d40670FaF5eBB142E4',
-          tickLower: 62200,
-          tickUpper: 103800,
-          fee: 10000,
-          tickSpacing: 200,
-          hooks: '0x0000000000000000000000000000000000000000',
-        },
-        exactPath: {
-          bridgeType: 'nobridge' as BridgeType,
-          migrationMethod: MigrationMethod.SingleToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 130,
+        protocol: Protocol.UniswapV4,
+        token0: NATIVE_ETH_ADDRESS,
+        token1: '0x532f27101965dd16442E59d40670FaF5eBB142E4',
+        tickLower: 62200,
+        tickUpper: 103800,
+        fee: 10000,
+        tickSpacing: 200,
+        hooks: '0x0000000000000000000000000000000000000000',
+      },
+      exactPath: {
+        bridgeType: 'nobridge' as BridgeType,
+        migrationMethod: MigrationMethod.SingleToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     try {
@@ -211,23 +203,21 @@ describe('invalid migrations', () => {
         tokenId: 104758n,
         protocol: Protocol.UniswapV4,
       },
-      migration: {
-        destination: {
-          chainId: 130,
-          protocol: Protocol.UniswapV4,
-          token0: NATIVE_ETH_ADDRESS,
-          token1: '0x532f27101965dd16442E59d40670FaF5eBB142E4',
-          tickLower: 62200,
-          tickUpper: 103800,
-          fee: 10000,
-          tickSpacing: 200,
-          hooks: '0x0000000000000000000000000000000000000000',
-        },
-        exactPath: {
-          bridgeType: 'nobridge' as BridgeType,
-          migrationMethod: MigrationMethod.DualToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 130,
+        protocol: Protocol.UniswapV4,
+        token0: NATIVE_ETH_ADDRESS,
+        token1: '0x532f27101965dd16442E59d40670FaF5eBB142E4',
+        tickLower: 62200,
+        tickUpper: 103800,
+        fee: 10000,
+        tickSpacing: 200,
+        hooks: '0x0000000000000000000000000000000000000000',
+      },
+      exactPath: {
+        bridgeType: 'nobridge' as BridgeType,
+        migrationMethod: MigrationMethod.DualToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     try {
@@ -244,23 +234,21 @@ describe('invalid migrations', () => {
         tokenId: 104758n,
         protocol: Protocol.UniswapV3,
       },
-      migration: {
-        destination: {
-          chainId: 130,
-          protocol: Protocol.UniswapV4,
-          token0: NATIVE_ETH_ADDRESS,
-          token1: client.chainConfigs[130].usdcAddress,
-          tickLower: 62200,
-          tickUpper: 103800,
-          fee: 10000,
-          tickSpacing: 200,
-          hooks: '0x0000000000000000000000000000000000000000',
-        },
-        exactPath: {
-          bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.SingleToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 130,
+        protocol: Protocol.UniswapV4,
+        token0: NATIVE_ETH_ADDRESS,
+        token1: client.chainConfigs[130].usdcAddress,
+        tickLower: 62200,
+        tickUpper: 103800,
+        fee: 10000,
+        tickSpacing: 200,
+        hooks: '0x0000000000000000000000000000000000000000',
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.SingleToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     await moduleMocker.mock('@across-protocol/app-sdk', () => ({
@@ -319,23 +307,21 @@ describe('invalid migrations', () => {
         tokenId: 104758n,
         protocol: Protocol.UniswapV3,
       },
-      migration: {
-        destination: {
-          chainId: 130,
-          protocol: Protocol.UniswapV4,
-          token0: NATIVE_ETH_ADDRESS,
-          token1: '0x532f27101965dd16442E59d40670FaF5eBB142E4', // this is the base address for BRETT bc it doesn't exist
-          tickLower: 62200,
-          tickUpper: 103800,
-          fee: 10000,
-          tickSpacing: 200,
-          hooks: '0x0000000000000000000000000000000000000000',
-        },
-        exactPath: {
-          bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.SingleToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 130,
+        protocol: Protocol.UniswapV4,
+        token0: NATIVE_ETH_ADDRESS,
+        token1: '0x532f27101965dd16442E59d40670FaF5eBB142E4', // this is the base address for BRETT bc it doesn't exist
+        tickLower: 62200,
+        tickUpper: 103800,
+        fee: 10000,
+        tickSpacing: 200,
+        hooks: '0x0000000000000000000000000000000000000000',
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.SingleToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     try {
@@ -352,23 +338,21 @@ describe('invalid migrations', () => {
         tokenId: 104758n,
         protocol: Protocol.UniswapV3,
       },
-      migration: {
-        destination: {
-          chainId: 130,
-          protocol: Protocol.UniswapV4,
-          token0: NATIVE_ETH_ADDRESS,
-          token1: '0x532f27101965dd16442E59d40670FaF5eBB142E4', // this is the base address for BRETT bc it doesn't exist
-          tickLower: 62200,
-          tickUpper: 103800,
-          fee: 10000,
-          tickSpacing: 200,
-          hooks: '0x0000000000000000000000000000000000000000',
-        },
-        exactPath: {
-          bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.DualToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 130,
+        protocol: Protocol.UniswapV4,
+        token0: NATIVE_ETH_ADDRESS,
+        token1: '0x532f27101965dd16442E59d40670FaF5eBB142E4', // this is the base address for BRETT bc it doesn't exist
+        tickLower: 62200,
+        tickUpper: 103800,
+        fee: 10000,
+        tickSpacing: 200,
+        hooks: '0x0000000000000000000000000000000000000000',
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.DualToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     await moduleMocker.mock('@across-protocol/app-sdk', () => ({
@@ -396,23 +380,21 @@ describe('invalid migrations', () => {
         tokenId: 963499n,
         protocol: Protocol.UniswapV3,
       },
-      migration: {
-        destination: {
-          chainId: 130,
-          protocol: Protocol.UniswapV4,
-          token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
-          token1: NATIVE_ETH_ADDRESS,
-          tickLower: -203450,
-          tickUpper: -193130,
-          fee: 500,
-          tickSpacing: 10,
-          hooks: '0x0000000000000000000000000000000000000000',
-        },
-        exactPath: {
-          bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.SingleToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 130,
+        protocol: Protocol.UniswapV4,
+        token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+        token1: NATIVE_ETH_ADDRESS,
+        tickLower: -203450,
+        tickUpper: -193130,
+        fee: 500,
+        tickSpacing: 10,
+        hooks: '0x0000000000000000000000000000000000000000',
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.SingleToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     try {
@@ -429,23 +411,21 @@ describe('invalid migrations', () => {
         tokenId: 963499n,
         protocol: Protocol.UniswapV3,
       },
-      migration: {
-        destination: {
-          chainId: 130,
-          protocol: Protocol.UniswapV4,
-          token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
-          token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
-          tickLower: -203450,
-          tickUpper: -193130,
-          fee: 500,
-          tickSpacing: 10,
-          hooks: '0x0000000000000000000000000000000000000000',
-        },
-        exactPath: {
-          bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.SingleToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 130,
+        protocol: Protocol.UniswapV4,
+        token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+        token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+        tickLower: -203450,
+        tickUpper: -193130,
+        fee: 500,
+        tickSpacing: 10,
+        hooks: '0x0000000000000000000000000000000000000000',
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.SingleToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     try {
@@ -462,21 +442,19 @@ describe('invalid migrations', () => {
         tokenId: 1000n,
         protocol: Protocol.UniswapV4,
       },
-      migration: {
-        destination: {
-          chainId: 8453,
-          protocol: Protocol.UniswapV3,
-          token0: NATIVE_ETH_ADDRESS,
-          token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-          tickLower: -202230,
-          tickUpper: -199380,
-          fee: 500,
-        },
-        exactPath: {
-          bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.SingleToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 8453,
+        protocol: Protocol.UniswapV3,
+        token0: NATIVE_ETH_ADDRESS,
+        token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+        tickLower: -202230,
+        tickUpper: -199380,
+        fee: 500,
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.SingleToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     expect(async () => await client.requestExactMigration(params)).toThrow('Native tokens not supported on Uniswap v3');
@@ -490,23 +468,21 @@ describe('invalid migrations', () => {
           tokenId: 949124n,
           protocol: Protocol.UniswapV3,
         },
-        migration: {
-          destination: {
-            chainId: 8453,
-            protocol: Protocol.UniswapV4,
-            token0: '0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34',
-            token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-            tickLower: -276352,
-            tickUpper: -276299,
-            fee: 100,
-            tickSpacing: 1,
-            hooks: '0x0000000000000000000000000000000000000000',
-          },
-          exactPath: {
-            bridgeType: BridgeType.Across,
-            migrationMethod: MigrationMethod.DualToken,
-            slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-          },
+        destination: {
+          chainId: 8453,
+          protocol: Protocol.UniswapV4,
+          token0: '0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34',
+          token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+          tickLower: -276352,
+          tickUpper: -276299,
+          fee: 100,
+          tickSpacing: 1,
+          hooks: '0x0000000000000000000000000000000000000000',
+        },
+        exactPath: {
+          bridgeType: BridgeType.Across,
+          migrationMethod: MigrationMethod.DualToken,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
         },
       };
       await client.requestExactMigration(params);
@@ -558,23 +534,21 @@ describe('invalid migrations', () => {
         tokenId: 10249n,
         protocol: Protocol.UniswapV4,
       },
-      migration: {
-        destination: {
-          chainId: 130,
-          protocol: Protocol.UniswapV4,
-          token0,
-          token1,
-          tickLower: -88700,
-          tickUpper: 88700,
-          fee,
-          tickSpacing,
-          hooks,
-        },
-        exactPath: {
-          bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.SingleToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 130,
+        protocol: Protocol.UniswapV4,
+        token0,
+        token1,
+        tickLower: -88700,
+        tickUpper: 88700,
+        fee,
+        tickSpacing,
+        hooks,
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.SingleToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     expect(async () => await client.requestExactMigration(params)).toThrow('ETH/WETH not found in position');
@@ -602,23 +576,21 @@ describe('in-range v3→ migrations', () => {
         tokenId: v3TokenId,
         protocol: Protocol.UniswapV3,
       },
-      migration: {
-        destination: {
-          chainId: 130,
-          protocol: Protocol.UniswapV4,
-          token0: NATIVE_ETH_ADDRESS,
-          token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
-          tickLower: -1 * v3Response.tickUpper,
-          tickUpper: -1 * v3Response.tickLower,
-          fee: v3Response.pool.fee,
-          tickSpacing: v3Response.pool.tickSpacing,
-          hooks: '0x0000000000000000000000000000000000000000',
-        },
-        exactPath: {
-          bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.SingleToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 130,
+        protocol: Protocol.UniswapV4,
+        token0: NATIVE_ETH_ADDRESS,
+        token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+        tickLower: -1 * v3Response.tickUpper,
+        tickUpper: -1 * v3Response.tickLower,
+        fee: v3Response.pool.fee,
+        tickSpacing: v3Response.pool.tickSpacing,
+        hooks: '0x0000000000000000000000000000000000000000',
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.SingleToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     validateMigrationResponse(params, await client.requestExactMigration(params));
@@ -631,28 +603,26 @@ describe('in-range v3→ migrations', () => {
         tokenId: v3TokenId,
         protocol: Protocol.UniswapV3,
       },
-      migration: {
-        destination: {
-          chainId: 130,
-          protocol: Protocol.UniswapV4,
-          token0: NATIVE_ETH_ADDRESS,
-          token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
-          tickLower: -1 * v3Response.tickUpper,
-          tickUpper: -1 * v3Response.tickLower,
-          fee: v3Response.pool.fee,
-          tickSpacing: v3Response.pool.tickSpacing,
-          hooks: '0x0000000000000000000000000000000000000000',
-        },
-        pathFilter: {
-          bridgeType: BridgeType.Across,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 130,
+        protocol: Protocol.UniswapV4,
+        token0: NATIVE_ETH_ADDRESS,
+        token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+        tickLower: -1 * v3Response.tickUpper,
+        tickUpper: -1 * v3Response.tickLower,
+        fee: v3Response.pool.fee,
+        tickSpacing: v3Response.pool.tickSpacing,
+        hooks: '0x0000000000000000000000000000000000000000',
+      },
+      path: {
+        bridgeType: BridgeType.Across,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     const response = await client.requestMigration(params);
-    expect(response.destPositions.length).toBe(2);
-    expect(positionValue(response.destPositions[0], 1, true)).toBeGreaterThan(
-      positionValue(response.destPositions[1], 1, true)
+    expect(response.migrations.length).toBe(2);
+    expect(positionValue(response.migrations[0], 1, true)).toBeGreaterThan(
+      positionValue(response.migrations[1], 1, true)
     );
   });
 
@@ -663,26 +633,24 @@ describe('in-range v3→ migrations', () => {
         tokenId: v3TokenId,
         protocol: Protocol.UniswapV3,
       },
-      migration: {
-        destination: {
-          chainId: 130,
-          protocol: Protocol.UniswapV3,
-          token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
-          token1: '0x4200000000000000000000000000000000000006',
-          tickLower: -1 * v3Response.tickUpper,
-          tickUpper: -1 * v3Response.tickLower,
-          fee: v3Response.pool.fee,
-        },
-        pathFilter: {
-          bridgeType: BridgeType.Across,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 130,
+        protocol: Protocol.UniswapV3,
+        token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+        token1: '0x4200000000000000000000000000000000000006',
+        tickLower: -1 * v3Response.tickUpper,
+        tickUpper: -1 * v3Response.tickLower,
+        fee: v3Response.pool.fee,
+      },
+      path: {
+        bridgeType: BridgeType.Across,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     const response = await client.requestMigration(params);
-    expect(response.destPositions.length).toBe(2);
-    expect(positionValue(response.destPositions[0], 1, true)).toBeGreaterThan(
-      positionValue(response.destPositions[1], 1, true)
+    expect(response.migrations.length).toBe(2);
+    expect(positionValue(response.migrations[0], 1, true)).toBeGreaterThan(
+      positionValue(response.migrations[1], 1, true)
     );
   });
 
@@ -693,23 +661,21 @@ describe('in-range v3→ migrations', () => {
         tokenId: v3TokenId,
         protocol: Protocol.UniswapV3,
       },
-      migration: {
-        destination: {
-          chainId: 130,
-          protocol: Protocol.UniswapV4,
-          token0: NATIVE_ETH_ADDRESS,
-          token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
-          tickLower: -1 * v3Response.tickUpper,
-          tickUpper: -1 * v3Response.tickLower,
-          fee: v3Response.pool.fee,
-          tickSpacing: v3Response.pool.tickSpacing,
-          hooks: '0x0000000000000000000000000000000000000000',
-        },
-        exactPath: {
-          bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.DualToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 130,
+        protocol: Protocol.UniswapV4,
+        token0: NATIVE_ETH_ADDRESS,
+        token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+        tickLower: -1 * v3Response.tickUpper,
+        tickUpper: -1 * v3Response.tickLower,
+        fee: v3Response.pool.fee,
+        tickSpacing: v3Response.pool.tickSpacing,
+        hooks: '0x0000000000000000000000000000000000000000',
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.DualToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     validateMigrationResponse(params, await client.requestExactMigration(params));
@@ -722,21 +688,19 @@ describe('in-range v3→ migrations', () => {
         tokenId: v3TokenId,
         protocol: Protocol.UniswapV3,
       },
-      migration: {
-        destination: {
-          chainId: 130,
-          protocol: Protocol.UniswapV3,
-          token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
-          token1: '0x4200000000000000000000000000000000000006',
-          tickLower: v3Response.tickLower,
-          tickUpper: v3Response.tickUpper,
-          fee: v3Response.pool.fee,
-        },
-        exactPath: {
-          bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.SingleToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 130,
+        protocol: Protocol.UniswapV3,
+        token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+        token1: '0x4200000000000000000000000000000000000006',
+        tickLower: v3Response.tickLower,
+        tickUpper: v3Response.tickUpper,
+        fee: v3Response.pool.fee,
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.SingleToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     validateMigrationResponse(params, await client.requestExactMigration(params));
@@ -749,21 +713,19 @@ describe('in-range v3→ migrations', () => {
         tokenId: v3TokenId,
         protocol: Protocol.UniswapV3,
       },
-      migration: {
-        destination: {
-          chainId: 130,
-          protocol: Protocol.UniswapV3,
-          token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
-          token1: '0x4200000000000000000000000000000000000006',
-          tickLower: v3Response.tickLower,
-          tickUpper: v3Response.tickUpper,
-          fee: v3Response.pool.fee,
-        },
-        exactPath: {
-          bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.DualToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 130,
+        protocol: Protocol.UniswapV3,
+        token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+        token1: '0x4200000000000000000000000000000000000006',
+        tickLower: v3Response.tickLower,
+        tickUpper: v3Response.tickUpper,
+        fee: v3Response.pool.fee,
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.DualToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     validateMigrationResponse(params, await client.requestExactMigration(params));
@@ -776,23 +738,21 @@ describe('in-range v3→ migrations', () => {
         tokenId: 2825070n,
         protocol: Protocol.UniswapV3,
       },
-      migration: {
-        destination: {
-          chainId: 42161,
-          protocol: Protocol.UniswapV4,
-          token0: '0x0000000000000000000000000000000000000000',
-          token1: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
-          tickLower: -201230,
-          tickUpper: -187780,
-          fee: 500,
-          tickSpacing: 10,
-          hooks: '0x0000000000000000000000000000000000000000',
-        },
-        exactPath: {
-          bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.DualToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 42161,
+        protocol: Protocol.UniswapV4,
+        token0: '0x0000000000000000000000000000000000000000',
+        token1: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+        tickLower: -201230,
+        tickUpper: -187780,
+        fee: 500,
+        tickSpacing: 10,
+        hooks: '0x0000000000000000000000000000000000000000',
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.DualToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     validateMigrationResponse(params, await client.requestExactMigration(params));
@@ -822,21 +782,19 @@ describe('in-range v4→ migrations', () => {
         tokenId: v4TokenId,
         protocol: Protocol.UniswapV4,
       },
-      migration: {
-        destination: {
-          chainId: 8453,
-          protocol: Protocol.UniswapV3,
-          token0: client.chainConfigs[8453].wethAddress,
-          token1: client.chainConfigs[8453].usdcAddress,
-          tickLower: v4Response.tickLower,
-          tickUpper: v4Response.tickUpper,
-          fee: v4Pool.fee,
-        },
-        exactPath: {
-          bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.SingleToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 8453,
+        protocol: Protocol.UniswapV3,
+        token0: client.chainConfigs[8453].wethAddress,
+        token1: client.chainConfigs[8453].usdcAddress,
+        tickLower: v4Response.tickLower,
+        tickUpper: v4Response.tickUpper,
+        fee: v4Pool.fee,
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.SingleToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     validateMigrationResponse(params, await client.requestExactMigration(params));
@@ -849,21 +807,19 @@ describe('in-range v4→ migrations', () => {
         tokenId: v4TokenId,
         protocol: Protocol.UniswapV4,
       },
-      migration: {
-        destination: {
-          chainId: 8453,
-          protocol: Protocol.UniswapV3,
-          token0: '0x4200000000000000000000000000000000000006',
-          token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-          tickLower: v4Response.tickLower,
-          tickUpper: v4Response.tickUpper,
-          fee: v4Pool.fee,
-        },
-        exactPath: {
-          bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.DualToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 8453,
+        protocol: Protocol.UniswapV3,
+        token0: '0x4200000000000000000000000000000000000006',
+        token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+        tickLower: v4Response.tickLower,
+        tickUpper: v4Response.tickUpper,
+        fee: v4Pool.fee,
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.DualToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     validateMigrationResponse(params, await client.requestExactMigration(params));
@@ -876,23 +832,21 @@ describe('in-range v4→ migrations', () => {
         tokenId: v4TokenId,
         protocol: Protocol.UniswapV4,
       },
-      migration: {
-        destination: {
-          chainId: 8453,
-          protocol: Protocol.UniswapV4,
-          token0: zeroAddress,
-          token1: client.chainConfigs[8453].usdcAddress,
-          tickLower: v4Response.tickLower,
-          tickUpper: v4Response.tickUpper,
-          fee: 10000,
-          tickSpacing: 200,
-          hooks: zeroAddress,
-        },
-        exactPath: {
-          bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.SingleToken,
-          slippageInBps: 6,
-        },
+      destination: {
+        chainId: 8453,
+        protocol: Protocol.UniswapV4,
+        token0: zeroAddress,
+        token1: client.chainConfigs[8453].usdcAddress,
+        tickLower: v4Response.tickLower,
+        tickUpper: v4Response.tickUpper,
+        fee: 10000,
+        tickSpacing: 200,
+        hooks: zeroAddress,
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.SingleToken,
+        slippageInBps: 6,
       },
     };
     expect(async () => await client.requestExactMigration(params)).toThrow('Price impact exceeds slippage');
@@ -905,23 +859,21 @@ describe('in-range v4→ migrations', () => {
         tokenId: v4TokenId,
         protocol: Protocol.UniswapV4,
       },
-      migration: {
-        destination: {
-          chainId: 8453,
-          protocol: Protocol.UniswapV4,
-          token0: zeroAddress,
-          token1: client.chainConfigs[8453].usdcAddress,
-          tickLower: v4Response.tickLower,
-          tickUpper: v4Response.tickUpper,
-          fee: v4Pool.fee,
-          tickSpacing: v4Pool.tickSpacing,
-          hooks: zeroAddress,
-        },
-        exactPath: {
-          bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.DualToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 8453,
+        protocol: Protocol.UniswapV4,
+        token0: zeroAddress,
+        token1: client.chainConfigs[8453].usdcAddress,
+        tickLower: v4Response.tickLower,
+        tickUpper: v4Response.tickUpper,
+        fee: v4Pool.fee,
+        tickSpacing: v4Pool.tickSpacing,
+        hooks: zeroAddress,
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.DualToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     validateMigrationResponse(params, await client.requestExactMigration(params));
@@ -936,21 +888,19 @@ describe('flipped token order between chains', () => {
         tokenId: 17447n,
         protocol: Protocol.UniswapV4,
       },
-      migration: {
-        destination: {
-          chainId: 130,
-          protocol: Protocol.UniswapV3,
-          token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
-          token1: '0x4200000000000000000000000000000000000006',
-          tickLower: 201320,
-          tickUpper: 201870,
-          fee: 500,
-        },
-        exactPath: {
-          bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.DualToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 130,
+        protocol: Protocol.UniswapV3,
+        token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+        token1: '0x4200000000000000000000000000000000000006',
+        tickLower: 201320,
+        tickUpper: 201870,
+        fee: 500,
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.DualToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     validateMigrationResponse(params, await client.requestExactMigration(params));
@@ -963,23 +913,21 @@ describe('flipped token order between chains', () => {
         tokenId: 4n,
         protocol: Protocol.UniswapV4,
       },
-      migration: {
-        destination: {
-          chainId: 10,
-          protocol: Protocol.UniswapV4,
-          token0: NATIVE_ETH_ADDRESS,
-          token1: '0x68f180fcCe6836688e9084f035309E29Bf0A2095',
-          tickLower: -887220,
-          tickUpper: 887220,
-          fee: 3000,
-          hooks: '0x0000000000000000000000000000000000000000',
-          tickSpacing: 60,
-        },
-        exactPath: {
-          bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.DualToken,
-          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-        },
+      destination: {
+        chainId: 10,
+        protocol: Protocol.UniswapV4,
+        token0: NATIVE_ETH_ADDRESS,
+        token1: '0x68f180fcCe6836688e9084f035309E29Bf0A2095',
+        tickLower: -887220,
+        tickUpper: 887220,
+        fee: 3000,
+        hooks: '0x0000000000000000000000000000000000000000',
+        tickSpacing: 60,
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.DualToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
     validateMigrationResponse(params, await client.requestExactMigration(params));
@@ -1009,23 +957,21 @@ describe('out of range v3→ migrations', () => {
             tokenId: v3TokenId,
             protocol: Protocol.UniswapV3,
           },
-          migration: {
-            destination: {
-              chainId: 130,
-              protocol: Protocol.UniswapV4,
-              token0: NATIVE_ETH_ADDRESS,
-              token1: '0x927B51f251480a681271180DA4de28D44EC4AfB8',
-              tickLower: -1 * v3Response.tickUpper,
-              tickUpper: -1 * v3Response.tickLower,
-              fee: v3Response.pool.fee,
-              tickSpacing: v3Response.pool.tickSpacing,
-              hooks: '0x0000000000000000000000000000000000000000',
-            },
-            exactPath: {
-              bridgeType: BridgeType.Across,
-              migrationMethod: MigrationMethod.SingleToken,
-              slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-            },
+          destination: {
+            chainId: 130,
+            protocol: Protocol.UniswapV4,
+            token0: NATIVE_ETH_ADDRESS,
+            token1: '0x927B51f251480a681271180DA4de28D44EC4AfB8',
+            tickLower: -1 * v3Response.tickUpper,
+            tickUpper: -1 * v3Response.tickLower,
+            fee: v3Response.pool.fee,
+            tickSpacing: v3Response.pool.tickSpacing,
+            hooks: '0x0000000000000000000000000000000000000000',
+          },
+          exactPath: {
+            bridgeType: BridgeType.Across,
+            migrationMethod: MigrationMethod.SingleToken,
+            slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
           },
         };
         validateMigrationResponse(params, await client.requestExactMigration(params));
@@ -1039,23 +985,21 @@ describe('out of range v3→ migrations', () => {
             tokenId: v3TokenId,
             protocol: Protocol.UniswapV3,
           },
-          migration: {
-            destination: {
-              chainId: 130,
-              protocol: Protocol.UniswapV4,
-              token0: NATIVE_ETH_ADDRESS,
-              token1: '0x927B51f251480a681271180DA4de28D44EC4AfB8',
-              tickLower: -299990,
-              tickUpper: -289990,
-              fee: v3Response.pool.fee,
-              tickSpacing: v3Response.pool.tickSpacing,
-              hooks: '0x0000000000000000000000000000000000000000',
-            },
-            exactPath: {
-              bridgeType: BridgeType.Across,
-              migrationMethod: MigrationMethod.SingleToken,
-              slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-            },
+          destination: {
+            chainId: 130,
+            protocol: Protocol.UniswapV4,
+            token0: NATIVE_ETH_ADDRESS,
+            token1: '0x927B51f251480a681271180DA4de28D44EC4AfB8',
+            tickLower: -299990,
+            tickUpper: -289990,
+            fee: v3Response.pool.fee,
+            tickSpacing: v3Response.pool.tickSpacing,
+            hooks: '0x0000000000000000000000000000000000000000',
+          },
+          exactPath: {
+            bridgeType: BridgeType.Across,
+            migrationMethod: MigrationMethod.SingleToken,
+            slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
           },
         };
         validateMigrationResponse(params, await client.requestExactMigration(params));
@@ -1071,23 +1015,21 @@ describe('out of range v3→ migrations', () => {
           tokenId: v3TokenId,
           protocol: Protocol.UniswapV3,
         },
-        migration: {
-          destination: {
-            chainId: 130,
-            protocol: Protocol.UniswapV4,
-            token0: NATIVE_ETH_ADDRESS,
-            token1: '0x927B51f251480a681271180DA4de28D44EC4AfB8',
-            tickLower: -1 * v3Response.tickUpper,
-            tickUpper: -1 * v3Response.tickLower,
-            fee: v3Response.pool.fee,
-            tickSpacing: v3Response.pool.tickSpacing,
-            hooks: '0x0000000000000000000000000000000000000000',
-          },
-          exactPath: {
-            bridgeType: BridgeType.Across,
-            migrationMethod: MigrationMethod.DualToken,
-            slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-          },
+        destination: {
+          chainId: 130,
+          protocol: Protocol.UniswapV4,
+          token0: NATIVE_ETH_ADDRESS,
+          token1: '0x927B51f251480a681271180DA4de28D44EC4AfB8',
+          tickLower: -1 * v3Response.tickUpper,
+          tickUpper: -1 * v3Response.tickLower,
+          fee: v3Response.pool.fee,
+          tickSpacing: v3Response.pool.tickSpacing,
+          hooks: '0x0000000000000000000000000000000000000000',
+        },
+        exactPath: {
+          bridgeType: BridgeType.Across,
+          migrationMethod: MigrationMethod.DualToken,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
         },
       };
       try {
@@ -1162,23 +1104,21 @@ describe('out of range v4→ migrations', () => {
             tokenId: v4TokenId,
             protocol: Protocol.UniswapV4,
           },
-          migration: {
-            destination: {
-              chainId: 8453,
-              protocol: Protocol.UniswapV4,
-              token0: NATIVE_ETH_ADDRESS,
-              token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-              tickLower: -199230,
-              tickUpper: -197230,
-              fee: v4Pool.fee,
-              tickSpacing: v4Pool.tickSpacing,
-              hooks: '0x0000000000000000000000000000000000000000',
-            },
-            exactPath: {
-              bridgeType: BridgeType.Across,
-              migrationMethod: MigrationMethod.SingleToken,
-              slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-            },
+          destination: {
+            chainId: 8453,
+            protocol: Protocol.UniswapV4,
+            token0: NATIVE_ETH_ADDRESS,
+            token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+            tickLower: -199230,
+            tickUpper: -197230,
+            fee: v4Pool.fee,
+            tickSpacing: v4Pool.tickSpacing,
+            hooks: '0x0000000000000000000000000000000000000000',
+          },
+          exactPath: {
+            bridgeType: BridgeType.Across,
+            migrationMethod: MigrationMethod.SingleToken,
+            slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
           },
         };
         validateMigrationResponse(params, await client.requestExactMigration(params));
@@ -1230,23 +1170,21 @@ describe('out of range v4→ migrations', () => {
             tokenId: v4TokenId,
             protocol: Protocol.UniswapV4,
           },
-          migration: {
-            destination: {
-              chainId: 8453,
-              protocol: Protocol.UniswapV4,
-              token0: NATIVE_ETH_ADDRESS,
-              token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-              tickLower: -206230,
-              tickUpper: -202230,
-              fee: v4Pool.fee,
-              tickSpacing: v4Pool.tickSpacing,
-              hooks: '0x0000000000000000000000000000000000000000',
-            },
-            exactPath: {
-              bridgeType: BridgeType.Across,
-              migrationMethod: MigrationMethod.SingleToken,
-              slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-            },
+          destination: {
+            chainId: 8453,
+            protocol: Protocol.UniswapV4,
+            token0: NATIVE_ETH_ADDRESS,
+            token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+            tickLower: -206230,
+            tickUpper: -202230,
+            fee: v4Pool.fee,
+            tickSpacing: v4Pool.tickSpacing,
+            hooks: '0x0000000000000000000000000000000000000000',
+          },
+          exactPath: {
+            bridgeType: BridgeType.Across,
+            migrationMethod: MigrationMethod.SingleToken,
+            slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
           },
         };
         validateMigrationResponse(params, await client.requestExactMigration(params));
@@ -1299,23 +1237,21 @@ describe('out of range v4→ migrations', () => {
           tokenId: v4TokenId,
           protocol: Protocol.UniswapV4,
         },
-        migration: {
-          destination: {
-            chainId: 8453,
-            protocol: Protocol.UniswapV4,
-            token0: NATIVE_ETH_ADDRESS,
-            token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
-            tickLower: -206230,
-            tickUpper: -202230,
-            fee: v4Pool.fee,
-            tickSpacing: v4Pool.tickSpacing,
-            hooks: '0x0000000000000000000000000000000000000000',
-          },
-          exactPath: {
-            bridgeType: BridgeType.Across,
-            migrationMethod: MigrationMethod.DualToken,
-            slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-          },
+        destination: {
+          chainId: 8453,
+          protocol: Protocol.UniswapV4,
+          token0: NATIVE_ETH_ADDRESS,
+          token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+          tickLower: -206230,
+          tickUpper: -202230,
+          fee: v4Pool.fee,
+          tickSpacing: v4Pool.tickSpacing,
+          hooks: '0x0000000000000000000000000000000000000000',
+        },
+        exactPath: {
+          bridgeType: BridgeType.Across,
+          migrationMethod: MigrationMethod.DualToken,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
         },
       };
       expect(async () => await client.requestExactMigration(params)).toThrow(
@@ -1346,23 +1282,21 @@ describe('pool creation:', () => {
           tokenId: 891583n,
           protocol: Protocol.UniswapV3,
         },
-        migration: {
-          destination: {
-            chainId: 42161,
-            protocol: Protocol.UniswapV4,
-            token0: NATIVE_ETH_ADDRESS,
-            token1: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
-            tickLower: -887220,
-            tickUpper: 887220,
-            fee: 10000,
-            tickSpacing: 200,
-            hooks: '0x0000000000000000000000000000000000000000',
-          },
-          exactPath: {
-            bridgeType: BridgeType.Across,
-            migrationMethod: MigrationMethod.DualToken,
-            slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-          },
+        destination: {
+          chainId: 42161,
+          protocol: Protocol.UniswapV4,
+          token0: NATIVE_ETH_ADDRESS,
+          token1: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
+          tickLower: -887220,
+          tickUpper: 887220,
+          fee: 10000,
+          tickSpacing: 200,
+          hooks: '0x0000000000000000000000000000000000000000',
+        },
+        exactPath: {
+          bridgeType: BridgeType.Across,
+          migrationMethod: MigrationMethod.DualToken,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
         },
       };
       expect(async () => await client.requestExactMigration(params)).toThrow(
@@ -1378,24 +1312,22 @@ describe('pool creation:', () => {
           tokenId: 891583n,
           protocol: Protocol.UniswapV3,
         },
-        migration: {
-          destination: {
-            chainId: 42161,
-            protocol: Protocol.UniswapV4,
-            token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
-            token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
-            tickLower: -887220,
-            tickUpper: 887220,
-            fee: 10000,
-            tickSpacing: 200,
-            hooks: '0x0000000000000000000000000000000000000000',
-            sqrtPriceX96: 736087614829673861315061733n,
-          },
-          exactPath: {
-            bridgeType: BridgeType.Across,
-            migrationMethod: MigrationMethod.SingleToken,
-            slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-          },
+        destination: {
+          chainId: 42161,
+          protocol: Protocol.UniswapV4,
+          token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
+          token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+          tickLower: -887220,
+          tickUpper: 887220,
+          fee: 10000,
+          tickSpacing: 200,
+          hooks: '0x0000000000000000000000000000000000000000',
+          sqrtPriceX96: 736087614829673861315061733n,
+        },
+        exactPath: {
+          bridgeType: BridgeType.Across,
+          migrationMethod: MigrationMethod.SingleToken,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
         },
       };
       expect(async () => await client.requestExactMigration(params)).toThrow(
@@ -1411,28 +1343,26 @@ describe('pool creation:', () => {
           tokenId: 891583n,
           protocol: Protocol.UniswapV3,
         },
-        migration: {
-          destination: {
-            chainId: 42161,
-            protocol: Protocol.UniswapV4,
-            token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
-            token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
-            tickLower: -887200,
-            tickUpper: 887200,
-            fee: 10000,
-            tickSpacing: 200,
-            hooks: '0x0000000000000000000000000000000000000000',
-            sqrtPriceX96: 736087614829673861315061733n,
-          },
-          exactPath: {
-            bridgeType: BridgeType.Across,
-            migrationMethod: MigrationMethod.DualToken,
-            slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-          },
+        destination: {
+          chainId: 42161,
+          protocol: Protocol.UniswapV4,
+          token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
+          token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+          tickLower: -887200,
+          tickUpper: 887200,
+          fee: 10000,
+          tickSpacing: 200,
+          hooks: '0x0000000000000000000000000000000000000000',
+          sqrtPriceX96: 736087614829673861315061733n,
+        },
+        exactPath: {
+          bridgeType: BridgeType.Across,
+          migrationMethod: MigrationMethod.DualToken,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
         },
       };
       const response = await client.requestExactMigration(params);
-      expect(response.destPosition.pool.liquidity).toBe(0n);
+      expect(response.migration.position.pool.liquidity).toBe(0n);
       validateMigrationResponse(params, response);
     });
 
@@ -1444,28 +1374,26 @@ describe('pool creation:', () => {
           tokenId: 891583n,
           protocol: Protocol.UniswapV3,
         },
-        migration: {
-          destination: {
-            chainId: 42161,
-            protocol: Protocol.UniswapV4,
-            token0: NATIVE_ETH_ADDRESS,
-            token1: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
-            tickLower: 887000,
-            tickUpper: 887200,
-            fee: 10000,
-            tickSpacing: 200,
-            hooks: '0x0000000000000000000000000000000000000000',
-            sqrtPriceX96: 736087614829673861315061733n,
-          },
-          exactPath: {
-            bridgeType: BridgeType.Across,
-            migrationMethod: MigrationMethod.SingleToken,
-            slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-          },
+        destination: {
+          chainId: 42161,
+          protocol: Protocol.UniswapV4,
+          token0: NATIVE_ETH_ADDRESS,
+          token1: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
+          tickLower: 887000,
+          tickUpper: 887200,
+          fee: 10000,
+          tickSpacing: 200,
+          hooks: '0x0000000000000000000000000000000000000000',
+          sqrtPriceX96: 736087614829673861315061733n,
+        },
+        exactPath: {
+          bridgeType: BridgeType.Across,
+          migrationMethod: MigrationMethod.SingleToken,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
         },
       };
       const response = await client.requestExactMigration(params);
-      expect(response.destPosition.pool.liquidity).toBe(0n);
+      expect(response.migration.position.pool.liquidity).toBe(0n);
       validateMigrationResponse(params, response);
     });
   });
@@ -1487,21 +1415,19 @@ describe('pool creation:', () => {
           tokenId: 891583n,
           protocol: Protocol.UniswapV3,
         },
-        migration: {
-          destination: {
-            chainId: 42161,
-            protocol: Protocol.UniswapV3,
-            token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
-            token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
-            tickLower: -887220,
-            tickUpper: 887220,
-            fee: 500,
-          },
-          exactPath: {
-            bridgeType: BridgeType.Across,
-            migrationMethod: MigrationMethod.DualToken,
-            slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-          },
+        destination: {
+          chainId: 42161,
+          protocol: Protocol.UniswapV3,
+          token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
+          token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+          tickLower: -887220,
+          tickUpper: 887220,
+          fee: 500,
+        },
+        exactPath: {
+          bridgeType: BridgeType.Across,
+          migrationMethod: MigrationMethod.DualToken,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
         },
       };
       expect(async () => await client.requestExactMigration(params)).toThrow(
@@ -1517,22 +1443,20 @@ describe('pool creation:', () => {
           tokenId: 891583n,
           protocol: Protocol.UniswapV3,
         },
-        migration: {
-          destination: {
-            chainId: 42161,
-            protocol: Protocol.UniswapV3,
-            token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
-            token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
-            tickLower: -887220,
-            tickUpper: 887220,
-            fee: 500,
-            sqrtPriceX96: 736087614829673861315061733n,
-          },
-          exactPath: {
-            bridgeType: BridgeType.Across,
-            migrationMethod: MigrationMethod.SingleToken,
-            slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-          },
+        destination: {
+          chainId: 42161,
+          protocol: Protocol.UniswapV3,
+          token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
+          token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+          tickLower: -887220,
+          tickUpper: 887220,
+          fee: 500,
+          sqrtPriceX96: 736087614829673861315061733n,
+        },
+        exactPath: {
+          bridgeType: BridgeType.Across,
+          migrationMethod: MigrationMethod.SingleToken,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
         },
       };
       expect(async () => await client.requestExactMigration(params)).toThrow(
@@ -1548,26 +1472,24 @@ describe('pool creation:', () => {
           tokenId: 891583n,
           protocol: Protocol.UniswapV3,
         },
-        migration: {
-          destination: {
-            chainId: 42161,
-            protocol: Protocol.UniswapV3,
-            token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
-            token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
-            tickLower: -887200,
-            tickUpper: 887200,
-            fee: 500,
-            sqrtPriceX96: 736087614829673861315061733n,
-          },
-          exactPath: {
-            bridgeType: BridgeType.Across,
-            migrationMethod: MigrationMethod.DualToken,
-            slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-          },
+        destination: {
+          chainId: 42161,
+          protocol: Protocol.UniswapV3,
+          token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
+          token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+          tickLower: -887200,
+          tickUpper: 887200,
+          fee: 500,
+          sqrtPriceX96: 736087614829673861315061733n,
+        },
+        exactPath: {
+          bridgeType: BridgeType.Across,
+          migrationMethod: MigrationMethod.DualToken,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
         },
       };
       const response = await client.requestExactMigration(params);
-      expect(response.destPosition.pool.liquidity).toBe(0n);
+      expect(response.migration.position.pool.liquidity).toBe(0n);
       validateMigrationResponse(params, response);
     });
 
@@ -1579,26 +1501,24 @@ describe('pool creation:', () => {
           tokenId: 891583n,
           protocol: Protocol.UniswapV3,
         },
-        migration: {
-          destination: {
-            chainId: 42161,
-            protocol: Protocol.UniswapV3,
-            token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
-            token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
-            tickLower: -887200,
-            tickUpper: -887000,
-            fee: 500,
-            sqrtPriceX96: 736087614829673861315061733n,
-          },
-          exactPath: {
-            bridgeType: BridgeType.Across,
-            migrationMethod: MigrationMethod.SingleToken,
-            slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
-          },
+        destination: {
+          chainId: 42161,
+          protocol: Protocol.UniswapV3,
+          token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
+          token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+          tickLower: -887200,
+          tickUpper: -887000,
+          fee: 500,
+          sqrtPriceX96: 736087614829673861315061733n,
+        },
+        exactPath: {
+          bridgeType: BridgeType.Across,
+          migrationMethod: MigrationMethod.SingleToken,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
         },
       };
       const response = await client.requestExactMigration(params);
-      expect(response.destPosition.pool.liquidity).toBe(0n);
+      expect(response.migration.position.pool.liquidity).toBe(0n);
       validateMigrationResponse(params, response);
     });
   });
