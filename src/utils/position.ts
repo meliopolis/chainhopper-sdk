@@ -1,12 +1,17 @@
 import { computePoolAddress, type Pool as UniswapSDKV3Pool, type Position as V3Position } from '@uniswap/v3-sdk';
 import { Pool as UniswapSDKV4Pool, type Position as V4Position } from '@uniswap/v4-sdk';
-import type { Position, PositionWithPath, v3Pool, v4Pool } from '../types/sdk';
+import type { Position, PathWithPosition, v3Pool, v4Pool } from '../types/sdk';
 import { NATIVE_ETH_ADDRESS, Protocol } from './constants';
 import type { ChainConfig } from '../chains';
 
 const Q192 = 2n ** 192n;
 
-export const positionValue = (position: PositionWithPath, tokenUnits: 0 | 1, includeRefunds = false): bigint => {
+export const positionValue = (
+  pathWithPosition: PathWithPosition,
+  tokenUnits: 0 | 1,
+  includeRefunds = false
+): bigint => {
+  const { position } = pathWithPosition;
   const { pool, amount0, amount1 } = position;
 
   let adjAmount0 = amount0;

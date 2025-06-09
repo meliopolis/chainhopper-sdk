@@ -3,12 +3,11 @@ import { DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, Protocol } from 
 import { nearestUsableTick, Pool as V3Pool, SqrtPriceMath, TickMath, Position as V3Position } from '@uniswap/v3-sdk';
 import { Position as V4Position, Pool as V4Pool } from '@uniswap/v4-sdk';
 import type {
-  RequestMigrationParams,
   MigratorExecutionParams,
   Position,
   Route,
   SettlerExecutionParams,
-  ExactMigrationRequest,
+  RequestMigrationParams,
 } from '../types/sdk';
 
 import {
@@ -25,13 +24,13 @@ import { getV3Quote } from '../actions/getV3Quote';
 import { chainConfigs, type ChainConfig } from '../chains';
 import { getV4CombinedQuote } from '../actions/getV4CombinedQuote';
 import { NFTSafeTransferFrom } from '../abis/NFTSafeTransferFrom';
-import type { InternalGenerateMigrationParamsInput } from '../types/internal';
+import type { InternalDestinationWithExactPath, InternalGenerateMigrationParamsInput } from '../types/internal';
 import { toSDKPosition } from './position';
 import { SpokePoolABI } from '../abis';
 
 export const generateSettlerData = (
   sourceChainConfig: ChainConfig,
-  migration: ExactMigrationRequest,
+  migration: InternalDestinationWithExactPath,
   externalParams: RequestMigrationParams,
   owner: `0x${string}`
 ): { interimMessageForSettler: `0x${string}` } => {

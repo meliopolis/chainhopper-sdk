@@ -1,8 +1,23 @@
 import type { Abi } from 'viem';
 import { BridgeType, MigrationMethod, Protocol } from '../utils/constants';
 
-export type UniswapV3Params = {
-  protocol: Protocol.UniswapV3;
+/*
+ * These types describe the input params
+ */
+
+export type BaseRequestMigrationParams = {
+  sourcePosition: {
+    chainId: number;
+    protocol: Protocol;
+    tokenId: bigint;
+  };
+  senderShareBps?: number;
+  senderFeeRecipient?: `0x${string}`;
+  debug?: boolean;
+};
+
+// These types describe the parameters for a destination pool
+export type DestinationParams = {
   chainId: number;
   token0: `0x${string}`;
   token1: `0x${string}`;
@@ -12,10 +27,21 @@ export type UniswapV3Params = {
   tickUpper: number;
 };
 
-export type UniswapV4Params = Omit<UniswapV3Params, 'protocol'> & {
+export type UniswapV3Params = DestinationParams & {
+  protocol: Protocol.UniswapV3;
+};
+
+export type UniswapV4Params = DestinationParams & {
   protocol: Protocol.UniswapV4;
   hooks: `0x${string}`;
   tickSpacing: number;
+};
+
+// These types describe the parameters for a migration path
+export type ExactPath = {
+  bridgeType: BridgeType;
+  migrationMethod: MigrationMethod;
+  slippageInBps: number;
 };
 
 export type PathFilter = {
@@ -24,63 +50,28 @@ export type PathFilter = {
   slippageInBps?: number;
 };
 
-export type ExactPath = {
-  bridgeType: BridgeType;
-  migrationMethod: MigrationMethod;
-  slippageInBps: number;
-};
-
-export type ExactMigrationRequest = {
+export type RequestExactMigrationParams = BaseRequestMigrationParams & {
   destination: UniswapV3Params | UniswapV4Params;
   exactPath: ExactPath;
 };
 
-export type MigrationRequest = {
+export type RequestMigrationParams = BaseRequestMigrationParams & {
   destination: UniswapV3Params | UniswapV4Params;
-  pathFilter: PathFilter;
+  path?: PathFilter;
 };
 
-export type BaseRequestMigrationParams = {
-  sourcePosition: {
-    chainId: number;
-    protocol: Protocol.UniswapV3 | Protocol.UniswapV4;
-    tokenId: bigint;
-  };
-  senderShareBps?: number;
-  senderFeeRecipient?: `0x${string}`;
-  debug?: boolean;
+export type RequestExactMigrationsParams = BaseRequestMigrationParams & {
+  migrations: {
+    destination: UniswapV3Params | UniswapV4Params;
+    exactPath: ExactPath;
+  }[];
 };
-
-// TODO: rework types so this destination narrowing is possible / do we still need these?
-
-export type RequestV3toV3MigrationParams = BaseRequestMigrationParams & {
-  sourcePosition: { protocol: Protocol.UniswapV3 };
-  // migration: ExactMigrationRequest | MigrationRequest & { destination: UniswapV3Params };
+export type RequestMigrationsParams = BaseRequestMigrationParams & {
+  migrations: {
+    destination: UniswapV3Params | UniswapV4Params;
+    path?: PathFilter;
+  }[];
 };
-
-export type RequestV3toV4MigrationParams = BaseRequestMigrationParams & {
-  sourcePosition: { protocol: Protocol.UniswapV4 };
-  // migration: ExactMigrationRequest | MigrationRequest & { destination: UniswapV4Params };
-};
-
-export type RequestV4toV3MigrationParams = BaseRequestMigrationParams & {
-  sourcePosition: { protocol: Protocol.UniswapV3 };
-  // migration: ExactMigrationRequest | MigrationRequest & { destination: UniswapV3Params };
-};
-
-export type RequestV4toV4MigrationParams = BaseRequestMigrationParams & {
-  sourcePosition: { protocol: Protocol.UniswapV4 };
-  // migration: ExactMigrationRequest | MigrationRequest & { destination: UniswapV4Params };
-};
-
-export type RequestV3MigrationParams = RequestV3toV3MigrationParams | RequestV3toV4MigrationParams;
-export type RequestV4MigrationParams = RequestV4toV3MigrationParams | RequestV4toV4MigrationParams;
-export type RequestMigrationParams = RequestV3MigrationParams | RequestV4MigrationParams;
-
-export type RequestExactMigration = RequestMigrationParams & { migration: ExactMigrationRequest };
-export type RequestMigration = RequestMigrationParams & { migration: MigrationRequest };
-export type RequestExactMigrations = RequestMigrationParams & { migrations: ExactMigrationRequest[] };
-export type RequestMigrations = RequestMigrationParams & { migrations: MigrationRequest[] };
 
 // type AcrossFeeBreakdown = {
 //   [K in 'lpFee' | 'relayerGasFee' | 'relayerCapitalFee' | 'totalRelayFee']: {
@@ -89,35 +80,9 @@ export type RequestMigrations = RequestMigrationParams & { migrations: Migration
 //   };
 // };
 
-export type MigratorExecutionParams = {
-  address: `0x${string}`;
-  abi: Abi;
-  functionName: string;
-  args: [`0x${string}`, `0x${string}`, bigint, `0x${string}`];
-};
-
-export type SettlerExecutionParams = {
-  address: `0x${string}`;
-  abi: Abi;
-  functionName: string;
-  args: [
-    {
-      depositor: `0x${string}`;
-      recipient: `0x${string}`;
-      exclusiveRelayer: `0x${string}`;
-      inputToken: `0x${string}`;
-      outputToken: `0x${string}`;
-      inputAmount: bigint;
-      outputAmount: bigint;
-      originChainId: bigint;
-      depositId: number; // hardcoded for now
-      exclusivityDeadline: number; // can make it zero for now
-      fillDeadline: number;
-      message: `0x${string}`;
-    },
-    bigint,
-  ];
-};
+/*
+ * These types describe the output params
+ */
 
 export type Token = {
   chainId: number;
@@ -162,6 +127,7 @@ export type Position = {
   amount1Refund?: bigint; // expected refund if any
 };
 
+// Describes an existing position with fees
 export type PositionWithFees = Position & {
   owner: `0x${string}`;
   tokenId: bigint; // could also see a case for this to be under Position
@@ -181,8 +147,39 @@ export type Route = {
   exclusiveRelayer: `0x${string}`;
 };
 
-export type PositionWithPath = Position & {
-  path: ExactPath;
+export type MigratorExecutionParams = {
+  address: `0x${string}`;
+  abi: Abi;
+  functionName: string;
+  args: [`0x${string}`, `0x${string}`, bigint, `0x${string}`];
+};
+
+export type SettlerExecutionParams = {
+  address: `0x${string}`;
+  abi: Abi;
+  functionName: string;
+  args: [
+    {
+      depositor: `0x${string}`;
+      recipient: `0x${string}`;
+      exclusiveRelayer: `0x${string}`;
+      inputToken: `0x${string}`;
+      outputToken: `0x${string}`;
+      inputAmount: bigint;
+      outputAmount: bigint;
+      originChainId: bigint;
+      depositId: number; // hardcoded for now
+      exclusivityDeadline: number; // can make it zero for now
+      fillDeadline: number;
+      message: `0x${string}`;
+    },
+    bigint,
+  ];
+};
+
+export type PathWithPosition = {
+  exactPath: ExactPath;
+  position: Position;
   routes: Route[];
   executionParams: MigratorExecutionParams;
   // if debug flag set, these will be populated
@@ -190,24 +187,30 @@ export type PositionWithPath = Position & {
   swapAmountInMilliBps?: number;
 };
 
-export type UnavailableMigration = {
-  migration: ExactMigrationRequest;
+export type PathUnavailable = {
+  exactPath: ExactPath;
+  destination: UniswapV3Params | UniswapV4Params;
   reasons: string[];
 };
 
-export type MigrationResponse = {
+export type BaseMigrationResponse = {
   sourcePosition: PositionWithFees;
-  destPositions: PositionWithPath[];
-  unavailableMigrations: UnavailableMigration[];
 };
 
-export type MigrationsResponse = {
-  sourcePosition: PositionWithFees;
-  destPositions: PositionWithPath[][];
-  unavailableMigrations: UnavailableMigration[];
+export type ExactMigrationResponse = BaseMigrationResponse & {
+  migration: PathWithPosition;
 };
 
-export type ExactMigrationResponse = {
-  sourcePosition: PositionWithFees;
-  destPosition: PositionWithPath;
+export type ExactMigrationsResponse = BaseMigrationResponse & {
+  migrations: PathWithPosition[];
+};
+
+export type MigrationResponse = BaseMigrationResponse & {
+  migrations: PathWithPosition[];
+  unavailableMigrations: PathUnavailable[];
+};
+
+export type MigrationsResponse = BaseMigrationResponse & {
+  migrations: PathWithPosition[][];
+  unavailableMigrations: PathUnavailable[];
 };
