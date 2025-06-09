@@ -7,9 +7,9 @@ import type {
   PositionWithFees,
   PathWithPosition,
   PathUnavailable,
-  RequestMigration,
-  RequestMigrations,
-  RequestExactMigration,
+  RequestMigrationParams,
+  RequestMigrationsParams,
+  RequestExactMigrationParams,
   ExactMigrationResponse,
   MigrationResponse,
   MigrationsResponse,
@@ -91,7 +91,7 @@ export class ChainHopperClient {
     return getV4Position(this.chainConfigs[params.chainId], params);
   }
 
-  public async requestMigration(params: RequestMigration): Promise<MigrationResponse> {
+  public async requestMigration(params: RequestMigrationParams): Promise<MigrationResponse> {
     const { destination, path, ...rest } = params;
     const { sourcePosition, migrations, unavailableMigrations } = await this.requestMigrations({
       ...rest,
@@ -104,7 +104,7 @@ export class ChainHopperClient {
     };
   }
 
-  public async requestMigrations(params: RequestMigrations): Promise<MigrationsResponse> {
+  public async requestMigrations(params: RequestMigrationsParams): Promise<MigrationsResponse> {
     const unavailableMigrations: PathUnavailable[] = [];
 
     if (!this.isChainSupported(params.sourcePosition.chainId)) {
@@ -190,7 +190,7 @@ export class ChainHopperClient {
     return { sourcePosition, migrations: pathWithPositions, unavailableMigrations };
   }
 
-  public async requestExactMigration(params: RequestExactMigration): Promise<ExactMigrationResponse> {
+  public async requestExactMigration(params: RequestExactMigrationParams): Promise<ExactMigrationResponse> {
     const { destination, exactPath, ...rest } = params;
     const { sourcePosition, migrations, unavailableMigrations } = await this.requestMigrations({
       ...rest,
@@ -202,7 +202,7 @@ export class ChainHopperClient {
     return { sourcePosition, migration: migrations[0][0] };
   }
 
-  public async requestExactMigrations(params: RequestExactMigration[]): Promise<ExactMigrationResponse[]> {
+  public async requestExactMigrations(params: RequestExactMigrationParams[]): Promise<ExactMigrationResponse[]> {
     return Promise.all(params.map(async (param) => await this.requestExactMigration(param)));
   }
 
@@ -290,7 +290,7 @@ export class ChainHopperClient {
   }
 
   private async handleMigration(
-    params: RequestMigration,
+    params: RequestMigrationParams,
     sourcePosition: PositionWithFees,
     migration: InternalDestinationWithExactPath
   ): Promise<PathWithPosition> {

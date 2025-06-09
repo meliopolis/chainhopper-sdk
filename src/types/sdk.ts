@@ -50,23 +50,23 @@ export type PathFilter = {
   slippageInBps?: number;
 };
 
-export type RequestExactMigration = BaseRequestMigrationParams & {
+export type RequestExactMigrationParams = BaseRequestMigrationParams & {
   destination: UniswapV3Params | UniswapV4Params;
   exactPath: ExactPath;
 };
 
-export type RequestMigration = BaseRequestMigrationParams & {
+export type RequestMigrationParams = BaseRequestMigrationParams & {
   destination: UniswapV3Params | UniswapV4Params;
   path: PathFilter;
 };
 
-export type RequestExactMigrations = BaseRequestMigrationParams & {
+export type RequestExactMigrationsParams = BaseRequestMigrationParams & {
   migrations: {
     destination: UniswapV3Params | UniswapV4Params;
     exactPath: ExactPath;
   }[];
 };
-export type RequestMigrations = BaseRequestMigrationParams & {
+export type RequestMigrationsParams = BaseRequestMigrationParams & {
   migrations: {
     destination: UniswapV3Params | UniswapV4Params;
     path: PathFilter;

@@ -10,8 +10,8 @@ import {
 import type {
   PositionWithFees,
   ExactMigrationResponse,
-  RequestExactMigration,
-  RequestMigration,
+  RequestExactMigrationParams,
+  RequestMigrationParams,
 } from '../src/types/sdk';
 import { Position as V4Position, Pool as V4Pool } from '@uniswap/v4-sdk';
 import { Position as V3Position, Pool as V3Pool } from '@uniswap/v3-sdk';
@@ -42,7 +42,7 @@ afterEach(() => {
   moduleMocker.clear();
 });
 
-const validateMigrationResponse = (params: RequestExactMigration, result: ExactMigrationResponse): void => {
+const validateMigrationResponse = (params: RequestExactMigrationParams, result: ExactMigrationResponse): void => {
   const { sourcePosition, destination } = params;
   const { migration } = result;
   const { position } = migration;
@@ -104,7 +104,7 @@ const validateMigrationResponse = (params: RequestExactMigration, result: ExactM
 
 describe('invalid migrations', () => {
   test('reject single token v3 migration with invalid bridge type', async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: 8453,
         tokenId: 104758n,
@@ -135,7 +135,7 @@ describe('invalid migrations', () => {
   });
 
   test('reject dual token v3 migration with invalid bridge type', async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: 8453,
         tokenId: 104758n,
@@ -166,7 +166,7 @@ describe('invalid migrations', () => {
   });
 
   test('reject single token v4 migration with invalid bridge type', async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: 8453,
         tokenId: 104758n,
@@ -197,7 +197,7 @@ describe('invalid migrations', () => {
   });
 
   test('reject dual token v4 migration with invalid bridge type', async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: 8453,
         tokenId: 104758n,
@@ -228,7 +228,7 @@ describe('invalid migrations', () => {
   });
 
   test('reject migration that are too large for across', async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: 8453,
         tokenId: 104758n,
@@ -301,7 +301,7 @@ describe('invalid migrations', () => {
         };
       }),
     }));
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: 8453,
         tokenId: 104758n,
@@ -332,7 +332,7 @@ describe('invalid migrations', () => {
   });
 
   test("reject migration where a token can't be bridged", async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: 8453,
         tokenId: 104758n,
@@ -374,7 +374,7 @@ describe('invalid migrations', () => {
   });
 
   test('reject migration with an invalid token order', async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: 1,
         tokenId: 963499n,
@@ -405,7 +405,7 @@ describe('invalid migrations', () => {
   });
 
   test('reject migration with two of the same token', async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: 1,
         tokenId: 963499n,
@@ -436,7 +436,7 @@ describe('invalid migrations', () => {
   });
 
   test('reject migration to v3 requesting native token', async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: 130,
         tokenId: 1000n,
@@ -462,7 +462,7 @@ describe('invalid migrations', () => {
 
   test('reject migration from v3 where neither token is weth', async () => {
     try {
-      const params: RequestExactMigration = {
+      const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: 1,
           tokenId: 949124n,
@@ -528,7 +528,7 @@ describe('invalid migrations', () => {
         };
       }),
     }));
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: 8453,
         tokenId: 10249n,
@@ -570,7 +570,7 @@ describe('in-range v3→ migrations', () => {
   });
 
   test('generate valid mainnet v3 → unichain v4 single-token migration', async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: v3ChainId,
         tokenId: v3TokenId,
@@ -597,7 +597,7 @@ describe('in-range v3→ migrations', () => {
   });
 
   test('v3 → v4 single-token and dual-token migration with pathFilter returns ordered by position value desc', async () => {
-    const params: RequestMigration = {
+    const params: RequestMigrationParams = {
       sourcePosition: {
         chainId: v3ChainId,
         tokenId: v3TokenId,
@@ -627,7 +627,7 @@ describe('in-range v3→ migrations', () => {
   });
 
   test('v3 → v3 single-token and dual-token migration with pathFilter returns ordered by position value desc', async () => {
-    const params: RequestMigration = {
+    const params: RequestMigrationParams = {
       sourcePosition: {
         chainId: v3ChainId,
         tokenId: v3TokenId,
@@ -655,7 +655,7 @@ describe('in-range v3→ migrations', () => {
   });
 
   test('generate valid mainnet v3 → unichain v4 dual-token migration', async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: v3ChainId,
         tokenId: v3TokenId,
@@ -682,7 +682,7 @@ describe('in-range v3→ migrations', () => {
   });
 
   test('generate valid mainnet v3 → unichain v3 single-token migration', async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: v3ChainId,
         tokenId: v3TokenId,
@@ -707,7 +707,7 @@ describe('in-range v3→ migrations', () => {
   });
 
   test('generate valid mainnet v3 → unichain v3 dual-token migration', async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: v3ChainId,
         tokenId: v3TokenId,
@@ -732,7 +732,7 @@ describe('in-range v3→ migrations', () => {
   });
 
   test('generate valid base v3 → arbitrum v4 dual-token migration with (w)eth as token0', async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: 8453,
         tokenId: 2825070n,
@@ -776,7 +776,7 @@ describe('in-range v4→ migrations', () => {
   });
 
   test('generate valid unichain v4 → base v3 single-token migration', async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: v4ChainId,
         tokenId: v4TokenId,
@@ -801,7 +801,7 @@ describe('in-range v4→ migrations', () => {
   });
 
   test('generate valid unichain v4 → base v3 dual-token migration', async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: v4ChainId,
         tokenId: v4TokenId,
@@ -826,7 +826,7 @@ describe('in-range v4→ migrations', () => {
   });
 
   test('reject unichain v4 → base v4 single-token migration with high slippage on destination swap', async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: v4ChainId,
         tokenId: v4TokenId,
@@ -853,7 +853,7 @@ describe('in-range v4→ migrations', () => {
   });
 
   test('generate valid unichain v4 → base v4 dual-token migration', async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: v4ChainId,
         tokenId: v4TokenId,
@@ -882,7 +882,7 @@ describe('in-range v4→ migrations', () => {
 
 describe('flipped token order between chains', () => {
   test('generate valid base v4 → unichain v3 dual-token migration', async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: 8453,
         tokenId: 17447n,
@@ -907,7 +907,7 @@ describe('flipped token order between chains', () => {
   });
 
   test('generate valid arbitrum v4 → unichain v4 dual-token migration', async () => {
-    const params: RequestExactMigration = {
+    const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: 42161,
         tokenId: 4n,
@@ -951,7 +951,7 @@ describe('out of range v3→ migrations', () => {
   describe('single token', () => {
     describe('current price below requested range', () => {
       test('generate valid mainnet v3 → unichain v4 migration', async () => {
-        const params: RequestExactMigration = {
+        const params: RequestExactMigrationParams = {
           sourcePosition: {
             chainId: v3ChainId,
             tokenId: v3TokenId,
@@ -979,7 +979,7 @@ describe('out of range v3→ migrations', () => {
     });
     describe('current price above requested range', () => {
       test('generate valid mainnet v3 → unichain v4 migration', async () => {
-        const params: RequestExactMigration = {
+        const params: RequestExactMigrationParams = {
           sourcePosition: {
             chainId: v3ChainId,
             tokenId: v3TokenId,
@@ -1009,7 +1009,7 @@ describe('out of range v3→ migrations', () => {
 
   describe('dual token', () => {
     test('mainnet v3 → unichain v4 migration throws unsupported token address', async () => {
-      const params: RequestExactMigration = {
+      const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: v3ChainId,
           tokenId: v3TokenId,
@@ -1098,7 +1098,7 @@ describe('out of range v4→ migrations', () => {
             };
           }),
         }));
-        const params: RequestExactMigration = {
+        const params: RequestExactMigrationParams = {
           sourcePosition: {
             chainId: sourceChainId,
             tokenId: v4TokenId,
@@ -1164,7 +1164,7 @@ describe('out of range v4→ migrations', () => {
             };
           }),
         }));
-        const params: RequestExactMigration = {
+        const params: RequestExactMigrationParams = {
           sourcePosition: {
             chainId: 130,
             tokenId: v4TokenId,
@@ -1231,7 +1231,7 @@ describe('out of range v4→ migrations', () => {
           };
         }),
       }));
-      const params: RequestExactMigration = {
+      const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: 130,
           tokenId: v4TokenId,
@@ -1276,7 +1276,7 @@ describe('pool creation:', () => {
 
     test('does not create pool if no sqrtPriceX96 provided', async () => {
       mockNoV4Pool();
-      const params: RequestExactMigration = {
+      const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: 1,
           tokenId: 891583n,
@@ -1306,7 +1306,7 @@ describe('pool creation:', () => {
 
     test('single token migration does not create pool if swap needed', async () => {
       mockNoV4Pool();
-      const params: RequestExactMigration = {
+      const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: 1,
           tokenId: 891583n,
@@ -1337,7 +1337,7 @@ describe('pool creation:', () => {
 
     test('dual token migration creates pool if sqrtPriceX96 provided', async () => {
       mockNoV4Pool();
-      const params: RequestExactMigration = {
+      const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: 1,
           tokenId: 891583n,
@@ -1368,7 +1368,7 @@ describe('pool creation:', () => {
 
     test('single token migration creates pool if no swap is needed', async () => {
       mockNoV4Pool();
-      const params: RequestExactMigration = {
+      const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: 1,
           tokenId: 891583n,
@@ -1409,7 +1409,7 @@ describe('pool creation:', () => {
   describe('v3 settler ', () => {
     test('does not create pool if no sqrtPriceX96 provided', async () => {
       await mockNoV3Pool();
-      const params: RequestExactMigration = {
+      const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: 1,
           tokenId: 891583n,
@@ -1437,7 +1437,7 @@ describe('pool creation:', () => {
 
     test('single token migration does not create pool if swap needed', async () => {
       await mockNoV3Pool();
-      const params: RequestExactMigration = {
+      const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: 1,
           tokenId: 891583n,
@@ -1466,7 +1466,7 @@ describe('pool creation:', () => {
 
     test('dual token migration creates pool if sqrtPriceX96 provided', async () => {
       await mockNoV3Pool();
-      const params: RequestExactMigration = {
+      const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: 1,
           tokenId: 891583n,
@@ -1495,7 +1495,7 @@ describe('pool creation:', () => {
 
     test('single token migration creates pool if no swap is needed', async () => {
       await mockNoV3Pool();
-      const params: RequestExactMigration = {
+      const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: 1,
           tokenId: 891583n,

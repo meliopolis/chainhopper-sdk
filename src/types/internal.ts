@@ -2,7 +2,7 @@ import type { Quote } from '@across-protocol/app-sdk';
 import type { Position as V3Position } from '@uniswap/v3-sdk';
 import type { Position as V4Position } from '@uniswap/v4-sdk';
 
-import type { ExactPath, PathFilter, RequestMigration, Route, UniswapV3Params, UniswapV4Params } from './sdk';
+import type { ExactPath, PathFilter, RequestMigrationParams, Route, UniswapV3Params, UniswapV4Params } from './sdk';
 import type { ChainConfig } from '../chains';
 import type { PositionWithFees, Position } from './sdk';
 
@@ -16,7 +16,7 @@ export type InternalStartMigrationParams = {
   destinationChainConfig: ChainConfig;
   migration: InternalDestinationWithExactPath;
   positionWithFees: PositionWithFees;
-  externalParams: RequestMigration;
+  externalParams: RequestMigrationParams;
 };
 
 export type InternalStartMigrationResult = {
@@ -29,7 +29,7 @@ export type InternalSettleMigrationParams = {
   destinationChainConfig: ChainConfig;
   routes: Route[];
   migration: InternalDestinationWithExactPath;
-  externalParams: RequestMigration;
+  externalParams: RequestMigrationParams;
   owner: `0x${string}`;
 };
 
@@ -41,7 +41,7 @@ export type InternalSettleMigrationResult = {
 };
 
 export type InternalGenerateMigrationParamsInput = {
-  externalParams: RequestMigration;
+  externalParams: RequestMigrationParams;
   sourceChainConfig: ChainConfig;
   destinationChainConfig: ChainConfig;
   migration: InternalDestinationWithExactPath;

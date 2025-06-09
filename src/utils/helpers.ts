@@ -2,7 +2,7 @@ import { CurrencyAmount, Fraction, Percent, Price, Token, type Currency } from '
 import { DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, Protocol } from './constants';
 import { nearestUsableTick, Pool as V3Pool, SqrtPriceMath, TickMath, Position as V3Position } from '@uniswap/v3-sdk';
 import { Position as V4Position, Pool as V4Pool } from '@uniswap/v4-sdk';
-import type { MigratorExecutionParams, Position, Route, SettlerExecutionParams, RequestMigration } from '../types/sdk';
+import type { MigratorExecutionParams, Position, Route, SettlerExecutionParams, RequestMigrationParams } from '../types/sdk';
 
 import {
   encodeMigrationParams,
@@ -25,7 +25,7 @@ import { SpokePoolABI } from '../abis';
 export const generateSettlerData = (
   sourceChainConfig: ChainConfig,
   migration: InternalDestinationWithExactPath,
-  externalParams: RequestMigration,
+  externalParams: RequestMigrationParams,
   owner: `0x${string}`
 ): { interimMessageForSettler: `0x${string}` } => {
   const { destination, exactPath } = migration;
