@@ -7,13 +7,13 @@ import type { ChainConfig } from '../chains';
 const Q192 = 2n ** 192n;
 
 export const positionValue = (position: PositionWithPath, tokenUnits: 0 | 1, includeRefunds = false): bigint => {
-  let { pool, amount0, amount1 } = position;
+  const { pool, amount0, amount1 } = position;
 
   let adjAmount0 = amount0;
   let adjAmount1 = amount1;
   if (includeRefunds) {
-    position.amount0Refund && (adjAmount0 = amount0 + position.amount0Refund);
-    position.amount1Refund && (adjAmount1 = amount1 + position.amount1Refund);
+    adjAmount0 = position.amount0Refund ? amount0 + position.amount0Refund : amount0;
+    adjAmount1 = position.amount1Refund ? amount1 + position.amount1Refund : amount1;
   }
 
   const P = pool.sqrtPriceX96! ** 2n;

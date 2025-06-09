@@ -649,7 +649,7 @@ describe('in-range v3→ migrations', () => {
         },
       },
     };
-    let response = await client.requestMigration(params);
+    const response = await client.requestMigration(params);
     expect(response.destPositions.length).toBe(2);
     expect(positionValue(response.destPositions[0], 1, true)).toBeGreaterThan(
       positionValue(response.destPositions[1], 1, true)
@@ -679,7 +679,7 @@ describe('in-range v3→ migrations', () => {
         },
       },
     };
-    let response = await client.requestMigration(params);
+    const response = await client.requestMigration(params);
     expect(response.destPositions.length).toBe(2);
     expect(positionValue(response.destPositions[0], 1, true)).toBeGreaterThan(
       positionValue(response.destPositions[1], 1, true)
