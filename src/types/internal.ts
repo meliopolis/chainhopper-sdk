@@ -56,4 +56,5 @@ export type InternalGenerateMigrationParamsInput = {
   maxPositionUsingRouteMinAmountOut: V3Position | V4Position;
   owner: `0x${string}`;
   swapAmountInMilliBps?: number;
+  expectedRefund?: { amount0Refund: bigint; amount1Refund: bigint };
 };

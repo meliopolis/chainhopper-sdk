@@ -167,6 +167,7 @@ export const settleUniswapV4Migration = async ({
       destination.tickLower,
       destination.tickUpper
     );
+
     const maxPositionUsingSettleMinAmountsOut = generateMaxV4Position(
       pool,
       settleMinAmountOut0,
@@ -174,6 +175,11 @@ export const settleUniswapV4Migration = async ({
       destination.tickLower,
       destination.tickUpper
     );
+
+    const expectedRefund = {
+      amount0Refund: BigInt(settleAmountOut0.subtract(maxPosition.amount0).quotient.toString()),
+      amount1Refund: BigInt(settleAmountOut1.subtract(maxPosition.amount1).quotient.toString()),
+    };
 
     return generateMigrationParams({
       externalParams,
@@ -184,6 +190,7 @@ export const settleUniswapV4Migration = async ({
       maxPosition,
       maxPositionUsingRouteMinAmountOut: maxPositionUsingSettleMinAmountsOut,
       owner,
+      expectedRefund,
     });
   }
 };

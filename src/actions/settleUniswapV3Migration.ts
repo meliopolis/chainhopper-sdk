@@ -166,6 +166,11 @@ export const settleUniswapV3Migration = async ({
       destination.tickUpper
     );
 
+    const expectedRefund = {
+      amount0Refund: BigInt(settleAmountOut0.subtract(maxPosition.amount0).quotient.toString()),
+      amount1Refund: BigInt(settleAmountOut1.subtract(maxPosition.amount1).quotient.toString()),
+    };
+
     return generateMigrationParams({
       externalParams,
       sourceChainConfig,
@@ -175,6 +180,7 @@ export const settleUniswapV3Migration = async ({
       maxPosition,
       maxPositionUsingRouteMinAmountOut: maxPositionUsingSettleMinAmountsOut,
       owner,
+      expectedRefund,
     });
   }
 };
