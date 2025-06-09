@@ -7,7 +7,12 @@ import {
   NATIVE_ETH_ADDRESS,
   DEFAULT_SLIPPAGE_IN_BPS,
 } from '../src/utils/constants';
-import type { PositionWithFees, ExactMigrationResponse, RequestExactMigration } from '../src/types/sdk';
+import type {
+  PositionWithFees,
+  ExactMigrationResponse,
+  RequestExactMigration,
+  RequestMigration,
+} from '../src/types/sdk';
 import { Position as V4Position, Pool as V4Pool } from '@uniswap/v4-sdk';
 import { Position as V3Position, Pool as V3Pool } from '@uniswap/v3-sdk';
 import { Quote } from '@across-protocol/app-sdk';
@@ -15,7 +20,7 @@ import { ModuleMocker } from './ModuleMocker';
 import { zeroAddress } from 'viem';
 import { Ether, Token } from '@uniswap/sdk-core';
 import { TickMath } from '@uniswap/v3-sdk';
-import { toSDKPosition } from '../src/utils/position';
+import { positionValue, toSDKPosition } from '../src/utils/position';
 
 let client: ReturnType<typeof ChainHopperClient.create>;
 const moduleMocker = new ModuleMocker();
@@ -617,6 +622,68 @@ describe('in-range v3→ migrations', () => {
       },
     };
     validateMigrationResponse(params, await client.requestExactMigration(params));
+  });
+
+  test('v3 → v4 single-token and dual-token migration with pathFilter returns ordered by position value desc', async () => {
+    const params: RequestMigration = {
+      sourcePosition: {
+        chainId: v3ChainId,
+        tokenId: v3TokenId,
+        protocol: Protocol.UniswapV3,
+      },
+      migration: {
+        destination: {
+          chainId: 130,
+          protocol: Protocol.UniswapV4,
+          token0: NATIVE_ETH_ADDRESS,
+          token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+          tickLower: -1 * v3Response.tickUpper,
+          tickUpper: -1 * v3Response.tickLower,
+          fee: v3Response.pool.fee,
+          tickSpacing: v3Response.pool.tickSpacing,
+          hooks: '0x0000000000000000000000000000000000000000',
+        },
+        pathFilter: {
+          bridgeType: BridgeType.Across,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
+        },
+      },
+    };
+    const response = await client.requestMigration(params);
+    expect(response.destPositions.length).toBe(2);
+    expect(positionValue(response.destPositions[0], 1, true)).toBeGreaterThan(
+      positionValue(response.destPositions[1], 1, true)
+    );
+  });
+
+  test('v3 → v3 single-token and dual-token migration with pathFilter returns ordered by position value desc', async () => {
+    const params: RequestMigration = {
+      sourcePosition: {
+        chainId: v3ChainId,
+        tokenId: v3TokenId,
+        protocol: Protocol.UniswapV3,
+      },
+      migration: {
+        destination: {
+          chainId: 130,
+          protocol: Protocol.UniswapV3,
+          token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+          token1: '0x4200000000000000000000000000000000000006',
+          tickLower: -1 * v3Response.tickUpper,
+          tickUpper: -1 * v3Response.tickLower,
+          fee: v3Response.pool.fee,
+        },
+        pathFilter: {
+          bridgeType: BridgeType.Across,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
+        },
+      },
+    };
+    const response = await client.requestMigration(params);
+    expect(response.destPositions.length).toBe(2);
+    expect(positionValue(response.destPositions[0], 1, true)).toBeGreaterThan(
+      positionValue(response.destPositions[1], 1, true)
+    );
   });
 
   test('generate valid mainnet v3 → unichain v4 dual-token migration', async () => {

@@ -99,6 +99,7 @@ export const generateMigrationParams = async ({
   maxPositionUsingRouteMinAmountOut,
   owner,
   swapAmountInMilliBps,
+  expectedRefund,
 }: InternalGenerateMigrationParamsInput): Promise<{
   destPosition: Position;
   swapAmountInMilliBps: number;
@@ -152,7 +153,7 @@ export const generateMigrationParams = async ({
   );
 
   return {
-    destPosition: toSDKPosition(destinationChainConfig, maxPosition, maxPositionUsingRouteMinAmountOut),
+    destPosition: toSDKPosition(destinationChainConfig, maxPosition, maxPositionUsingRouteMinAmountOut, expectedRefund),
     swapAmountInMilliBps: swapAmountInMilliBps ? swapAmountInMilliBps : 0,
     migratorMessage,
     settlerMessage,

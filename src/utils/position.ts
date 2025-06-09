@@ -1,8 +1,31 @@
 import { computePoolAddress, type Pool as UniswapSDKV3Pool, type Position as V3Position } from '@uniswap/v3-sdk';
 import { Pool as UniswapSDKV4Pool, type Position as V4Position } from '@uniswap/v4-sdk';
-import type { Position, v3Pool, v4Pool } from '../types/sdk';
+import type { Position, PositionWithPath, v3Pool, v4Pool } from '../types/sdk';
 import { NATIVE_ETH_ADDRESS, Protocol } from './constants';
 import type { ChainConfig } from '../chains';
+
+const Q192 = 2n ** 192n;
+
+export const positionValue = (position: PositionWithPath, tokenUnits: 0 | 1, includeRefunds = false): bigint => {
+  const { pool, amount0, amount1 } = position;
+
+  let adjAmount0 = amount0;
+  let adjAmount1 = amount1;
+  if (includeRefunds) {
+    adjAmount0 = position.amount0Refund ? amount0 + position.amount0Refund : amount0;
+    adjAmount1 = position.amount1Refund ? amount1 + position.amount1Refund : amount1;
+  }
+
+  const P = pool.sqrtPriceX96! ** 2n;
+
+  if (tokenUnits === 1) {
+    const value0 = (adjAmount0 * P) / Q192;
+    return adjAmount1 + value0;
+  } else {
+    const value1 = (adjAmount1 * Q192) / P;
+    return adjAmount0 + value1;
+  }
+};
 
 export const toSDKPool = (chainConfig: ChainConfig, pool: UniswapSDKV3Pool | UniswapSDKV4Pool): v3Pool | v4Pool => {
   const isV4Pool = 'hooks' in pool;
@@ -61,7 +84,8 @@ export const toSDKPool = (chainConfig: ChainConfig, pool: UniswapSDKV3Pool | Uni
 export const toSDKPosition = (
   chainConfig: ChainConfig,
   position: V3Position | V4Position,
-  slippagePosition?: V3Position | V4Position
+  slippagePosition?: V3Position | V4Position,
+  expectedRefund?: { amount0Refund: bigint; amount1Refund: bigint }
 ): Position => {
   const { pool, tickLower, tickUpper, liquidity, amount0, amount1 } = position;
   return {
@@ -75,5 +99,6 @@ export const toSDKPosition = (
       amount0Min: BigInt(slippagePosition.amount0.quotient.toString()),
       amount1Min: BigInt(slippagePosition.amount1.quotient.toString()),
     }),
+    ...(expectedRefund || {}),
   };
 };

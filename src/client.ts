@@ -24,6 +24,7 @@ import { settleUniswapV4Migration } from './actions/settleUniswapV4Migration';
 import { isAddress, checksumAddress } from 'viem';
 import { generateExecutionParams, generateSettlerExecutionParams } from './utils/helpers';
 import type { IUniswapPositionParams } from './types/internal';
+import { positionValue } from './utils/position';
 
 const startFns = {
   [Protocol.UniswapV3]: startUniswapV3Migration,
@@ -149,7 +150,11 @@ export class ChainHopperClient {
               return;
             })
           )
-        ).filter((p: PositionWithPath | undefined) => p !== undefined);
+        )
+          .filter((p: PositionWithPath | undefined) => p !== undefined)
+          .sort((a: PositionWithPath, b: PositionWithPath) => {
+            return Number(positionValue(b, 1, true) - positionValue(a, 1, true));
+          });
       })
     );
 

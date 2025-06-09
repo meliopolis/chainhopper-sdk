@@ -158,6 +158,8 @@ export type Position = {
   amount1: bigint;
   amount0Min?: bigint; // encodes slippage
   amount1Min?: bigint; // encodes slippage
+  amount0Refund?: bigint; // expected refund if any
+  amount1Refund?: bigint; // expected refund if any
 };
 
 export type PositionWithFees = Position & {
