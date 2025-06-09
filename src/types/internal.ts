@@ -60,5 +60,5 @@ export type InternalDestinationWithExactPath = {
 
 export type InternalDestinationWithPathFilter = {
   destination: UniswapV3Params | UniswapV4Params;
-  path: PathFilter;
+  path?: PathFilter;
 };

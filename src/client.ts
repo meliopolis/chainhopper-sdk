@@ -261,13 +261,13 @@ export class ChainHopperClient {
       let bridgeTypes: BridgeType[];
       let migrationMethods: MigrationMethod[];
 
-      if (pathFilter.bridgeType) {
+      if (pathFilter?.bridgeType) {
         bridgeTypes = [pathFilter.bridgeType];
       } else {
         bridgeTypes = [BridgeType.Across];
       }
 
-      if (pathFilter.migrationMethod) {
+      if (pathFilter?.migrationMethod) {
         migrationMethods = [pathFilter.migrationMethod];
       } else {
         migrationMethods = [MigrationMethod.SingleToken, MigrationMethod.DualToken];
@@ -280,7 +280,7 @@ export class ChainHopperClient {
             exactPath: {
               migrationMethod,
               bridgeType,
-              slippageInBps: pathFilter.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS,
+              slippageInBps: pathFilter?.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS,
             },
           });
         }

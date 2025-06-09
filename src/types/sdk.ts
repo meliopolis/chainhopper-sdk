@@ -57,7 +57,7 @@ export type RequestExactMigrationParams = BaseRequestMigrationParams & {
 
 export type RequestMigrationParams = BaseRequestMigrationParams & {
   destination: UniswapV3Params | UniswapV4Params;
-  path: PathFilter;
+  path?: PathFilter;
 };
 
 export type RequestExactMigrationsParams = BaseRequestMigrationParams & {
@@ -69,7 +69,7 @@ export type RequestExactMigrationsParams = BaseRequestMigrationParams & {
 export type RequestMigrationsParams = BaseRequestMigrationParams & {
   migrations: {
     destination: UniswapV3Params | UniswapV4Params;
-    path: PathFilter;
+    path?: PathFilter;
   }[];
 };
 
