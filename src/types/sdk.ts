@@ -50,32 +50,6 @@ export type PathFilter = {
   slippageInBps?: number;
 };
 
-// TODO: rework types so this destination narrowing is possible / do we still need these?
-
-// export type RequestV3toV3MigrationParams = BaseRequestMigrationParams & {
-//   sourcePosition: { protocol: Protocol.UniswapV3 };
-//   // migration: ExactMigrationRequest | MigrationRequest & { destination: UniswapV3Params };
-// };
-
-// export type RequestV3toV4MigrationParams = BaseRequestMigrationParams & {
-//   sourcePosition: { protocol: Protocol.UniswapV4 };
-//   // migration: ExactMigrationRequest | MigrationRequest & { destination: UniswapV4Params };
-// };
-
-// export type RequestV4toV3MigrationParams = BaseRequestMigrationParams & {
-//   sourcePosition: { protocol: Protocol.UniswapV3 };
-//   // migration: ExactMigrationRequest | MigrationRequest & { destination: UniswapV3Params };
-// };
-
-// export type RequestV4toV4MigrationParams = BaseRequestMigrationParams & {
-//   sourcePosition: { protocol: Protocol.UniswapV4 };
-//   // migration: ExactMigrationRequest | MigrationRequest & { destination: UniswapV4Params };
-// };
-
-// export type RequestV3MigrationParams = RequestV3toV3MigrationParams | RequestV3toV4MigrationParams;
-// export type RequestV4MigrationParams = RequestV4toV3MigrationParams | RequestV4toV4MigrationParams;
-// export type RequestMigrationParams = RequestV3MigrationParams | RequestV4MigrationParams;
-
 export type RequestExactMigration = BaseRequestMigrationParams & {
   destination: UniswapV3Params | UniswapV4Params;
   exactPath: ExactPath;
