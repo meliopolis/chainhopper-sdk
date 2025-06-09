@@ -4,18 +4,18 @@ import { getV3Position } from './actions/getV3Position';
 import { BridgeType, DEFAULT_SLIPPAGE_IN_BPS, MigrationMethod, Protocol } from './utils/constants';
 import type { ChainConfig } from './chains';
 import type {
-  RequestMigrationParams,
   PositionWithFees,
-  PositionWithPath,
-  UnavailableMigration,
-  ExactMigrationRequest,
-  MigrationRequest,
+  PathWithPosition,
+  PathUnavailable,
   RequestMigration,
   RequestMigrations,
   RequestExactMigration,
   ExactMigrationResponse,
   MigrationResponse,
   MigrationsResponse,
+  ExactPath,
+  UniswapV4Params,
+  UniswapV3Params,
 } from './types';
 import { startUniswapV3Migration, settleUniswapV3Migration } from './actions';
 import { getV4Position } from './actions/getV4Position';
@@ -23,7 +23,11 @@ import { startUniswapV4Migration } from './actions/startUniswapV4Migration';
 import { settleUniswapV4Migration } from './actions/settleUniswapV4Migration';
 import { isAddress, checksumAddress } from 'viem';
 import { generateExecutionParams, generateSettlerExecutionParams } from './utils/helpers';
-import type { IUniswapPositionParams } from './types/internal';
+import type {
+  InternalDestinationWithExactPath,
+  InternalDestinationWithPathFilter,
+  IUniswapPositionParams,
+} from './types/internal';
 import { positionValue } from './utils/position';
 
 const startFns = {
@@ -88,16 +92,20 @@ export class ChainHopperClient {
   }
 
   public async requestMigration(params: RequestMigration): Promise<MigrationResponse> {
-    const { migration, ...rest } = params;
-    const { sourcePosition, destPositions, unavailableMigrations } = await this.requestMigrations({
+    const { destination, path, ...rest } = params;
+    const { sourcePosition, migrations, unavailableMigrations } = await this.requestMigrations({
       ...rest,
-      migrations: [migration],
+      migrations: [{ destination, path }],
     });
-    return { sourcePosition, destPositions: destPositions[0], unavailableMigrations };
+    return {
+      sourcePosition,
+      migrations: migrations[0],
+      unavailableMigrations,
+    };
   }
 
   public async requestMigrations(params: RequestMigrations): Promise<MigrationsResponse> {
-    const unavailableMigrations: UnavailableMigration[] = [];
+    const unavailableMigrations: PathUnavailable[] = [];
 
     if (!this.isChainSupported(params.sourcePosition.chainId)) {
       throw new Error('source chain not supported');
@@ -114,18 +122,31 @@ export class ChainHopperClient {
       throw new Error('sourceProtocol not supported');
     }
 
-    const migrationOptions: ExactMigrationRequest[][] = this.enumerateMigrations(params.migrations).map(
-      (migrations: ExactMigrationRequest[]) => {
+    const migrationOptions: InternalDestinationWithExactPath[][] = this.enumerateMigrations(params.migrations).map(
+      (migrations: InternalDestinationWithExactPath[]) => {
         return migrations
-          .map((migration) => {
+          .map((migration: InternalDestinationWithExactPath) => {
             const reasons = this.unavailableReasons(migration);
             if (reasons.length > 1) {
-              unavailableMigrations.push({ migration: migration, reasons });
+              unavailableMigrations.push({
+                destination: migration.destination,
+                exactPath: migration.exactPath,
+                reasons,
+              });
             } else {
               return migration;
             }
           })
-          .filter((m: ExactMigrationRequest | undefined) => m !== undefined);
+          .filter(
+            (
+              m:
+                | {
+                    destination: UniswapV3Params | UniswapV4Params;
+                    exactPath: ExactPath;
+                  }
+                | undefined
+            ) => m !== undefined
+          );
       }
     );
 
@@ -134,16 +155,24 @@ export class ChainHopperClient {
         ? await this.getV3Position(params.sourcePosition)
         : await this.getV4Position(params.sourcePosition);
 
-    const destPositions = await Promise.all(
-      migrationOptions.map(async (migration) => {
+    const pathWithPositions = await Promise.all(
+      migrationOptions.map(async (migrations) => {
         return (
           await Promise.all(
-            migration.map(async (option) => {
+            migrations.map(async (migration: InternalDestinationWithExactPath) => {
               try {
-                return await this.handleMigration(params, sourcePosition, option);
+                return await this.handleMigration(
+                  {
+                    ...params,
+                    destination: migration.destination,
+                    path: migration.exactPath,
+                  },
+                  sourcePosition,
+                  migration
+                );
               } catch (e) {
                 unavailableMigrations.push({
-                  migration: option,
+                  ...migration,
                   reasons: [e instanceof Error ? e.message : 'unexpected error in handleMigration'],
                 });
               }
@@ -151,33 +180,33 @@ export class ChainHopperClient {
             })
           )
         )
-          .filter((p: PositionWithPath | undefined) => p !== undefined)
-          .sort((a: PositionWithPath, b: PositionWithPath) => {
+          .filter((p: PathWithPosition | undefined) => p !== undefined)
+          .sort((a: PathWithPosition, b: PathWithPosition) => {
             return Number(positionValue(b, 1, true) - positionValue(a, 1, true));
           });
       })
     );
 
-    return { sourcePosition, destPositions, unavailableMigrations };
+    return { sourcePosition, migrations: pathWithPositions, unavailableMigrations };
   }
 
   public async requestExactMigration(params: RequestExactMigration): Promise<ExactMigrationResponse> {
-    const { migration, ...rest } = params;
-    const { sourcePosition, destPositions, unavailableMigrations } = await this.requestMigrations({
+    const { destination, exactPath, ...rest } = params;
+    const { sourcePosition, migrations, unavailableMigrations } = await this.requestMigrations({
       ...rest,
-      migrations: [{ ...migration, pathFilter: migration.exactPath }],
+      migrations: [{ destination, path: exactPath }],
     });
     if (unavailableMigrations.length > 0) {
       throw new Error(`Specified destination not available:\n  - ${unavailableMigrations[0].reasons.join('\n  - ')}`);
     }
-    return { sourcePosition, destPosition: destPositions[0][0] };
+    return { sourcePosition, migration: migrations[0][0] };
   }
 
   public async requestExactMigrations(params: RequestExactMigration[]): Promise<ExactMigrationResponse[]> {
     return Promise.all(params.map(async (param) => await this.requestExactMigration(param)));
   }
 
-  private unavailableReasons(migration: ExactMigrationRequest): string[] {
+  private unavailableReasons(migration: InternalDestinationWithExactPath): string[] {
     const reasons = [];
     const { destination, exactPath } = migration;
 
@@ -223,9 +252,12 @@ export class ChainHopperClient {
     return reasons;
   }
 
-  private enumerateMigrations(requests: MigrationRequest[]): ExactMigrationRequest[][] {
-    return requests.map(({ destination, pathFilter }) => {
-      const exactMigrationRequests: ExactMigrationRequest[] = [];
+  private enumerateMigrations(requests: InternalDestinationWithPathFilter[]): InternalDestinationWithExactPath[][] {
+    return requests.map(({ destination, path: pathFilter }) => {
+      const exactMigrationRequests: {
+        destination: UniswapV3Params | UniswapV4Params;
+        exactPath: ExactPath;
+      }[] = [];
       let bridgeTypes: BridgeType[];
       let migrationMethods: MigrationMethod[];
 
@@ -258,10 +290,10 @@ export class ChainHopperClient {
   }
 
   private async handleMigration(
-    params: RequestMigrationParams,
+    params: RequestMigration,
     sourcePosition: PositionWithFees,
-    migration: ExactMigrationRequest
-  ): Promise<PositionWithPath> {
+    migration: InternalDestinationWithExactPath
+  ): Promise<PathWithPosition> {
     const { destination, exactPath } = migration;
     const sourceProtocol = params.sourcePosition.protocol;
     const destProtocol = destination.protocol;
@@ -293,8 +325,8 @@ export class ChainHopperClient {
     });
 
     const baseReturn = {
-      ...destPosition,
-      path: exactPath,
+      position: destPosition,
+      exactPath,
       routes,
       executionParams: generateExecutionParams({
         sourceChainId,
