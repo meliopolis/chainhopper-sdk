@@ -2,7 +2,13 @@ import { CurrencyAmount, Fraction, Percent, Price, Token, type Currency } from '
 import { DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, Protocol } from './constants';
 import { nearestUsableTick, Pool as V3Pool, SqrtPriceMath, TickMath, Position as V3Position } from '@uniswap/v3-sdk';
 import { Position as V4Position, Pool as V4Pool } from '@uniswap/v4-sdk';
-import type { MigratorExecutionParams, Position, Route, SettlerExecutionParams, RequestMigrationParams } from '../types/sdk';
+import type {
+  MigratorExecutionParams,
+  Position,
+  Route,
+  SettlerExecutionParams,
+  RequestMigrationParams,
+} from '../types/sdk';
 
 import {
   encodeMigrationParams,
