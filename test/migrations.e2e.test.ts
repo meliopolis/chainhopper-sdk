@@ -849,6 +849,11 @@ describe('in-range v4→ migrations', () => {
         slippageInBps: 6,
       },
     };
+    await moduleMocker.mock('../src/actions/getV4CombinedQuote', () => ({
+      getV4CombinedQuote: mock(() => {
+        return Promise.resolve({ amountOut: 100n, sqrtPriceX96After: 10000000000n });
+      }),
+    }));
     expect(async () => await client.requestExactMigration(params)).toThrow('Price impact exceeds slippage');
   });
 
