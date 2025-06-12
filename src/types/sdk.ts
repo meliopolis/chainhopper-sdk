@@ -1,10 +1,17 @@
-import type { Abi } from 'viem';
+import type { Abi, Hex } from 'viem';
 import { BridgeType, MigrationMethod, Protocol } from '../utils/constants';
 
-export type WithdrawalParams = {
+export type RequestWithdrawalParams = {
   chainId: number;
   settler: `0x${string}`;
   migrationId: `0x${string}`;
+};
+
+export type WithdrawalExecutionParams = {
+  address: `0x${string}`;
+  abi: Abi;
+  functionName: 'withdraw';
+  args: readonly [Hex];
 };
 
 /*

@@ -16,7 +16,8 @@ import type {
   ExactPath,
   UniswapV4Params,
   UniswapV3Params,
-  WithdrawalParams,
+  RequestWithdrawalParams,
+  WithdrawalExecutionParams,
 } from './types';
 import { startUniswapV3Migration, settleUniswapV3Migration } from './actions';
 import { getV4Position } from './actions/getV4Position';
@@ -208,7 +209,7 @@ export class ChainHopperClient {
     return Promise.all(params.map(async (param) => await this.requestExactMigration(param)));
   }
 
-  public requestWithdrawal(params: WithdrawalParams) {
+  public requestWithdrawal(params: RequestWithdrawalParams): WithdrawalExecutionParams {
     const { settler, migrationId } = params;
     return withdraw(settler, migrationId);
   }
