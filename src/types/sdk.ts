@@ -1,6 +1,12 @@
 import type { Abi } from 'viem';
 import { BridgeType, MigrationMethod, Protocol } from '../utils/constants';
 
+export type WithdrawalParams = {
+  chainId: number;
+  settler: `0x${string}`;
+  migrationId: `0x${string}`;
+};
+
 /*
  * These types describe the input params
  */
