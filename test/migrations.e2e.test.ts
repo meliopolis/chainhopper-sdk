@@ -621,8 +621,8 @@ describe('in-range v3→ migrations', () => {
     };
     const response = await client.requestMigration(params);
     expect(response.migrations.length).toBe(2);
-    expect(positionValue(response.migrations[0], 1, true)).toBeGreaterThan(
-      positionValue(response.migrations[1], 1, true)
+    expect(positionValue(response.migrations[0], 1, false)).toBeGreaterThan(
+      positionValue(response.migrations[1], 1, false)
     );
   });
 
@@ -649,8 +649,8 @@ describe('in-range v3→ migrations', () => {
     };
     const response = await client.requestMigration(params);
     expect(response.migrations.length).toBe(2);
-    expect(positionValue(response.migrations[0], 1, true)).toBeGreaterThan(
-      positionValue(response.migrations[1], 1, true)
+    expect(positionValue(response.migrations[0], 1, false)).toBeGreaterThan(
+      positionValue(response.migrations[1], 1, false)
     );
   });
 
