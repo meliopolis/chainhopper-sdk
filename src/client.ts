@@ -182,7 +182,7 @@ export class ChainHopperClient {
         )
           .filter((p: PathWithPosition | undefined) => p !== undefined)
           .sort((a: PathWithPosition, b: PathWithPosition) => {
-            return Number(positionValue(b, 1, true) - positionValue(a, 1, true));
+            return Number(positionValue(b, 1, false) - positionValue(a, 1, false));
           });
       })
     );

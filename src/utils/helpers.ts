@@ -136,8 +136,8 @@ export const generateMigrationParams = async ({
         amount0Min: BigInt(amount0Min.toString()),
         amount1Min: BigInt(amount1Min.toString()),
         swapAmountInMilliBps: swapAmountInMilliBps ? swapAmountInMilliBps : 0,
-        ...('tickSpacing' in externalParams && { tickSpacing: externalParams.tickSpacing }),
-        ...('hooks' in externalParams && { hooks: externalParams.hooks }),
+        ...(destination.protocol === Protocol.UniswapV4 && { tickSpacing: destination.tickSpacing }),
+        ...(destination.protocol === Protocol.UniswapV4 && { hooks: destination.hooks }),
       },
     },
     {

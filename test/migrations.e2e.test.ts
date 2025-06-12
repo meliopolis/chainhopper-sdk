@@ -621,8 +621,8 @@ describe('in-range v3→ migrations', () => {
     };
     const response = await client.requestMigration(params);
     expect(response.migrations.length).toBe(2);
-    expect(positionValue(response.migrations[0], 1, true)).toBeGreaterThan(
-      positionValue(response.migrations[1], 1, true)
+    expect(positionValue(response.migrations[0], 1, false)).toBeGreaterThan(
+      positionValue(response.migrations[1], 1, false)
     );
   });
 
@@ -649,8 +649,8 @@ describe('in-range v3→ migrations', () => {
     };
     const response = await client.requestMigration(params);
     expect(response.migrations.length).toBe(2);
-    expect(positionValue(response.migrations[0], 1, true)).toBeGreaterThan(
-      positionValue(response.migrations[1], 1, true)
+    expect(positionValue(response.migrations[0], 1, false)).toBeGreaterThan(
+      positionValue(response.migrations[1], 1, false)
     );
   });
 
@@ -846,7 +846,7 @@ describe('in-range v4→ migrations', () => {
       exactPath: {
         bridgeType: BridgeType.Across,
         migrationMethod: MigrationMethod.SingleToken,
-        slippageInBps: 6,
+        slippageInBps: 2,
       },
     };
     await moduleMocker.mock('../src/actions/getV4CombinedQuote', () => ({
@@ -887,9 +887,41 @@ describe('in-range v4→ migrations', () => {
 
 describe('flipped token order between chains', () => {
   test('generate valid base v4 → unichain v3 dual-token migration', async () => {
+    const sourceChainId = 8453;
+    await moduleMocker.mock('../src/actions/getV4Position.ts', () => ({
+      getV4Position: mock(() => {
+        const tickCurrent = -200000;
+        const liquidity = 1_000_000_000_000_000n;
+        const pool = new V4Pool(
+          new Token(sourceChainId, zeroAddress, 18, 'ETH'),
+          new Token(sourceChainId, client.chainConfigs[sourceChainId].usdcAddress, 6, 'USDC'),
+          500,
+          10,
+          '0x0000000000000000000000000000000000000000',
+          BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+          liquidity.toString(),
+          tickCurrent
+        );
+        return {
+          owner: ownerAddress,
+          tokenId: 17447n,
+          ...toSDKPosition(
+            client.chainConfigs[sourceChainId],
+            new V4Position({
+              pool,
+              liquidity: liquidity.toString(),
+              tickLower: -250000,
+              tickUpper: -109900,
+            })
+          ),
+          feeAmount0: 0n,
+          feeAmount1: 0n,
+        };
+      }),
+    }));
     const params: RequestExactMigrationParams = {
       sourcePosition: {
-        chainId: 8453,
+        chainId: sourceChainId,
         tokenId: 17447n,
         protocol: Protocol.UniswapV4,
       },
