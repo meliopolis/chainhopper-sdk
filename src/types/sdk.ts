@@ -13,7 +13,7 @@ export type WithdrawalExecutionParams = {
   args: readonly [Hex];
 };
 
-export type SettlementCacheEntryResponse = {
+export type CheckMigrationIdResponse = {
   recipient: `0x${string}`;
   token: `0x${string}`;
   amount: bigint;
