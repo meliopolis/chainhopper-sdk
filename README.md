@@ -54,63 +54,73 @@ export const client = ChainHopperClient.create({
 
 ### 2. Retrieve Migration Data
 
-To initiate a migration, you must provide the SDK with a single source LP position (`sourcePosition`) to be migrated along with parameters for at least one migration. Each migration requested requires a destination (`destination`) specifying the desired migration output parameters, and a path specification (either `pathFilter` or `exactPath`) specifying information about how the migration should be executed. The SDK then returns all the relevant data for submitting a migration transaction based on the parameters provided.
+The SDK provides two main ways to retrieve migration data:
 
-If the parameters provided allow for multiple destinations and paths, the various migration options will be returned in `migrations` in descending order of the estimated destination position value. If a migration requested is not available it will be returned in `unavailableMigrations` on the response along with the reasons why it is not available. If a single migration with an `ExactPath` is requested and that combination of migration and path are not available, it will throw an exception.
+1. **Find the Best Migration Path**: Use `requestMigration()` to find the optimal migration path based on your preferences
+2. **Request a Specific Migration Method**: Use `requestExactMigration()` when you want to specify the exact migration method and parameters
 
-You can use both `requestMigration` with `PathFilter` to look for all migration requests matching the `pathFilter` or `requestExactMigration` for `ExactPath` requests where all of the paths are completely specified. In other words, when `exactPath` is used only the exact paths will be considered. If a `pathFilter` is used, specifiying an optional value will constrain the options to use that value. If an optional parameter is not specified in a `PathFilter`, all options for that parameter will be searched with the exception of `slippageInBps` which, if omitted, will default to 100 basis points or 1%.
+#### 2.1 Find the Best Migration Path
 
-In addition to `requestMigration` and `requestExactMigration`, corresponding functions `requestMigrations` and `requestExactMigrations` are available for requesting multiple combinations of `destination` and `path` (`migrations`) at once.
+Use `requestMigration()` when you want to find the optimal migration path based on your preferences. This method uses an optional `PathFilter` to specify your requirements while allowing the SDK to find the best available options.
 
-```typescript
-export type ExactPath = {
-  bridgeType: BridgeType;
-  migrationMethod: MigrationMethod;
-  slippageInBps: number;
-};
-
-export type PathFilter = {
-  bridgeType?: BridgeType; // searches all available bridges unless specified
-  migrationMethod?: MigrationMethod; // searches all available methods unless specified
-  slippageInBps?: number; // defaults to 100bps/1% if not specifed
-};
-```
+In this example, we skip `PathFilter` altogether to let the SDK find the best path.
 
 ```typescript
-import {
-  RequestMigrationParams, // requires a PathFilter for a destination
-  RequestExactMigrationParams, // requires an ExactPath for a destination
-  RequestMigrationsParams, // requires multiple destination / pathFilter combinations
-  RequestExactMigrationsParams, // requires multiple destination / exactPath combinations
-  Protocol,
-  chainConfigs,
-} from 'chainhopper-sdk';
+import { RequestMigrationParams, Protocol, chainConfigs } from 'chainhopper-sdk';
 import { zeroAddress } from 'viem';
-
-// For a open-ended migration request using pathFilter:
 
 const migrationParams: RequestMigrationParams = {
   sourcePosition: {
-    chainId: 8453, // Base, in this example
-    protocol: Protocol.UniswapV3, // source protocol: UniswapV3 or UniswapV4
-    tokenId: 1806423n, // change to the position you want to migrate
+    chainId: 8453, // Base
+    protocol: Protocol.UniswapV3,
+    tokenId: 1806423n,
   },
   destination: {
-    chainId: 130, // Unichain, in this example
-    token0: zeroAddress, // native ETH on destination chain; can be any ERC20
-    token1: chainConfigs[130].usdcAddress, // any ERC20; must be sorted token0 < token1
-    fee: 500, // specify the fee for the pool
-    tickSpacing: 10, // tick spacing for the pool; only needed for v4
-    hooks: zeroAddress, // the hooks contract for the pool; only needed for v4
-    tickLower: -250000, // SDK will automatically calculate the nearest usable tick
-    tickUpper: -150000, // SDK will automatically calculate the nearest usable tick
+    chainId: 130, // Unichain
+    token0: zeroAddress, // native ETH
+    token1: chainConfigs[130].usdcAddress,
+    fee: 500,
+    tickSpacing: 10,
+    hooks: zeroAddress,
+    tickLower: -250000,
+    tickUpper: -150000,
   },
-  pathFilter: { bridgeType: BridgeType.Across }, // search all options using Across
 };
 
 const migrationResponse = await client.requestMigration(migrationParams);
+```
 
-// For an exact migration, where you want to specify the exact path precisely
+The response will include:
+- `migrations`: Array of available migrations sorted by highest to lowest expected value
+- `unavailableMigrations`: Migrations that match your filter but aren't currently available, with reasons why
+
+If you want to narrow down specific path, you can add:
+
+```typescript
+const migrationParams: RequestMigrationParams = {
+  sourcePosition: {
+    chainId: 8453, // Base
+    protocol: Protocol.UniswapV3,
+    tokenId: 1806423n,
+  },
+  destination: {
+    // same as above
+  },
+  path: {
+    bridgeType: BridgeType.Across, // narrows to Across
+    migrationMethod: MigrationMethod.SingleToken, // narrows to SingleToken
+    slippageInBps: 50, // sets slippage, default at 100
+  }
+};
+```
+
+
+#### 2.2 Request a Specific Migration Method
+
+Use `requestExactMigration` when you want to specify the exact migration method and parameters. This is useful when you need precise control over the migration process.
+
+```typescript
+import { RequestExactMigrationParams, Protocol, chainConfigs } from 'chainhopper-sdk';
 
 const exactMigrationParams: RequestExactMigrationParams = {
   sourcePosition: {
@@ -128,115 +138,25 @@ const exactMigrationParams: RequestExactMigrationParams = {
     tickLower: -250000,
     tickUpper: -150000,
   },
-  exactPath: {
-    bridgeType: BridgeType.Across, // specify the bridge type
-    migrationMethod: MigrationMethod.SingleToken, // or DualToken
-    slippageInBps: 50, // specify slippage in bps
+  exactPath: { // required for ExactMigrations
+    bridgeType: BridgeType.Across,
+    migrationMethod: MigrationMethod.SingleToken,
+    slippageInBps: 50,
   },
 };
 
 const exactMigrationResponse = await client.requestExactMigration(exactMigrationParams);
-
-// For `requestExactMigrations` use `migrations` with `exactPath` to request
-// multiple destination/path combinations:
-
-const exactMigrationsParams: RequestExactMigrationsParams = {
-  sourcePosition: {
-    chainId: 8453,
-    protocol: Protocol.UniswapV3,
-    tokenId: 1806423n,
-  },
-  migrations: [
-    {
-      destination: {
-        chainId: 130,
-        protocol: Protocol.UniswapV4,
-        token0: zeroAddress,
-        token1: chainConfigs[130].usdcAddress,
-        fee: 500,
-        tickSpacing: 10,
-        hooks: zeroAddress,
-        tickLower: -250000,
-        tickUpper: -150000,
-      },
-      exactPath: {
-        bridgeType: BridgeType.Across,
-        migrationMethod: MigrationMethod.SingleToken,
-        slippageInBps: 100,
-      },
-    },
-    {
-      destination: {
-        chainId: 130,
-        protocol: Protocol.UniswapV4,
-        token0: zeroAddress,
-        token1: chainConfigs[130].usdcAddress,
-        fee: 100,
-        tickSpacing: 1,
-        hooks: zeroAddress,
-        tickLower: -250000,
-        tickUpper: -150000,
-      },
-      exactPath: {
-        bridgeType: BridgeType.Across,
-        migrationMethod: MigrationMethod.SingleToken,
-        slippageInBps: 100,
-      },
-    },
-  ],
-};
-
-const exactMigrationsResponse =
-  await client.requestExactMigrations(exactMigrationsParams);
-
-// For `requestMigrations` use `migrations` with `pathFilter` to request
-// multiple destination/path combinations:
-
-const migrationParams: RequestMigrationsParams = {
-  sourcePosition: {
-    chainId: 8453,
-    protocol: Protocol.UniswapV3,
-    tokenId: 1806423n,
-  },
-  migrations: [
-    {
-      destination: {
-        chainId: 130,
-        protocol: Protocol.UniswapV4,
-        token0: zeroAddress,
-        token1: chainConfigs[130].usdcAddress,
-        fee: 500,
-        tickSpacing: 10,
-        hooks: zeroAddress,
-        tickLower: -250000,
-        tickUpper: -150000,
-      },
-      pathFilter: {
-        slippageInBps: 100,
-      },
-    },
-    {
-      destination: {
-        chainId: 130,
-        protocol: Protocol.UniswapV4,
-        token0: zeroAddress,
-        token1: chainConfigs[130].usdcAddress,
-        fee: 100,
-        tickSpacing: 1,
-        hooks: zeroAddress,
-        tickLower: -250000,
-        tickUpper: -150000,
-      },
-      pathFilter: {
-        slippageInBps: 100,
-      },
-    },
-  ],
-};
-
-const exactMigrationsResponse = 
-  await client.requestExactMigrations(exactMigrationsParams);
 ```
+
+The response will contain a single migration that exactly matches your specified parameters. If no matching migration is available, it will throw an exception.
+
+#### Additional Options
+
+For both methods, you can also request multiple migrations at once using:
+- `requestMigrations`: For multiple destinations with path filters
+- `requestExactMigrations`: For multiple destinations with exact paths
+
+See the [Advanced Options](#advanced-options) section for more details on customizing your migration requests.
 
 ### 3. Execute the Migration
 
@@ -268,9 +188,12 @@ const { request } = await walletClient.simulateContract({
 
 // execute the request
 const result = await writeContract(config, request);
+```
 
-// For exact migration, only one migration is available:
 
+For exact migration, only one migration is available:
+
+```typescript
 const { request: exactRequest } = await walletClient.simulateContract({
   ...exactMigrationResponse.migration.executionParams,
   account: exactMigrationResponse.sourcePosition.owner,
@@ -293,7 +216,7 @@ const { request: selectedMigration } = await walletClient.simulateContract({
 const exactResult = await writeContract(config, selectedMigration);
 ```
 
-Calling `writeContract` open up a wallet window for signing the transaction and initiating the migration process.
+Calling `writeContract` opens up a wallet window for signing the transaction and initiating the migration process.
 
 ## Advanced Options
 
@@ -326,7 +249,7 @@ const migrationParams: RequestMigrationParams = {
   destination: {
     // ... destination info
   },
-  pathFilter: {
+  path: {
     migrationMethod: MigrationMethod.DualToken, // specify DualToken
   },
   // ... rest of params
@@ -340,7 +263,7 @@ By default, the SDK allows for 1% slippage, divided evenly across the source and
 ```typescript
 const migrationParams: RequestMigrationParams = {
   // ... previous params
-  path: {
+  path: { // or exactPath
     // ... other params
     slippageInBps: 100, // allows for up to 1% slippage
   },
@@ -361,7 +284,7 @@ const migrationParams: RequestMigrationParams = {
     // specifying sqrtPriceX96 will initialize a new pool at this price:
     sqrtPriceX96: 736087614829673861315061733n,
   },
-  pathFilter: {
+  path: {
     // ... path filter
   },
   // ... rest of params
