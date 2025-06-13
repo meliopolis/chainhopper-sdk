@@ -18,6 +18,7 @@ import type {
   UniswapV3Params,
   RequestWithdrawalParams,
   WithdrawalExecutionParams,
+  SettlementCacheEntryResponse,
 } from './types';
 import { startUniswapV3Migration, settleUniswapV3Migration } from './actions';
 import { getV4Position } from './actions/getV4Position';
@@ -32,6 +33,7 @@ import type {
 } from './types/internal';
 import { positionValue } from './utils/position';
 import { withdraw } from './actions/withdraw';
+import { getSettlementCacheEntry } from './actions/getSettlementCacheEntry';
 
 const startFns = {
   [Protocol.UniswapV3]: startUniswapV3Migration,
@@ -209,9 +211,15 @@ export class ChainHopperClient {
     return Promise.all(params.map(async (param) => await this.requestExactMigration(param)));
   }
 
+  public getSettlementCacheEntry(
+    chainId: number,
+    params: RequestWithdrawalParams
+  ): Promise<SettlementCacheEntryResponse> {
+    return getSettlementCacheEntry(this.chainConfigs[chainId], params);
+  }
+
   public requestWithdrawal(params: RequestWithdrawalParams): WithdrawalExecutionParams {
-    const { settler, migrationId } = params;
-    return withdraw(settler, migrationId);
+    return withdraw(params);
   }
 
   private unavailableReasons(migration: InternalDestinationWithExactPath): string[] {

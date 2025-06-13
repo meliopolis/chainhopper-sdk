@@ -17,7 +17,6 @@ configurePublicClients(client.chainConfigs, rpcUrls);
 describe('requestWithdrawal', () => {
   test('should throw exception for invalid migrationId', async () => {
     const params: WithdrawalParams = {
-      chainId: 130,
       settler: client.chainConfigs[130].UniswapV4AcrossSettler!,
       migrationId: '0xinvalid',
     };
@@ -26,7 +25,6 @@ describe('requestWithdrawal', () => {
   test('should throw exception for invalid account', async () => {
     const chainConfig = client.chainConfigs[130];
     const params: WithdrawalParams = {
-      chainId: 130,
       settler: client.chainConfigs[130].UniswapV4AcrossSettler!,
       migrationId: '0x038253c0e0c452114fbb0bfe1fccf964d5b581f2470e1874bac9bcb0cf60f506',
     };
@@ -40,7 +38,6 @@ describe('requestWithdrawal', () => {
   test('should return valid calldata for valid withdrawal request', async () => {
     const chainConfig = client.chainConfigs[130];
     const params: WithdrawalParams = {
-      chainId: 130,
       settler: chainConfig.UniswapV4AcrossSettler!,
       migrationId: '0x038253c0e0c452114fbb0bfe1fccf964d5b581f2470e1874bac9bcb0cf60f506',
     };
