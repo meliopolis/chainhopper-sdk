@@ -1,7 +1,7 @@
-import type { RequestWithdrawalParams, WithdrawalExecutionParams } from '@/types/sdk';
+import type { RequestWithdrawalParams, WithdrawalExecutionParams } from '../types/sdk';
 import { ISettlerAbi } from '../abis';
 import { type Abi } from 'viem';
-import { assertBytes32 } from '@/utils/hex';
+import { assertBytes32 } from '../utils/hex';
 
 export const withdraw = (params: RequestWithdrawalParams): WithdrawalExecutionParams => {
   const { settler, migrationId } = params;
