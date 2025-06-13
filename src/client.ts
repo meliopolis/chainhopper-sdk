@@ -18,7 +18,7 @@ import type {
   UniswapV3Params,
   RequestWithdrawalParams,
   WithdrawalExecutionParams,
-  SettlementCacheEntryResponse,
+  CheckMigrationIdResponse,
 } from './types';
 import { startUniswapV3Migration, settleUniswapV3Migration } from './actions';
 import { getV4Position } from './actions/getV4Position';
@@ -211,10 +211,7 @@ export class ChainHopperClient {
     return Promise.all(params.map(async (param) => await this.requestExactMigration(param)));
   }
 
-  public getSettlementCacheEntry(
-    chainId: number,
-    params: RequestWithdrawalParams
-  ): Promise<SettlementCacheEntryResponse> {
+  public checkMigrationId(chainId: number, params: RequestWithdrawalParams): Promise<CheckMigrationIdResponse> {
     return getSettlementCacheEntry(this.chainConfigs[chainId], params);
   }
 

@@ -1,5 +1,5 @@
 import type { ChainConfig } from '@/chains';
-import type { RequestWithdrawalParams, SettlementCacheEntryResponse } from '@/types';
+import type { RequestWithdrawalParams, CheckMigrationIdResponse } from '@/types';
 import { assertBytes32 } from '@/utils/hex';
 import { keccak256, pad } from 'viem';
 
@@ -10,7 +10,7 @@ const toHexSlot = (n: bigint): `0x${string}` => `0x${n.toString(16).padStart(64,
 export const getSettlementCacheEntry = async (
   chainConfig: ChainConfig,
   params: RequestWithdrawalParams
-): Promise<SettlementCacheEntryResponse> => {
+): Promise<CheckMigrationIdResponse> => {
   const { migrationId, settler } = params;
   assertBytes32(migrationId);
 
