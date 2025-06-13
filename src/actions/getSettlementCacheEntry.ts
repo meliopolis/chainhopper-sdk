@@ -1,6 +1,6 @@
-import type { ChainConfig } from '@/chains';
-import type { RequestWithdrawalParams, CheckMigrationIdResponse } from '@/types';
-import { assertBytes32 } from '@/utils/hex';
+import type { ChainConfig } from '../chains';
+import type { RequestWithdrawalParams, CheckMigrationIdResponse } from '../types';
+import { assertBytes32 } from '../utils/hex';
 import { keccak256, pad } from 'viem';
 
 const SETTLEMENT_CACHE_SLOT = 3n;
