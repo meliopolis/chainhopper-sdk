@@ -2,7 +2,6 @@ import type { Abi, Hex } from 'viem';
 import { BridgeType, MigrationMethod, Protocol } from '../utils/constants';
 
 export type RequestWithdrawalParams = {
-  chainId: number;
   settler: `0x${string}`;
   migrationId: `0x${string}`;
 };
@@ -13,6 +12,12 @@ export type WithdrawalExecutionParams = {
   functionName: 'withdraw';
   args: readonly [Hex];
 };
+
+export type SettlementCacheEntryResponse = {
+  recipient: `0x${string}`;
+  token: `0x${string}`;
+  amount: bigint;
+} | null;
 
 /*
  * These types describe the input params

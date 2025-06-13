@@ -1,17 +1,10 @@
-import type { WithdrawalExecutionParams } from '@/types/sdk';
+import type { RequestWithdrawalParams, WithdrawalExecutionParams } from '@/types/sdk';
 import { ISettlerAbi } from '../abis';
-import { isHex, size, type Abi, type Hex } from 'viem';
+import { type Abi } from 'viem';
+import { assertBytes32 } from '@/utils/hex';
 
-export const isBytes32 = (value: unknown): boolean => {
-  return typeof value === 'string' && isHex(value, { strict: true }) && size(value) === 32;
-};
-
-export const assertBytes32 = (value: unknown): boolean => {
-  if (!isBytes32(value)) throw new Error('Expected 0x-prefixed 32-byte hex string (bytes32).');
-  return true;
-};
-
-export const withdraw = (settler: `0x${string}`, migrationId: Hex): WithdrawalExecutionParams => {
+export const withdraw = (params: RequestWithdrawalParams): WithdrawalExecutionParams => {
+  const { settler, migrationId } = params;
   assertBytes32(migrationId);
   return {
     address: settler,
