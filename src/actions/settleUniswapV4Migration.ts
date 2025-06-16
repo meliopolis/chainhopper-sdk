@@ -6,6 +6,7 @@ import {
   generateMaxV4Position,
   generateMigrationParams,
   generateMaxV3orV4PositionWithSwapAllowed,
+  splitFee,
 } from '../utils/helpers';
 import type { InternalSettleMigrationParams, InternalSettleMigrationResult } from '../types/internal';
 import { getSettlerFees } from './getSettlerFees';
@@ -66,7 +67,15 @@ export const settleUniswapV4Migration = async ({
 
     // TODO need to handle weth (right now only handle native token pools)
     // 1. calculate the max position using the across quote output amount
-    const amountIn = route.outputAmount * (1n - settlerFeesInBps / 10_000n);
+
+    const { amountIn, protocolShareAmount, senderShareAmount } = splitFee(
+      route.outputAmount,
+      settlerFeesInBps,
+      protocolShareBps
+    );
+    const protocolShare = { amount0: protocolShareAmount, amount1: 0n };
+    const senderShare = { amount0: senderShareAmount, amount1: 0n };
+
     const baseTokenAvailable = CurrencyAmount.fromRawAmount(pool.token0, amountIn.toString());
     const maxOtherTokenAvailable = CurrencyAmount.fromRawAmount(pool.token1, 0);
     const maxPosition = (await generateMaxV3orV4PositionWithSwapAllowed(
@@ -128,6 +137,9 @@ export const settleUniswapV4Migration = async ({
       maxPosition,
       maxPositionUsingRouteMinAmountOut,
       owner,
+      protocolShareBps: Number(protocolShareBps),
+      protocolShare,
+      senderShare,
       swapAmountInMilliBps: 10_000_000 - Number(swapAmountInMilliBps),
     });
   } else {
@@ -141,23 +153,29 @@ export const settleUniswapV4Migration = async ({
     if (token1Address != routes[0].outputToken && token1Address != routes[1].outputToken)
       throw new Error('Requested token1 not found in routes');
 
-    const token0Available = routes[0].outputAmount * (1n - settlerFeesInBps / 10_000n);
-    const token1Available = routes[1].outputAmount * (1n - settlerFeesInBps / 10_000n);
+    const feeInfo = routes.map((route) => splitFee(route.outputAmount, settlerFeesInBps, protocolShareBps));
+
+    const token0Available = feeInfo[0].amountIn;
+    const token1Available = feeInfo[1].amountIn;
     const minToken0Available = routes[0].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
     const minToken1Available = routes[1].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
 
-    let settleAmountOut0, settleAmountOut1, settleMinAmountOut0, settleMinAmountOut1;
+    let settleAmountOut0, settleAmountOut1, settleMinAmountOut0, settleMinAmountOut1, senderShare, protocolShare;
     if (token0Address !== routes[0].outputToken) {
       // the token order must be flipped if the token addresses sort in a different order on the destination chain
       settleAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, token1Available.toString());
       settleAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, token0Available.toString());
       settleMinAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, minToken1Available.toString());
       settleMinAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, minToken0Available.toString());
+      senderShare = { amount0: feeInfo[1].senderShareAmount, amount1: feeInfo[0].senderShareAmount };
+      protocolShare = { amount0: feeInfo[1].protocolShareAmount, amount1: feeInfo[0].protocolShareAmount };
     } else {
       settleAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, token0Available.toString());
       settleAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, token1Available.toString());
       settleMinAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, minToken0Available.toString());
       settleMinAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, minToken1Available.toString());
+      senderShare = { amount0: feeInfo[0].senderShareAmount, amount1: feeInfo[1].senderShareAmount };
+      protocolShare = { amount0: feeInfo[0].protocolShareAmount, amount1: feeInfo[1].protocolShareAmount };
     }
 
     const maxPosition = generateMaxV4Position(
@@ -190,6 +208,9 @@ export const settleUniswapV4Migration = async ({
       maxPosition,
       maxPositionUsingRouteMinAmountOut: maxPositionUsingSettleMinAmountsOut,
       owner,
+      protocolShareBps: Number(protocolShareBps),
+      protocolShare,
+      senderShare,
       expectedRefund,
     });
   }
