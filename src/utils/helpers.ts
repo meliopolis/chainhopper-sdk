@@ -434,7 +434,11 @@ export const subIn256 = (x: bigint, y: bigint): bigint => {
   }
 };
 
-export const splitFee = (amount: bigint, settlerFeesInBps: bigint, protocolShareBps: bigint) => {
+export const splitFee = (
+  amount: bigint,
+  settlerFeesInBps: bigint,
+  protocolShareBps: bigint
+): { amountIn: bigint; protocolShareAmount: bigint; senderShareAmount: bigint } => {
   const feeAmount = (amount * settlerFeesInBps) / 10_000n;
   const amountIn = amount - feeAmount;
 
