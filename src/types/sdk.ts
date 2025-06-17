@@ -178,7 +178,7 @@ export type SettlerExecutionParams = {
 };
 
 export type MigrationFees = {
-  bps: bigint;
+  bps: number;
   amount0: bigint;
   amount1: bigint;
 };

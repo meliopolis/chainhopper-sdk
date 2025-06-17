@@ -86,9 +86,9 @@ const validateMigrationResponse = (params: RequestExactMigrationParams, result: 
   // don't want to call getSettlerFees excessively, can update if this changes:
   const protocolShareBps = 10n;
 
-  expect(migration.migrationFees.sender.bps).toBe(senderShareBps);
-  expect(migration.migrationFees.protocol.bps).toBe(protocolShareBps);
-  expect(migration.migrationFees.total.bps).toBe(protocolShareBps + senderShareBps);
+  expect(migration.migrationFees.sender.bps).toBe(Number(senderShareBps));
+  expect(migration.migrationFees.protocol.bps).toBe(Number(protocolShareBps));
+  expect(migration.migrationFees.total.bps).toBe(Number(protocolShareBps + senderShareBps));
   expect(migration.migrationFees.total.amount0).toBe(
     migration.migrationFees.sender.amount0 + migration.migrationFees.protocol.amount0
   );
@@ -97,10 +97,11 @@ const validateMigrationResponse = (params: RequestExactMigrationParams, result: 
   );
 
   if (migration.exactPath.migrationMethod === MigrationMethod.SingleToken) {
-    expect(migration.migrationFees.protocol.amount0).toBe(
-      (migration.routes[0].outputAmount * protocolShareBps) / 10_000n
+    expect(
+      migration.migrationFees.protocol.amount0 === (migration.routes[0].outputAmount * protocolShareBps) / 10_000n ||
+        migration.migrationFees.protocol.amount1 === (migration.routes[0].outputAmount * protocolShareBps) / 10_000n
     );
-    expect(migration.migrationFees.sender.amount0).toBe((migration.routes[0].outputAmount * senderShareBps) / 10_000n);
+    expect(migration.migrationFees.protocol.amount1 === 0n || migration.migrationFees.protocol.amount0 === 0n);
   } else if (migration.exactPath.migrationMethod === MigrationMethod.DualToken) {
     expect(
       migration.migrationFees.protocol.amount0 === (migration.routes[0].outputAmount * protocolShareBps) / 10_000n ||

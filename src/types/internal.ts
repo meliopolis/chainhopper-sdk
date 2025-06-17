@@ -46,8 +46,8 @@ export type InternalSettleMigrationResult = {
   migratorMessage: `0x${string}`;
   settlerMessage: `0x${string}`;
   swapAmountInMilliBps?: number;
-  senderShare: MigrationFees;
-  protocolShare: MigrationFees;
+  senderFees: MigrationFees;
+  protocolFees: MigrationFees;
 };
 
 export type InternalGenerateMigrationParamsInput = {
@@ -61,8 +61,8 @@ export type InternalGenerateMigrationParamsInput = {
   owner: `0x${string}`;
   swapAmountInMilliBps?: number;
   expectedRefund?: { amount0Refund: bigint; amount1Refund: bigint };
-  senderShare: MigrationFees;
-  protocolShare: MigrationFees;
+  senderFees: MigrationFees;
+  protocolFees: MigrationFees;
 };
 
 export type InternalDestinationWithExactPath = {

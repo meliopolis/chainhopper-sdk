@@ -99,16 +99,16 @@ export const generateMigrationParams = async ({
   maxPositionUsingRouteMinAmountOut,
   owner,
   swapAmountInMilliBps,
-  protocolShare,
-  senderShare,
+  protocolFees,
+  senderFees,
   expectedRefund,
 }: InternalGenerateMigrationParamsInput): Promise<{
   destPosition: Position;
   swapAmountInMilliBps: number;
   migratorMessage: `0x${string}`;
   settlerMessage: `0x${string}`;
-  senderShare: MigrationFees;
-  protocolShare: MigrationFees;
+  senderFees: MigrationFees;
+  protocolFees: MigrationFees;
 }> => {
   const { destination, exactPath } = migration;
   const { amount0: amount0Min, amount1: amount1Min } = maxPositionUsingRouteMinAmountOut.burnAmountsWithSlippage(
@@ -159,8 +159,8 @@ export const generateMigrationParams = async ({
   return {
     destPosition: toSDKPosition(destinationChainConfig, maxPosition, maxPositionUsingRouteMinAmountOut, expectedRefund),
     swapAmountInMilliBps: swapAmountInMilliBps ? swapAmountInMilliBps : 0,
-    senderShare,
-    protocolShare,
+    senderFees,
+    protocolFees,
     migratorMessage,
     settlerMessage,
   };
@@ -429,21 +429,32 @@ export const subIn256 = (x: bigint, y: bigint): bigint => {
   }
 };
 
-export const splitFee = (
+export const calculateFees = (
   amount: bigint,
-  settlerFeesInBps: bigint,
-  protocolShareBps: bigint
-): { amountIn: bigint; protocolShareAmount: bigint; senderShareAmount: bigint } => {
-  const feeAmount = (amount * settlerFeesInBps) / 10_000n;
-  const amountIn = amount - feeAmount;
+  senderShareBps: bigint,
+  protocolShareBps: bigint,
+  protocolShareOfSenderFeePct: bigint
+): { amountIn: bigint; protocolFee: bigint; senderFee: bigint } => {
+  if (protocolShareBps + senderShareBps > 200n) {
+    throw new Error('max fee exceeded: sum of protocolShareBps, senderShareBps > 200');
+  }
 
-  const protocolShareAmount = (feeAmount * protocolShareBps) / settlerFeesInBps;
-  const senderShareAmount = feeAmount - protocolShareAmount;
+  let protocolFee = (amount * protocolShareBps) / 10_000n;
+  let senderFee = (amount * senderShareBps) / 10_000n;
+
+  if (protocolShareOfSenderFeePct > 0n) {
+    const protocolFeeFromSenderFee = (senderFee * protocolShareOfSenderFeePct) / 10_000n;
+    protocolFee += protocolFeeFromSenderFee;
+    senderFee -= protocolFeeFromSenderFee;
+  }
+
+  const feeAmount = protocolFee + senderFee;
+  const amountIn = amount - feeAmount;
 
   return {
     amountIn,
-    protocolShareAmount,
-    senderShareAmount,
+    protocolFee,
+    senderFee,
   };
 };
 

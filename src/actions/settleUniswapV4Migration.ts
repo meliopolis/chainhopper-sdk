@@ -6,7 +6,7 @@ import {
   generateMaxV4Position,
   generateMigrationParams,
   generateMaxV3orV4PositionWithSwapAllowed,
-  splitFee,
+  calculateFees,
 } from '../utils/helpers';
 import type { InternalSettleMigrationParams, InternalSettleMigrationResult } from '../types/internal';
 import { getSettlerFees } from './getSettlerFees';
@@ -43,7 +43,7 @@ export const settleUniswapV4Migration = async ({
   );
 
   // get the settler fees
-  const { protocolShareBps } = await getSettlerFees(
+  const { protocolShareBps, protocolShareOfSenderFeePct } = await getSettlerFees(
     destinationChainConfig,
     destinationChainConfig.UniswapV4AcrossSettler
   );
@@ -69,13 +69,21 @@ export const settleUniswapV4Migration = async ({
     // TODO need to handle weth (right now only handle native token pools)
     // 1. calculate the max position using the across quote output amount
 
-    const { amountIn, protocolShareAmount, senderShareAmount } = splitFee(
+    const { amountIn, protocolFee, senderFee } = calculateFees(
       route.outputAmount,
-      settlerFeesInBps,
-      protocolShareBps
+      senderShareBps,
+      protocolShareBps,
+      protocolShareOfSenderFeePct
     );
-    const protocolShare = { bps: protocolShareBps, amount0: protocolShareAmount, amount1: 0n };
-    const senderShare = { bps: senderShareBps, amount0: senderShareAmount, amount1: 0n };
+
+    let protocolFees, senderFees;
+    if (destination.token0 === destinationChainConfig.wethAddress || destination.token0 === zeroAddress) {
+      protocolFees = { bps: Number(protocolShareBps), amount0: protocolFee, amount1: 0n };
+      senderFees = { bps: Number(senderShareBps), amount0: senderFee, amount1: 0n };
+    } else {
+      protocolFees = { bps: Number(protocolShareBps), amount0: 0n, amount1: protocolFee };
+      senderFees = { bps: Number(senderShareBps), amount0: 0n, amount1: senderFee };
+    }
 
     const baseTokenAvailable = CurrencyAmount.fromRawAmount(pool.token0, amountIn.toString());
     const maxOtherTokenAvailable = CurrencyAmount.fromRawAmount(pool.token1, 0);
@@ -138,8 +146,8 @@ export const settleUniswapV4Migration = async ({
       maxPosition,
       maxPositionUsingRouteMinAmountOut,
       owner,
-      senderShare,
-      protocolShare,
+      senderFees,
+      protocolFees,
       swapAmountInMilliBps: 10_000_000 - Number(swapAmountInMilliBps),
     });
   } else {
@@ -153,44 +161,46 @@ export const settleUniswapV4Migration = async ({
     if (token1Address != routes[0].outputToken && token1Address != routes[1].outputToken)
       throw new Error('Requested token1 not found in routes');
 
-    const feeInfo = routes.map((route) => splitFee(route.outputAmount, settlerFeesInBps, protocolShareBps));
+    const feeInfo = routes.map((route) =>
+      calculateFees(route.outputAmount, senderShareBps, protocolShareBps, protocolShareOfSenderFeePct)
+    );
 
     const token0Available = feeInfo[0].amountIn;
     const token1Available = feeInfo[1].amountIn;
     const minToken0Available = routes[0].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
     const minToken1Available = routes[1].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
 
-    let settleAmountOut0, settleAmountOut1, settleMinAmountOut0, settleMinAmountOut1, senderShare, protocolShare;
+    let settleAmountOut0, settleAmountOut1, settleMinAmountOut0, settleMinAmountOut1, senderFees, protocolFees;
     if (token0Address !== routes[0].outputToken) {
       // the token order must be flipped if the token addresses sort in a different order on the destination chain
       settleAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, token1Available.toString());
       settleAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, token0Available.toString());
       settleMinAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, minToken1Available.toString());
       settleMinAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, minToken0Available.toString());
-      senderShare = {
-        bps: senderShareBps,
-        amount0: feeInfo[1].senderShareAmount,
-        amount1: feeInfo[0].senderShareAmount,
+      senderFees = {
+        bps: Number(senderShareBps),
+        amount0: feeInfo[1].senderFee,
+        amount1: feeInfo[0].senderFee,
       };
-      protocolShare = {
-        bps: protocolShareBps,
-        amount0: feeInfo[1].protocolShareAmount,
-        amount1: feeInfo[0].protocolShareAmount,
+      protocolFees = {
+        bps: Number(protocolShareBps),
+        amount0: feeInfo[1].protocolFee,
+        amount1: feeInfo[0].protocolFee,
       };
     } else {
       settleAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, token0Available.toString());
       settleAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, token1Available.toString());
       settleMinAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, minToken0Available.toString());
       settleMinAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, minToken1Available.toString());
-      senderShare = {
-        bps: senderShareBps,
-        amount0: feeInfo[0].senderShareAmount,
-        amount1: feeInfo[1].senderShareAmount,
+      senderFees = {
+        bps: Number(senderShareBps),
+        amount0: feeInfo[0].senderFee,
+        amount1: feeInfo[1].senderFee,
       };
-      protocolShare = {
-        bps: protocolShareBps,
-        amount0: feeInfo[0].protocolShareAmount,
-        amount1: feeInfo[1].protocolShareAmount,
+      protocolFees = {
+        bps: Number(protocolShareBps),
+        amount0: feeInfo[0].protocolFee,
+        amount1: feeInfo[1].protocolFee,
       };
     }
 
@@ -224,8 +234,8 @@ export const settleUniswapV4Migration = async ({
       maxPosition,
       maxPositionUsingRouteMinAmountOut: maxPositionUsingSettleMinAmountsOut,
       owner,
-      senderShare,
-      protocolShare,
+      senderFees,
+      protocolFees,
       expectedRefund,
     });
   }
