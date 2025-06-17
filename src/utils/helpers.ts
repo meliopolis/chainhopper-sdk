@@ -443,7 +443,7 @@ export const calculateFees = (
   let senderFee = (amount * senderShareBps) / 10_000n;
 
   if (protocolShareOfSenderFeePct > 0n) {
-    const protocolFeeFromSenderFee = (senderFee * protocolShareOfSenderFeePct) / 10_000n;
+    const protocolFeeFromSenderFee = (senderFee * protocolShareOfSenderFeePct) / 100n;
     protocolFee += protocolFeeFromSenderFee;
     senderFee -= protocolFeeFromSenderFee;
   }
