@@ -922,7 +922,7 @@ describe('flipped token order between chains', () => {
     await moduleMocker.mock('../src/actions/getV4Position.ts', () => ({
       getV4Position: mock(() => {
         const tickCurrent = -200000;
-        const liquidity = 1_000_000_000_000_000n;
+        const liquidity = 1_000_000_000_000n;
         const pool = new V4Pool(
           new Token(sourceChainId, zeroAddress, 18, 'ETH'),
           new Token(sourceChainId, client.chainConfigs[sourceChainId].usdcAddress, 6, 'USDC'),
