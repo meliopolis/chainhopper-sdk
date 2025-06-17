@@ -21,7 +21,7 @@ import { startUniswapV3Migration, settleUniswapV3Migration } from './actions';
 import { getV4Position } from './actions/getV4Position';
 import { startUniswapV4Migration } from './actions/startUniswapV4Migration';
 import { settleUniswapV4Migration } from './actions/settleUniswapV4Migration';
-import { isAddress, checksumAddress } from 'viem';
+import { isAddress, checksumAddress, zeroAddress } from 'viem';
 import { generateExecutionParams, generateSettlerExecutionParams } from './utils/helpers';
 import type {
   InternalDestinationWithExactPath,
@@ -127,7 +127,7 @@ export class ChainHopperClient {
         return migrations
           .map((migration: InternalDestinationWithExactPath) => {
             const reasons = this.unavailableReasons(migration);
-            if (reasons.length > 1) {
+            if (reasons.length > 0) {
               unavailableMigrations.push({
                 destination: migration.destination,
                 exactPath: migration.exactPath,
@@ -238,6 +238,11 @@ export class ChainHopperClient {
     if (destination.token0.toLowerCase() >= destination.token1.toLowerCase()) {
       reasons.push('token0 and token1 must be distinct addresses in alphabetical order');
     }
+
+    const hasEthOrWeth = [destination.token0, destination.token1].some(
+      (token) => token === zeroAddress || token === chainConfigs[destination.chainId].wethAddress
+    );
+    if (!hasEthOrWeth) reasons.push('destination must specify either ETH or WETH as one of token0 or token1');
 
     if (destination.token0.toLowerCase() >= destination.token1.toLowerCase()) {
       reasons.push('token0 and token1 must be distinct addresses in alphabetical order');

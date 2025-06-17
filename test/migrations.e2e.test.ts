@@ -471,7 +471,7 @@ describe('invalid migrations', () => {
         destination: {
           chainId: 8453,
           protocol: Protocol.UniswapV4,
-          token0: '0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34',
+          token0: zeroAddress,
           token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
           tickLower: -276352,
           tickUpper: -276299,
@@ -481,7 +481,7 @@ describe('invalid migrations', () => {
         },
         exactPath: {
           bridgeType: BridgeType.Across,
-          migrationMethod: MigrationMethod.DualToken,
+          migrationMethod: MigrationMethod.SingleToken,
           slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
         },
       };
@@ -537,7 +537,7 @@ describe('invalid migrations', () => {
       destination: {
         chainId: 130,
         protocol: Protocol.UniswapV4,
-        token0,
+        token0: zeroAddress,
         token1,
         tickLower: -88700,
         tickUpper: 88700,
@@ -552,6 +552,37 @@ describe('invalid migrations', () => {
       },
     };
     expect(async () => await client.requestExactMigration(params)).toThrow('ETH/WETH not found in position');
+  });
+
+  test('reject migration when neither token is weth or eth in destination', async () => {
+    try {
+      const params: RequestExactMigrationParams = {
+        sourcePosition: {
+          chainId: 1,
+          tokenId: 963499n,
+          protocol: Protocol.UniswapV3,
+        },
+        destination: {
+          chainId: 130,
+          protocol: Protocol.UniswapV4,
+          token0: '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c',
+          token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+          tickLower: -887000,
+          tickUpper: 887000,
+          fee: 3000,
+          tickSpacing: 60,
+          hooks: '0x0000000000000000000000000000000000000000',
+        },
+        exactPath: {
+          bridgeType: BridgeType.Across,
+          migrationMethod: MigrationMethod.SingleToken,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
+        },
+      };
+      await client.requestExactMigration(params);
+    } catch (e) {
+      expect(e.message).toContain('destination must specify either ETH or WETH as one of token0 or token1');
+    }
   });
 });
 
