@@ -4,7 +4,7 @@ import type { Position as V4Position } from '@uniswap/v4-sdk';
 
 import type {
   ExactPath,
-  FeeAmount,
+  MigrationFees,
   PathFilter,
   RequestMigrationParams,
   Route,
@@ -46,10 +46,8 @@ export type InternalSettleMigrationResult = {
   migratorMessage: `0x${string}`;
   settlerMessage: `0x${string}`;
   swapAmountInMilliBps?: number;
-  senderShareBps: number;
-  senderShare: FeeAmount;
-  protocolShareBps: number;
-  protocolShare: FeeAmount;
+  senderShare: MigrationFees;
+  protocolShare: MigrationFees;
 };
 
 export type InternalGenerateMigrationParamsInput = {
@@ -63,9 +61,8 @@ export type InternalGenerateMigrationParamsInput = {
   owner: `0x${string}`;
   swapAmountInMilliBps?: number;
   expectedRefund?: { amount0Refund: bigint; amount1Refund: bigint };
-  senderShare: FeeAmount;
-  protocolShareBps: number;
-  protocolShare: FeeAmount;
+  senderShare: MigrationFees;
+  protocolShare: MigrationFees;
 };
 
 export type InternalDestinationWithExactPath = {

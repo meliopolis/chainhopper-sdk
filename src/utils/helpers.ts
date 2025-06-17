@@ -8,7 +8,7 @@ import type {
   Route,
   SettlerExecutionParams,
   RequestMigrationParams,
-  FeeAmount,
+  MigrationFees,
 } from '../types/sdk';
 
 import {
@@ -99,7 +99,6 @@ export const generateMigrationParams = async ({
   maxPositionUsingRouteMinAmountOut,
   owner,
   swapAmountInMilliBps,
-  protocolShareBps,
   protocolShare,
   senderShare,
   expectedRefund,
@@ -108,10 +107,8 @@ export const generateMigrationParams = async ({
   swapAmountInMilliBps: number;
   migratorMessage: `0x${string}`;
   settlerMessage: `0x${string}`;
-  senderShareBps: number;
-  senderShare: FeeAmount;
-  protocolShareBps: number;
-  protocolShare: FeeAmount;
+  senderShare: MigrationFees;
+  protocolShare: MigrationFees;
 }> => {
   const { destination, exactPath } = migration;
   const { amount0: amount0Min, amount1: amount1Min } = maxPositionUsingRouteMinAmountOut.burnAmountsWithSlippage(
@@ -162,9 +159,7 @@ export const generateMigrationParams = async ({
   return {
     destPosition: toSDKPosition(destinationChainConfig, maxPosition, maxPositionUsingRouteMinAmountOut, expectedRefund),
     swapAmountInMilliBps: swapAmountInMilliBps ? swapAmountInMilliBps : 0,
-    senderShareBps: externalParams.senderShareBps || 0,
     senderShare,
-    protocolShareBps,
     protocolShare,
     migratorMessage,
     settlerMessage,

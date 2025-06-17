@@ -177,7 +177,8 @@ export type SettlerExecutionParams = {
   ];
 };
 
-export type FeeAmount = {
+export type MigrationFees = {
+  bps: bigint;
   amount0: bigint;
   amount1: bigint;
 };
@@ -190,10 +191,11 @@ export type PathWithPosition = {
   // if debug flag set, these will be populated
   settlerExecutionParams?: SettlerExecutionParams[];
   swapAmountInMilliBps?: number;
-  protocolShareBps: number;
-  senderShareBps: number;
-  protocolShare: FeeAmount;
-  senderShare: FeeAmount;
+  migrationFees: {
+    protocol: MigrationFees;
+    sender: MigrationFees;
+    total: MigrationFees;
+  };
 };
 
 export type PathUnavailable = {
