@@ -81,6 +81,46 @@ const validateMigrationResponse = (params: RequestExactMigrationParams, result: 
   expect(amount0).toBeGreaterThanOrEqual(amount0Min);
   expect(amount1).toBeGreaterThanOrEqual(amount1Min);
 
+  // check fees
+  const senderShareBps = params.senderShareBps ? BigInt(params.senderShareBps) : 0n;
+  // don't want to call getSettlerFees excessively, can update if this changes:
+  const protocolShareBps = 10n;
+
+  expect(migration.migrationFees.sender.bps).toBe(Number(senderShareBps));
+  expect(migration.migrationFees.protocol.bps).toBe(Number(protocolShareBps));
+  expect(migration.migrationFees.total.bps).toBe(Number(protocolShareBps + senderShareBps));
+  expect(migration.migrationFees.total.amount0).toBe(
+    migration.migrationFees.sender.amount0 + migration.migrationFees.protocol.amount0
+  );
+  expect(migration.migrationFees.total.amount1).toBe(
+    migration.migrationFees.sender.amount1 + migration.migrationFees.protocol.amount1
+  );
+
+  if (migration.exactPath.migrationMethod === MigrationMethod.SingleToken) {
+    expect(
+      migration.migrationFees.protocol.amount0 === (migration.routes[0].outputAmount * protocolShareBps) / 10_000n ||
+        migration.migrationFees.protocol.amount1 === (migration.routes[0].outputAmount * protocolShareBps) / 10_000n
+    );
+    expect(migration.migrationFees.protocol.amount1 === 0n || migration.migrationFees.protocol.amount0 === 0n);
+  } else if (migration.exactPath.migrationMethod === MigrationMethod.DualToken) {
+    expect(
+      migration.migrationFees.protocol.amount0 === (migration.routes[0].outputAmount * protocolShareBps) / 10_000n ||
+        migration.migrationFees.protocol.amount0 === (migration.routes[1].outputAmount * protocolShareBps) / 10_000n
+    );
+    expect(
+      migration.migrationFees.protocol.amount1 === (migration.routes[0].outputAmount * protocolShareBps) / 10_000n ||
+        migration.migrationFees.protocol.amount1 === (migration.routes[1].outputAmount * protocolShareBps) / 10_000n
+    );
+    expect(
+      migration.migrationFees.sender.amount0 === (migration.routes[0].outputAmount * senderShareBps) / 10_000n ||
+        migration.migrationFees.sender.amount0 === (migration.routes[1].outputAmount * senderShareBps) / 10_000n
+    );
+    expect(
+      migration.migrationFees.sender.amount1 === (migration.routes[0].outputAmount * senderShareBps) / 10_000n ||
+        migration.migrationFees.sender.amount1 === (migration.routes[1].outputAmount * senderShareBps) / 10_000n
+    );
+  }
+
   // check execution params
   const executionParams = migration.executionParams;
   expect(executionParams.functionName).toBe('safeTransferFrom');
@@ -831,7 +871,7 @@ describe('in-range v4→ migrations', () => {
     validateMigrationResponse(params, await client.requestExactMigration(params));
   });
 
-  test('generate valid unichain v4 → base v3 dual-token migration', async () => {
+  test('generate valid unichain v4 → base v3 dual-token migration with senderShareBps set', async () => {
     const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: v4ChainId,
@@ -852,6 +892,7 @@ describe('in-range v4→ migrations', () => {
         migrationMethod: MigrationMethod.DualToken,
         slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
+      senderShareBps: 7,
     };
     validateMigrationResponse(params, await client.requestExactMigration(params));
   });
@@ -888,7 +929,7 @@ describe('in-range v4→ migrations', () => {
     expect(async () => await client.requestExactMigration(params)).toThrow('Price impact exceeds slippage');
   });
 
-  test('generate valid unichain v4 → base v4 dual-token migration', async () => {
+  test('generate valid unichain v4 → base v4 dual-token migration with senderShareBps set', async () => {
     const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: v4ChainId,
@@ -911,6 +952,7 @@ describe('in-range v4→ migrations', () => {
         migrationMethod: MigrationMethod.DualToken,
         slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
+      senderShareBps: 35,
     };
     validateMigrationResponse(params, await client.requestExactMigration(params));
   });

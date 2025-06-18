@@ -195,6 +195,12 @@ export type SettlerExecutionParams = {
   ];
 };
 
+export type MigrationFees = {
+  bps: number;
+  amount0: bigint;
+  amount1: bigint;
+};
+
 export type PathWithPosition = {
   exactPath: ExactPath;
   position: Position;
@@ -203,6 +209,11 @@ export type PathWithPosition = {
   // if debug flag set, these will be populated
   settlerExecutionParams?: SettlerExecutionParams[];
   swapAmountInMilliBps?: number;
+  migrationFees: {
+    protocol: MigrationFees;
+    sender: MigrationFees;
+    total: MigrationFees;
+  };
 };
 
 export type PathUnavailable = {

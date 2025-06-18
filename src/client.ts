@@ -333,14 +333,15 @@ export class ChainHopperClient {
 
     const settle = settleFns[sourceProtocol][destProtocol];
 
-    const { destPosition, migratorMessage, settlerMessage, swapAmountInMilliBps } = await settle({
-      sourceChainConfig: this.chainConfigs[sourceChainId],
-      destinationChainConfig: this.chainConfigs[destChainId],
-      routes,
-      migration,
-      externalParams: params,
-      owner: sourcePosition.owner,
-    });
+    const { destPosition, migratorMessage, settlerMessage, swapAmountInMilliBps, senderFees, protocolFees } =
+      await settle({
+        sourceChainConfig: this.chainConfigs[sourceChainId],
+        destinationChainConfig: this.chainConfigs[destChainId],
+        routes,
+        migration,
+        externalParams: params,
+        owner: sourcePosition.owner,
+      });
 
     const baseReturn = {
       position: destPosition,
@@ -353,6 +354,15 @@ export class ChainHopperClient {
         tokenId,
         message: migratorMessage,
       }),
+      migrationFees: {
+        sender: senderFees,
+        protocol: protocolFees,
+        total: {
+          bps: senderFees.bps + protocolFees.bps,
+          amount0: senderFees.amount0 + protocolFees.amount0,
+          amount1: senderFees.amount1 + protocolFees.amount1,
+        },
+      },
     };
 
     if (!params.debug) return baseReturn;
