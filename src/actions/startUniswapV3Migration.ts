@@ -131,6 +131,11 @@ export const startUniswapV3Migration = async ({
         interimMessageForSettler
       );
 
+      // add extra gas for second quote to mint position
+      // usually takes 200k gas, instead estimating 1000k (actual usage is around 700k)
+      const relayerGasFee1 = acrossQuote1.fees.relayerGasFee.total;
+      const additionalGasFee1 = relayerGasFee1 * 4n;
+
       return {
         acrossQuotes: [acrossQuote0, acrossQuote1],
         routes: [
@@ -152,15 +157,15 @@ export const startUniswapV3Migration = async ({
             inputToken: acrossQuote1.deposit.inputToken,
             outputToken: acrossQuote1.deposit.outputToken,
             inputAmount: totalToken1,
-            outputAmount: acrossQuote1.deposit.outputAmount,
+            outputAmount: acrossQuote1.deposit.outputAmount - additionalGasFee1,
             minOutputAmount:
-              (acrossQuote1.deposit.outputAmount *
+              ((acrossQuote1.deposit.outputAmount - additionalGasFee1) *
                 BigInt(10000 - (exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS) / 2)) /
               10000n,
-            maxFees: acrossQuote1.fees.totalRelayFee.total,
+            maxFees: acrossQuote1.fees.totalRelayFee.total + additionalGasFee1,
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
             exclusiveRelayer: acrossQuote1.deposit.exclusiveRelayer,
-            exclusivityDeadline: acrossQuote1.deposit.exclusivityDeadline,
+            exclusivityDeadline: acrossQuote1.deposit.exclusivityDeadline + 10, // giving extra time for second quote to mint position
           },
         ],
       };
