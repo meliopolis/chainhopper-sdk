@@ -10,11 +10,12 @@ import type {
   Route,
   UniswapV3Params,
   UniswapV4Params,
+  AerodromeParams,
 } from './sdk';
 import type { ChainConfig } from '../chains';
 import type { PositionWithFees, Position } from './sdk';
 
-export type IUniswapPositionParams = {
+export type IPositionParams = {
   chainId: number;
   tokenId: bigint;
 };
@@ -66,11 +67,11 @@ export type InternalGenerateMigrationParamsInput = {
 };
 
 export type InternalDestinationWithExactPath = {
-  destination: UniswapV3Params | UniswapV4Params;
+  destination: UniswapV3Params | UniswapV4Params | AerodromeParams;
   exactPath: ExactPath;
 };
 
 export type InternalDestinationWithPathFilter = {
-  destination: UniswapV3Params | UniswapV4Params;
+  destination: UniswapV3Params | UniswapV4Params | AerodromeParams;
   path?: PathFilter;
 };

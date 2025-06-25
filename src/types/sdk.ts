@@ -55,6 +55,10 @@ export type UniswapV4Params = DestinationParams & {
   tickSpacing: number;
 };
 
+export type AerodromeParams = DestinationParams & {
+  protocol: Protocol.Aerodrome;
+};
+
 // These types describe the parameters for a migration path
 export type ExactPath = {
   bridgeType: BridgeType;
@@ -69,24 +73,24 @@ export type PathFilter = {
 };
 
 export type RequestExactMigrationParams = BaseRequestMigrationParams & {
-  destination: UniswapV3Params | UniswapV4Params;
+  destination: UniswapV3Params | UniswapV4Params | AerodromeParams;
   exactPath: ExactPath;
 };
 
 export type RequestMigrationParams = BaseRequestMigrationParams & {
-  destination: UniswapV3Params | UniswapV4Params;
+  destination: UniswapV3Params | UniswapV4Params | AerodromeParams;
   path?: PathFilter;
 };
 
 export type RequestExactMigrationsParams = BaseRequestMigrationParams & {
   migrations: {
-    destination: UniswapV3Params | UniswapV4Params;
+    destination: UniswapV3Params | UniswapV4Params | AerodromeParams;
     exactPath: ExactPath;
   }[];
 };
 export type RequestMigrationsParams = BaseRequestMigrationParams & {
   migrations: {
-    destination: UniswapV3Params | UniswapV4Params;
+    destination: UniswapV3Params | UniswapV4Params | AerodromeParams;
     path?: PathFilter;
   }[];
 };
@@ -218,7 +222,7 @@ export type PathWithPosition = {
 
 export type PathUnavailable = {
   exactPath: ExactPath;
-  destination: UniswapV3Params | UniswapV4Params;
+  destination: UniswapV3Params | UniswapV4Params | AerodromeParams;
   reasons: string[];
 };
 

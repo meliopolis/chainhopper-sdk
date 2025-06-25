@@ -5,7 +5,7 @@ import { getV4Pool } from './getV4Pool';
 import { encodePacked, keccak256, pad } from 'viem';
 import { subIn256 } from '../utils/helpers';
 import { toSDKPosition } from '../utils/position';
-import type { IUniswapPositionParams } from '@/types/internal';
+import type { IPositionParams } from '@/types/internal';
 
 type IPoolAndPositionCallResult = [PoolKey, bigint];
 
@@ -27,7 +27,7 @@ const extract24BitsAsSigned = (positionInfo: bigint, shift: bigint): number => {
 
 export const getV4Position = async (
   chainConfig: ChainConfig,
-  params: IUniswapPositionParams
+  params: IPositionParams
 ): Promise<PositionWithFees> => {
   const { tokenId } = params;
 

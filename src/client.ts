@@ -19,6 +19,7 @@ import type {
   RequestWithdrawalParams,
   WithdrawalExecutionParams,
   CheckMigrationIdResponse,
+  AerodromeParams,
 } from './types';
 import { startUniswapV3Migration, settleUniswapV3Migration } from './actions';
 import { getV4Position } from './actions/getV4Position';
@@ -29,7 +30,7 @@ import { generateExecutionParams, generateSettlerExecutionParams } from './utils
 import type {
   InternalDestinationWithExactPath,
   InternalDestinationWithPathFilter,
-  IUniswapPositionParams,
+  IPositionParams,
 } from './types/internal';
 import { positionValue } from './utils/position';
 import { withdraw } from './actions/withdraw';
@@ -38,16 +39,24 @@ import { getSettlementCacheEntry } from './actions/getSettlementCacheEntry';
 const startFns = {
   [Protocol.UniswapV3]: startUniswapV3Migration,
   [Protocol.UniswapV4]: startUniswapV4Migration,
+  [Protocol.Aerodrome]: startUniswapV3Migration, // TODO: implement Aerodrome migration
 };
 
 const settleFns = {
   [Protocol.UniswapV3]: {
     [Protocol.UniswapV3]: settleUniswapV3Migration,
     [Protocol.UniswapV4]: settleUniswapV4Migration,
+    [Protocol.Aerodrome]: settleUniswapV3Migration, // TODO: implement Aerodrome migration
   },
   [Protocol.UniswapV4]: {
     [Protocol.UniswapV3]: settleUniswapV3Migration,
     [Protocol.UniswapV4]: settleUniswapV4Migration,
+    [Protocol.Aerodrome]: settleUniswapV3Migration, // TODO: implement Aerodrome migration
+  },
+  [Protocol.Aerodrome]: {
+    [Protocol.UniswapV3]: settleUniswapV3Migration,
+    [Protocol.UniswapV4]: settleUniswapV4Migration,
+    [Protocol.Aerodrome]: settleUniswapV3Migration, // TODO: implement Aerodrome migration
   },
 };
 
@@ -88,11 +97,11 @@ export class ChainHopperClient {
     if (address !== checksumAddress(address)) return `${address} is not a checksummed address`;
   }
 
-  public getV3Position(params: IUniswapPositionParams): Promise<PositionWithFees> {
+  public getV3Position(params: IPositionParams): Promise<PositionWithFees> {
     return getV3Position(this.chainConfigs[params.chainId], params);
   }
 
-  public getV4Position(params: IUniswapPositionParams): Promise<PositionWithFees> {
+  public getV4Position(params: IPositionParams): Promise<PositionWithFees> {
     return getV4Position(this.chainConfigs[params.chainId], params);
   }
 
@@ -146,7 +155,7 @@ export class ChainHopperClient {
             (
               m:
                 | {
-                    destination: UniswapV3Params | UniswapV4Params;
+                    destination: UniswapV3Params | UniswapV4Params | AerodromeParams;
                     exactPath: ExactPath;
                   }
                 | undefined
@@ -273,7 +282,7 @@ export class ChainHopperClient {
   private enumerateMigrations(requests: InternalDestinationWithPathFilter[]): InternalDestinationWithExactPath[][] {
     return requests.map(({ destination, path: pathFilter }) => {
       const exactMigrationRequests: {
-        destination: UniswapV3Params | UniswapV4Params;
+        destination: UniswapV3Params | UniswapV4Params | AerodromeParams;
         exactPath: ExactPath;
       }[] = [];
       let bridgeTypes: BridgeType[];

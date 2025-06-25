@@ -6,7 +6,7 @@ import { Token as UniswapSDKToken } from '@uniswap/sdk-core';
 import { erc20Abi } from 'viem';
 import type { PositionWithFees } from '../types';
 import { toSDKPosition } from '../utils/position';
-import type { IUniswapPositionParams } from '@/types/internal';
+import type { IPositionParams } from '@/types/internal';
 const MAX_UINT128: bigint = BigInt(2) ** BigInt(127);
 
 type IPositionsCallResult = [
@@ -37,7 +37,7 @@ export type IV3PositionsCallType = {
 
 export const getV3Position = async (
   chainConfig: ChainConfig,
-  params: IUniswapPositionParams
+  params: IPositionParams
 ): Promise<PositionWithFees> => {
   const publicClient = chainConfig.publicClient;
   const positionManagerResult = await publicClient?.multicall({

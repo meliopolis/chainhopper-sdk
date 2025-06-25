@@ -183,6 +183,13 @@ export const resolveSettler = (destinationProtocol: Protocol, destinationChainCo
       } else {
         throw new Error('UniswapV4AcrossSettler not provided for destination chain.');
       }
+    case Protocol.Aerodrome:
+      if (destinationChainConfig.AerodromeAcrossSettler) {
+        settler = destinationChainConfig.AerodromeAcrossSettler;
+        break;
+      } else {
+        throw new Error('AerodromeAcrossSettler not provided for destination chain.');
+      }
   }
   return settler;
 };
