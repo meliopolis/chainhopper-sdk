@@ -233,7 +233,8 @@ export const chainConfigs: Record<number, ChainConfig> = {
       address: '0x827922686190790b37229fd06084350E74485b72',
       abi: NonfungiblePositionManager.abi as Abi,
     },
-    aerodromeQuoterContract: { // TODO: update
+    aerodromeQuoterContract: {
+      // TODO: update
       address: '0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0',
       abi: QuoterV2.abi as Abi,
     },

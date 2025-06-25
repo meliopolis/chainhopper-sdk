@@ -35,10 +35,7 @@ export type IV3PositionsCallType = {
   liquidity: bigint;
 };
 
-export const getV3Position = async (
-  chainConfig: ChainConfig,
-  params: IPositionParams
-): Promise<PositionWithFees> => {
+export const getV3Position = async (chainConfig: ChainConfig, params: IPositionParams): Promise<PositionWithFees> => {
   const publicClient = chainConfig.publicClient;
   const positionManagerResult = await publicClient?.multicall({
     contracts: [

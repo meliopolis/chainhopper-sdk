@@ -25,10 +25,7 @@ const extract24BitsAsSigned = (positionInfo: bigint, shift: bigint): number => {
   }
 };
 
-export const getV4Position = async (
-  chainConfig: ChainConfig,
-  params: IPositionParams
-): Promise<PositionWithFees> => {
+export const getV4Position = async (chainConfig: ChainConfig, params: IPositionParams): Promise<PositionWithFees> => {
   const { tokenId } = params;
 
   // get position details
