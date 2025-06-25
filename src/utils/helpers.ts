@@ -157,7 +157,12 @@ export const generateMigrationParams = async ({
   );
 
   return {
-    destPosition: toSDKPosition(destinationChainConfig, maxPosition, maxPositionUsingRouteMinAmountOut, expectedRefund),
+    destPosition: toSDKPosition({
+      chainConfig: destinationChainConfig,
+      position: maxPosition,
+      slippagePosition: maxPositionUsingRouteMinAmountOut,
+      expectedRefund,
+    }),
     swapAmountInMilliBps: swapAmountInMilliBps ? swapAmountInMilliBps : 0,
     senderFees,
     protocolFees,

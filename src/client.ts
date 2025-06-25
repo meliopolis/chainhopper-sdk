@@ -35,6 +35,7 @@ import type {
 import { positionValue } from './utils/position';
 import { withdraw } from './actions/withdraw';
 import { getSettlementCacheEntry } from './actions/getSettlementCacheEntry';
+import { getAerodromePosition } from './actions/getAerodromePosition';
 
 const startFns = {
   [Protocol.UniswapV3]: startUniswapV3Migration,
@@ -105,6 +106,10 @@ export class ChainHopperClient {
     return getV4Position(this.chainConfigs[params.chainId], params);
   }
 
+  public getAerodromePosition(params: IPositionParams): Promise<PositionWithFees> {
+    return getAerodromePosition(this.chainConfigs[params.chainId], params);
+  }
+
   public async requestMigration(params: RequestMigrationParams): Promise<MigrationResponse> {
     const { destination, path, ...rest } = params;
     const { sourcePosition, migrations, unavailableMigrations } = await this.requestMigrations({
@@ -131,7 +136,8 @@ export class ChainHopperClient {
 
     if (
       params.sourcePosition.protocol !== Protocol.UniswapV3 &&
-      params.sourcePosition.protocol !== Protocol.UniswapV4
+      params.sourcePosition.protocol !== Protocol.UniswapV4 &&
+      params.sourcePosition.protocol !== Protocol.Aerodrome
     ) {
       throw new Error('sourceProtocol not supported');
     }
@@ -164,10 +170,20 @@ export class ChainHopperClient {
       }
     );
 
-    const sourcePosition =
-      params.sourcePosition.protocol === Protocol.UniswapV3
-        ? await this.getV3Position(params.sourcePosition)
-        : await this.getV4Position(params.sourcePosition);
+    let sourcePosition: PositionWithFees;
+    switch (params.sourcePosition.protocol) {
+      case Protocol.UniswapV3:
+        sourcePosition = await this.getV3Position(params.sourcePosition);
+        break;
+      case Protocol.UniswapV4:
+        sourcePosition = await this.getV4Position(params.sourcePosition);
+        break;
+      case Protocol.Aerodrome:
+        sourcePosition = await this.getAerodromePosition(params.sourcePosition);
+        break;
+      default:
+        throw new Error('source protocol not supported');
+    }
 
     const pathWithPositions = await Promise.all(
       migrationOptions.map(async (migrations) => {

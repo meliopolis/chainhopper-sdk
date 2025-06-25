@@ -1,12 +1,15 @@
 import { type Abi } from 'viem';
 import { type ChainConfig } from '../chains';
-import PoolContract from '@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json';
-import { computePoolAddress, Pool, Position } from '@uniswap/v3-sdk';
+import { Pool, Position } from '@uniswap/v3-sdk';
 import { Token as UniswapSDKToken } from '@uniswap/sdk-core';
 import { erc20Abi } from 'viem';
 import type { PositionWithFees } from '../types';
 import { toSDKPosition } from '../utils/position';
-import type { IPositionParams } from '@/types/internal';
+import type { IPositionParams } from '../types/internal';
+import { AerodromeFactoryABI } from '../abis/AerodromeFactory';
+import { AerodromePoolContractABI } from '../abis/AerodromePoolContract';
+import { tickSpacingToFee } from '../utils/aerodrome';
+
 const MAX_UINT128: bigint = BigInt(2) ** BigInt(127);
 
 type IPositionsCallResult = [
@@ -26,28 +29,31 @@ type IPositionsCallResult = [
 type IPoolCallResult = [[bigint, number, number, number, number, number, boolean], bigint];
 type ILPFeeCallResult = [bigint, bigint];
 
-export type IV3PositionsCallType = {
+export type IAerodromePositionsCallType = {
   token0: `0x${string}`;
   token1: `0x${string}`;
-  feeTier: number;
+  tickSpacing: number;
   tickLower: number;
   tickUpper: number;
   liquidity: bigint;
 };
 
-export const getV3Position = async (chainConfig: ChainConfig, params: IPositionParams): Promise<PositionWithFees> => {
+export const getAerodromePosition = async (
+  chainConfig: ChainConfig,
+  params: IPositionParams
+): Promise<PositionWithFees> => {
   const publicClient = chainConfig.publicClient;
   const positionManagerResult = await publicClient?.multicall({
     contracts: [
       {
-        address: chainConfig.v3NftPositionManagerContract.address as `0x${string}`,
-        abi: chainConfig.v3NftPositionManagerContract.abi,
+        address: chainConfig.aerodromeNftPositionManagerContract?.address as `0x${string}`,
+        abi: chainConfig.aerodromeNftPositionManagerContract?.abi as Abi,
         functionName: 'ownerOf',
         args: [params.tokenId],
       },
       {
-        address: chainConfig.v3NftPositionManagerContract.address as `0x${string}`,
-        abi: chainConfig.v3NftPositionManagerContract.abi,
+        address: chainConfig.aerodromeNftPositionManagerContract?.address as `0x${string}`,
+        abi: chainConfig.aerodromeNftPositionManagerContract?.abi as Abi,
         functionName: 'positions',
         args: [params.tokenId],
       },
@@ -61,16 +67,16 @@ export const getV3Position = async (chainConfig: ChainConfig, params: IPositionP
   const positionsCallData = {
     token0: positionsCallResult[2],
     token1: positionsCallResult[3],
-    feeTier: positionsCallResult[4],
+    tickSpacing: positionsCallResult[4],
     tickLower: positionsCallResult[5],
     tickUpper: positionsCallResult[6],
-    liquidity: positionsCallResult[7],
-  } as IV3PositionsCallType;
+    liquidity: positionsCallResult[8],
+  } as IAerodromePositionsCallType;
 
   const LPFeeData: ILPFeeCallResult = (
     await publicClient!.simulateContract({
-      address: chainConfig.v3NftPositionManagerContract.address as `0x${string}`,
-      abi: chainConfig.v3NftPositionManagerContract.abi,
+      address: chainConfig.aerodromeNftPositionManagerContract?.address as `0x${string}`,
+      abi: chainConfig.aerodromeNftPositionManagerContract?.abi as Abi,
       functionName: 'collect',
       args: [
         {
@@ -85,15 +91,15 @@ export const getV3Position = async (chainConfig: ChainConfig, params: IPositionP
   ).result as ILPFeeCallResult;
 
   // fetch pool data
-  const poolAddress = computePoolAddress({
-    factoryAddress: chainConfig.v3FactoryAddress as `0x${string}`,
-    tokenA: new UniswapSDKToken(chainConfig.chain.id, positionsCallData.token0, 18), // only address is needed for computePoolAddress
-    tokenB: new UniswapSDKToken(chainConfig.chain.id, positionsCallData.token1, 18), // only address is needed for computePoolAddress
-    fee: positionsCallData.feeTier,
-  });
+  const poolAddress = (await publicClient?.simulateContract({
+    address: '0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A' as `0x${string}`,
+    abi: AerodromeFactoryABI as Abi,
+    functionName: 'getPool',
+    args: [positionsCallData.token0, positionsCallData.token1, positionsCallData.tickSpacing],
+  })) as { result: `0x${string}` };
   const poolContract = {
-    address: poolAddress as `0x${string}`,
-    abi: PoolContract.abi as Abi,
+    address: poolAddress.result,
+    abi: AerodromePoolContractABI as Abi,
   };
   const poolCallResult = (
     await publicClient?.multicall({
@@ -178,7 +184,7 @@ export const getV3Position = async (chainConfig: ChainConfig, params: IPositionP
       tokenData?.[1]?.[1] as string,
       tokenData?.[1]?.[2] as string
     ),
-    positionsCallData.feeTier,
+    tickSpacingToFee(positionsCallData.tickSpacing),
     poolData.sqrtPriceX96.toString(),
     poolData.liquidity.toString(),
     poolData.tick
@@ -196,6 +202,7 @@ export const getV3Position = async (chainConfig: ChainConfig, params: IPositionP
     ...toSDKPosition({
       chainConfig,
       position,
+      aerodromePoolAddress: poolAddress.result,
     }),
     feeAmount0: LPFeeData[0],
     feeAmount1: LPFeeData[1],

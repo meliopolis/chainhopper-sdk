@@ -110,7 +110,10 @@ export const getV4Position = async (chainConfig: ChainConfig, params: IPositionP
   return {
     owner: owner,
     tokenId: params.tokenId,
-    ...toSDKPosition(chainConfig, position),
+    ...toSDKPosition({
+      chainConfig,
+      position,
+    }),
     feeAmount0: uncollectedFees0,
     feeAmount1: uncollectedFees1,
   };

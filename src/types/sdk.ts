@@ -136,8 +136,13 @@ export type v4Pool = Pool & {
   poolId: `0x${string}`;
 };
 
+export type aerodromePool = Pool & {
+  protocol: Protocol.Aerodrome;
+  poolAddress: `0x${string}`;
+};
+
 export type Position = {
-  pool: v3Pool | v4Pool;
+  pool: v3Pool | v4Pool | aerodromePool;
   tickLower: number;
   tickUpper: number;
   liquidity: bigint;
