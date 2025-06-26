@@ -1,20 +1,18 @@
 import { CurrencyAmount, Fraction } from '@uniswap/sdk-core';
-import { getV4Pool } from './getV4Pool';
-import { DEFAULT_SLIPPAGE_IN_BPS, NATIVE_ETH_ADDRESS } from '../utils/constants';
-import { zeroAddress } from 'viem';
+import { DEFAULT_SLIPPAGE_IN_BPS } from '../utils/constants';
 import {
-  generateMaxV4Position,
-  generateMigrationParams,
+  generateMaxV3Position,
   generateMaxV3orV4PositionWithSwapAllowed,
+  generateMigrationParams,
   calculateFees,
 } from '../utils/helpers';
 import type { InternalSettleMigrationParams, InternalSettleMigrationResult } from '../types/internal';
 import { getSettlerFees } from './getSettlerFees';
-import type { Position } from '@uniswap/v4-sdk';
 import JSBI from 'jsbi';
-import type { UniswapV4Params } from '@/types/sdk';
+import { getAerodromePool } from './getAerodromePool';
+import type { AerodromeParams } from '@/types/sdk';
 
-export const settleUniswapV4Migration = async ({
+export const settleAerodromeMigration = async ({
   sourceChainConfig,
   destinationChainConfig,
   routes,
@@ -23,30 +21,23 @@ export const settleUniswapV4Migration = async ({
   owner,
 }: InternalSettleMigrationParams): Promise<InternalSettleMigrationResult> => {
   const { exactPath } = migration;
-  const destination = migration.destination as UniswapV4Params;
+  const destination = migration.destination as AerodromeParams;
   if (routes.length === 0) throw new Error('No routes found');
   if (routes.length > 2) throw new Error('Invalid number of routes');
 
-  const { tickSpacing, hooks } = destination as UniswapV4Params;
-  const slippageInBps = exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS;
-
-  // now we need fetch the pool on the destination chain, or specify a sqrtPriceX96 to initialize one
-  const pool = await getV4Pool(
+  // fetch the pool on the destination chain
+  const pool = await getAerodromePool(
     destinationChainConfig,
-    {
-      currency0: destination.token0,
-      currency1: destination.token1,
-      fee: destination.fee,
-      tickSpacing: tickSpacing,
-      hooks: hooks,
-    },
+    destination.token0,
+    destination.token1,
+    destination.tickSpacing,
     destination.sqrtPriceX96
   );
 
   // get the settler fees
   const { protocolShareBps, protocolShareOfSenderFeePct } = await getSettlerFees(
     destinationChainConfig,
-    destinationChainConfig.UniswapV4AcrossSettler
+    destinationChainConfig.UniswapV3AcrossSettler
   );
   const senderShareBps = BigInt(externalParams.senderShareBps || 0);
   const settlerFeesInBps = protocolShareBps + senderShareBps;
@@ -60,16 +51,17 @@ export const settleUniswapV4Migration = async ({
       throw new Error('No liquidity for required swap in destination pool');
     }
 
+    const isWethToken0 = destination.token0 === destinationChainConfig.wethAddress;
     const route = routes[0];
     const routeMinAmountOut = route.minOutputAmount;
+    const numIterations = 5; // number of iterations to calculate the max position with swap
 
-    // we need to create two potential LP positions on destination chain
+    // we need to create two potential LP positions on destination chain:
+
     // 1. using the across quote output amount. This is the best position possible
     // 2. using the routeMinAmountOut. This helps us calculate the worst position given slippage
 
-    // TODO need to handle weth (right now only handle native token pools)
     // 1. calculate the max position using the across quote output amount
-
     const { amountIn, protocolFee, senderFee } = calculateFees(
       route.outputAmount,
       senderShareBps,
@@ -78,7 +70,7 @@ export const settleUniswapV4Migration = async ({
     );
 
     let protocolFees, senderFees;
-    if (destination.token0 === destinationChainConfig.wethAddress || destination.token0 === zeroAddress) {
+    if (isWethToken0) {
       protocolFees = { bps: Number(protocolShareBps), amount0: protocolFee, amount1: 0n };
       senderFees = { bps: Number(senderShareBps), amount0: senderFee, amount1: 0n };
     } else {
@@ -86,57 +78,58 @@ export const settleUniswapV4Migration = async ({
       senderFees = { bps: Number(senderShareBps), amount0: 0n, amount1: senderFee };
     }
 
-    const baseTokenAvailable = CurrencyAmount.fromRawAmount(pool.token0, amountIn.toString());
-    const maxOtherTokenAvailable = CurrencyAmount.fromRawAmount(pool.token1, 0);
-    const maxPosition = (await generateMaxV3orV4PositionWithSwapAllowed(
+    const baseTokenAvailable = CurrencyAmount.fromRawAmount(
+      isWethToken0 ? pool.token0 : pool.token1,
+      amountIn.toString()
+    );
+    const otherTokenAvailable = isWethToken0
+      ? CurrencyAmount.fromRawAmount(pool.token1, 0)
+      : CurrencyAmount.fromRawAmount(pool.token0, 0);
+    const maxPositionWithSwap = await generateMaxV3orV4PositionWithSwapAllowed(
       destinationChainConfig,
       pool,
-      baseTokenAvailable,
-      maxOtherTokenAvailable,
+      isWethToken0 ? baseTokenAvailable : otherTokenAvailable,
+      isWethToken0 ? otherTokenAvailable : baseTokenAvailable,
       destination.tickLower,
       destination.tickUpper,
-      new Fraction(slippageInBps, 10000).divide(20),
-      10
-    )) as Position;
+      new Fraction(exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000).divide(20),
+      numIterations
+    );
 
     const originalRatio = Number(pool.sqrtRatioX96.toString());
-    const newRatio = Number(maxPosition.pool.sqrtRatioX96.toString());
+    const newRatio = Number(maxPositionWithSwap.pool.sqrtRatioX96.toString());
     const priceImpactBps = ((newRatio / originalRatio) ** 2 - 1) * 10000;
 
-    if (Math.abs(priceImpactBps) > slippageInBps) {
+    if (Math.abs(priceImpactBps) > (exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS)) {
       throw new Error('Price impact exceeds slippage');
     }
 
+    // 2. now we calculate the max position using the routeMinAmountOut
     const amountInUsingRouteMinAmountOut = routeMinAmountOut * (1n - settlerFeesInBps / 10_000n);
     const baseTokenAvailableUsingRouteMinAmountOut = CurrencyAmount.fromRawAmount(
-      pool.token0,
+      isWethToken0 ? pool.token0 : pool.token1,
       amountInUsingRouteMinAmountOut.toString()
     );
-    const maxOtherTokenAvailableUsingRouteMinAmountOut = CurrencyAmount.fromRawAmount(pool.token1, 0);
-    const maxPositionUsingRouteMinAmountOut = (await generateMaxV3orV4PositionWithSwapAllowed(
+    const otherTokenAvailableUsingRouteMinAmountOut = isWethToken0
+      ? CurrencyAmount.fromRawAmount(pool.token1, 0)
+      : CurrencyAmount.fromRawAmount(pool.token0, 0);
+    const maxPositionWithSwapUsingRouteMinAmountOut = await generateMaxV3orV4PositionWithSwapAllowed(
       destinationChainConfig,
       pool,
-      baseTokenAvailableUsingRouteMinAmountOut,
-      maxOtherTokenAvailableUsingRouteMinAmountOut,
+      isWethToken0 ? baseTokenAvailableUsingRouteMinAmountOut : otherTokenAvailableUsingRouteMinAmountOut,
+      isWethToken0 ? otherTokenAvailableUsingRouteMinAmountOut : baseTokenAvailableUsingRouteMinAmountOut,
       destination.tickLower,
       destination.tickUpper,
-      new Fraction(slippageInBps, 10000).divide(20),
-      10
-    )) as Position;
+      new Fraction(exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000).divide(20),
+      numIterations
+    );
 
     // calculate swapAmountInMilliBps
+    // TODO improve this calculation
     const swapAmountInMilliBps =
-      destination.token0 === destinationChainConfig.wethAddress || destination.token0 === zeroAddress
-        ? maxPosition.amount0.asFraction
-            .divide(baseTokenAvailable.asFraction)
-            .multiply(10_000_000)
-            .add(new Fraction(1, 10_000_000))
-            .toFixed(0)
-        : maxPosition.amount1.asFraction
-            .divide(baseTokenAvailable.asFraction)
-            .multiply(10_000_000)
-            .add(new Fraction(1, 10_000_000))
-            .toFixed(0);
+      destination.token0 === destinationChainConfig.wethAddress
+        ? maxPositionWithSwap.amount0.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).quotient
+        : maxPositionWithSwap.amount1.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).quotient;
 
     return generateMigrationParams({
       externalParams,
@@ -144,22 +137,19 @@ export const settleUniswapV4Migration = async ({
       destinationChainConfig,
       routes,
       migration,
-      maxPosition,
-      maxPositionUsingRouteMinAmountOut,
+      maxPosition: maxPositionWithSwap,
+      maxPositionUsingRouteMinAmountOut: maxPositionWithSwapUsingRouteMinAmountOut,
       owner,
-      senderFees,
       protocolFees,
-      swapAmountInMilliBps: 10_000_000 - Number(swapAmountInMilliBps),
+      senderFees,
+      swapAmountInMilliBps: 10_000_000 - Number(swapAmountInMilliBps.toString()),
     });
   } else {
     // logically has to be (routes.length) === 2 but needs to look exhaustive for ts compiler
     // make sure both tokens are found in routes
-    const token0Address =
-      destination.token0 === NATIVE_ETH_ADDRESS ? destinationChainConfig.wethAddress : destination.token0;
-    const token1Address = destination.token1;
-    if (token0Address != routes[0].outputToken && token0Address != routes[1].outputToken)
+    if (destination.token0 != routes[0].outputToken && destination.token0 != routes[1].outputToken)
       throw new Error('Requested token0 not found in routes');
-    if (token1Address != routes[0].outputToken && token1Address != routes[1].outputToken)
+    if (destination.token1 != routes[0].outputToken && destination.token1 != routes[1].outputToken)
       throw new Error('Requested token1 not found in routes');
 
     const feeInfo = routes.map((route) =>
@@ -172,7 +162,7 @@ export const settleUniswapV4Migration = async ({
     const minToken1Available = routes[1].minOutputAmount * (1n - settlerFeesInBps / 10_000n);
 
     let settleAmountOut0, settleAmountOut1, settleMinAmountOut0, settleMinAmountOut1, senderFees, protocolFees;
-    if (token0Address !== routes[0].outputToken) {
+    if (destination.token0 !== routes[0].outputToken) {
       // the token order must be flipped if the token addresses sort in a different order on the destination chain
       settleAmountOut0 = CurrencyAmount.fromRawAmount(pool.token0, token1Available.toString());
       settleAmountOut1 = CurrencyAmount.fromRawAmount(pool.token1, token0Available.toString());
@@ -205,7 +195,7 @@ export const settleUniswapV4Migration = async ({
       };
     }
 
-    const maxPosition = generateMaxV4Position(
+    const maxPosition = generateMaxV3Position(
       pool,
       settleAmountOut0,
       settleAmountOut1,
@@ -213,7 +203,7 @@ export const settleUniswapV4Migration = async ({
       destination.tickUpper
     );
 
-    const maxPositionUsingSettleMinAmountsOut = generateMaxV4Position(
+    const maxPositionUsingSettleMinAmountsOut = generateMaxV3Position(
       pool,
       settleMinAmountOut0,
       settleMinAmountOut1,
@@ -235,8 +225,8 @@ export const settleUniswapV4Migration = async ({
       maxPosition,
       maxPositionUsingRouteMinAmountOut: maxPositionUsingSettleMinAmountsOut,
       owner,
-      senderFees,
       protocolFees,
+      senderFees,
       expectedRefund,
     });
   }

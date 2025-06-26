@@ -22,7 +22,7 @@ export type MigrationParams = {
   chainId: bigint;
   settler: `0x${string}`;
   tokenRoutes: TokenRoute[];
-  settlementParams: SettlementParams & (UniswapV3MintParams | UniswapV4MintParams);
+  settlementParams: SettlementParams & (UniswapV3MintParams | UniswapV4MintParams | AerodromeMintParams);
 };
 
 export type MigrationData = {
@@ -59,6 +59,18 @@ export type UniswapV4MintParams = {
   fee: number;
   tickSpacing: number;
   hooks: `0x${string}`;
+  sqrtPriceX96: bigint;
+  tickLower: number;
+  tickUpper: number;
+  swapAmountInMilliBps: number;
+  amount0Min: bigint;
+  amount1Min: bigint;
+};
+
+export type AerodromeMintParams = {
+  token0: `0x${string}`;
+  token1: `0x${string}`;
+  tickSpacing: number;
   sqrtPriceX96: bigint;
   tickLower: number;
   tickUpper: number;

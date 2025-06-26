@@ -9,6 +9,9 @@ import type {
   SettlerExecutionParams,
   RequestMigrationParams,
   MigrationFees,
+  UniswapV3Params,
+  UniswapV4Params,
+  AerodromeParams,
 } from '../types/sdk';
 
 import {
@@ -17,6 +20,7 @@ import {
   encodeMintParamsForV4,
   encodeSettlementParams,
   encodeParamsForSettler,
+  encodeMintParamsForAerodrome,
 } from '../actions/encode';
 import { zeroAddress, type Abi } from 'viem';
 
@@ -28,6 +32,12 @@ import { NFTSafeTransferFrom } from '../abis/NFTSafeTransferFrom';
 import type { InternalDestinationWithExactPath, InternalGenerateMigrationParamsInput } from '../types/internal';
 import { toSDKPosition } from './position';
 import { SpokePoolABI } from '../abis';
+import type {
+  SettlementParams,
+  UniswapV3MintParams,
+  UniswapV4MintParams,
+  AerodromeMintParams,
+} from '@/types/contracts';
 
 export const generateSettlerData = (
   sourceChainConfig: ChainConfig,
@@ -56,6 +66,12 @@ export const generateSettlerData = (
       ...externalParams,
       ...destination,
     });
+  } else if (destination.protocol === Protocol.Aerodrome && 'tickSpacing' in destination) {
+    mintParams = encodeMintParamsForAerodrome({
+      ...additionalParams,
+      ...externalParams,
+      ...destination,
+    });
   } else {
     throw new Error('Destination protocol not supported');
   }
@@ -71,9 +87,11 @@ export const generateSettlerData = (
 
   // generate migrationdata to calculate hash
   const migratorAddress =
-    externalParams.sourcePosition.protocol == Protocol.UniswapV3
-      ? sourceChainConfig.UniswapV3AcrossMigrator || zeroAddress
-      : sourceChainConfig.UniswapV4AcrossMigrator || zeroAddress;
+    {
+      [Protocol.UniswapV3]: sourceChainConfig.UniswapV3AcrossMigrator,
+      [Protocol.UniswapV4]: sourceChainConfig.UniswapV4AcrossMigrator,
+      [Protocol.Aerodrome]: sourceChainConfig.AerodromeAcrossMigrator,
+    }[externalParams.sourcePosition.protocol] || zeroAddress;
   // todo fix routesData to account for dualToken
   const routesData = '0x' as `0x${string}`;
   const migrationData = {
@@ -127,23 +145,14 @@ export const generateMigrationParams = async ({
           fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
         }))
       ),
-      settlementParams: {
-        recipient: owner,
-        senderShareBps: externalParams.senderShareBps || 0,
-        senderFeeRecipient: externalParams.senderFeeRecipient || zeroAddress,
-        // mint params
-        token0: destination.token0,
-        token1: destination.token1,
-        fee: destination.fee,
-        sqrtPriceX96: destination.sqrtPriceX96 || 0n,
-        tickLower: destination.tickLower,
-        tickUpper: destination.tickUpper,
-        amount0Min: BigInt(amount0Min.toString()),
-        amount1Min: BigInt(amount1Min.toString()),
-        swapAmountInMilliBps: swapAmountInMilliBps ? swapAmountInMilliBps : 0,
-        ...(destination.protocol === Protocol.UniswapV4 && { tickSpacing: destination.tickSpacing }),
-        ...(destination.protocol === Protocol.UniswapV4 && { hooks: destination.hooks }),
-      },
+      settlementParams: generateSettlementParams(
+        destination,
+        externalParams,
+        owner,
+        amount0Min,
+        amount1Min,
+        swapAmountInMilliBps
+      ),
     },
     {
       sourceChainId: BigInt(externalParams.sourcePosition.chainId),
@@ -483,15 +492,18 @@ export const generateExecutionParams = ({
   tokenId: bigint;
   message: `0x${string}`;
 }): MigratorExecutionParams => {
-  let positionManagerAddress: `0x${string}`;
+  let positionManagerAddress: `0x${string}` | undefined;
   let migratorAddress: `0x${string}` | undefined;
   const sourceChainConfig = chainConfigs[sourceChainId];
   if (protocol === Protocol.UniswapV3) {
     positionManagerAddress = sourceChainConfig.v3NftPositionManagerContract.address;
     migratorAddress = sourceChainConfig.UniswapV3AcrossMigrator;
-  } else {
+  } else if (protocol === Protocol.UniswapV4) {
     positionManagerAddress = sourceChainConfig.v4PositionManagerContract.address;
     migratorAddress = sourceChainConfig.UniswapV4AcrossMigrator;
+  } else if (protocol === Protocol.Aerodrome) {
+    positionManagerAddress = sourceChainConfig.aerodromeNftPositionManagerContract!.address;
+    migratorAddress = sourceChainConfig.AerodromeAcrossMigrator;
   }
   if (!positionManagerAddress || !migratorAddress) {
     throw new Error('Migrator or position manager not found');
@@ -527,6 +539,8 @@ export const generateSettlerExecutionParams = ({
     recipient = destChainConfig.UniswapV3AcrossSettler;
   } else if (destProtocol === Protocol.UniswapV4) {
     recipient = destChainConfig.UniswapV4AcrossSettler;
+  } else if (destProtocol === Protocol.Aerodrome) {
+    recipient = destChainConfig.AerodromeAcrossSettler;
   } else {
     throw new Error('Unable to generate SettlerExecutionParams');
   }
@@ -555,4 +569,48 @@ export const generateSettlerExecutionParams = ({
       BigInt(sourceChainId),
     ],
   }));
+};
+
+export const generateSettlementParams = (
+  destination: UniswapV3Params | UniswapV4Params | AerodromeParams,
+  externalParams: RequestMigrationParams,
+  owner: `0x${string}`,
+  amount0Min: JSBI,
+  amount1Min: JSBI,
+  swapAmountInMilliBps: number | undefined
+): SettlementParams & (UniswapV3MintParams | UniswapV4MintParams | AerodromeMintParams) => {
+  const baseParams = {
+    recipient: owner,
+    senderShareBps: externalParams.senderShareBps || 0,
+    senderFeeRecipient: externalParams.senderFeeRecipient || zeroAddress,
+    token0: destination.token0,
+    token1: destination.token1,
+    sqrtPriceX96: destination.sqrtPriceX96 || 0n,
+    tickLower: destination.tickLower,
+    tickUpper: destination.tickUpper,
+    swapAmountInMilliBps: swapAmountInMilliBps || 0,
+    amount0Min: BigInt(amount0Min.toString()),
+    amount1Min: BigInt(amount1Min.toString()),
+  };
+
+  if (destination.protocol === Protocol.UniswapV3) {
+    return {
+      ...baseParams,
+      fee: destination.fee,
+    } as SettlementParams & UniswapV3MintParams;
+  } else if (destination.protocol === Protocol.UniswapV4) {
+    return {
+      ...baseParams,
+      fee: destination.fee,
+      tickSpacing: destination.tickSpacing,
+      hooks: destination.hooks,
+    } as SettlementParams & UniswapV4MintParams;
+  } else if (destination.protocol === Protocol.Aerodrome) {
+    return {
+      ...baseParams,
+      tickSpacing: destination.tickSpacing,
+    } as SettlementParams & AerodromeMintParams;
+  } else {
+    throw new Error(`Unsupported protocol: ${(destination as { protocol: string }).protocol}`);
+  }
 };

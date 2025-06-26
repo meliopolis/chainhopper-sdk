@@ -70,7 +70,7 @@ export const getAerodromePosition = async (
     tickSpacing: positionsCallResult[4],
     tickLower: positionsCallResult[5],
     tickUpper: positionsCallResult[6],
-    liquidity: positionsCallResult[8],
+    liquidity: positionsCallResult[7],
   } as IAerodromePositionsCallType;
 
   const LPFeeData: ILPFeeCallResult = (
@@ -92,11 +92,12 @@ export const getAerodromePosition = async (
 
   // fetch pool data
   const poolAddress = (await publicClient?.simulateContract({
-    address: '0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A' as `0x${string}`,
+    address: chainConfig.aerodromeFactoryAddress!,
     abi: AerodromeFactoryABI as Abi,
     functionName: 'getPool',
     args: [positionsCallData.token0, positionsCallData.token1, positionsCallData.tickSpacing],
   })) as { result: `0x${string}` };
+
   const poolContract = {
     address: poolAddress.result,
     abi: AerodromePoolContractABI as Abi,
@@ -203,6 +204,7 @@ export const getAerodromePosition = async (
       chainConfig,
       position,
       aerodromePoolAddress: poolAddress.result,
+      aerodromeTickSpacing: positionsCallData.tickSpacing,
     }),
     feeAmount0: LPFeeData[0],
     feeAmount1: LPFeeData[1],

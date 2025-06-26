@@ -55,8 +55,9 @@ export type UniswapV4Params = DestinationParams & {
   tickSpacing: number;
 };
 
-export type AerodromeParams = DestinationParams & {
+export type AerodromeParams = Omit<DestinationParams, 'fee'> & {
   protocol: Protocol.Aerodrome;
+  tickSpacing: number;
 };
 
 // These types describe the parameters for a migration path

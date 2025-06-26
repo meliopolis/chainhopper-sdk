@@ -17,6 +17,7 @@ import { v4PositionManagerAbi } from './abis/v4PositionManager';
 import { stateViewAbi } from './abis/v4StateView';
 import { v4QuoterAbi } from './abis/v4Quoter';
 import { v4DopplerQuoterAbi } from './abis/v4DopplerQuoter';
+import { AerodromeQuoterV2Abi } from './abis/AerodromeQuoter';
 
 type Contract = {
   address: `0x${string}`;
@@ -236,7 +237,7 @@ export const chainConfigs: Record<number, ChainConfig> = {
     aerodromeQuoterContract: {
       // TODO: update
       address: '0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0',
-      abi: QuoterV2.abi as Abi,
+      abi: AerodromeQuoterV2Abi as Abi,
     },
     spokePoolAddress: '0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64',
     multicallAddress,
@@ -248,7 +249,7 @@ export const chainConfigs: Record<number, ChainConfig> = {
     UniswapV3AcrossSettler: '0xb7c7aed64dce174ded2bcbc5b2fdda1f47b9d983',
     UniswapV4AcrossMigrator: '0xffbf8fa63dec14f433ce771a054334c09347f098',
     UniswapV4AcrossSettler: '0x805713811d19f1e4da5ab82d80d50090a01e6f27',
-    AerodromeAcrossMigrator: '0x193bdd94ac22e9bbce90da70790741694cb0fddd', // TODO: update
+    AerodromeAcrossMigrator: '0xa0D73D1a3F583e3e7A306add84dA86fD87609FCf', // TODO: update
     AerodromeAcrossSettler: '0xb7c7aed64dce174ded2bcbc5b2fdda1f47b9d983', // TODO: update
   },
   42161: {

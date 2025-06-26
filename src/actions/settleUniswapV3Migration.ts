@@ -10,6 +10,7 @@ import {
 import type { InternalSettleMigrationParams, InternalSettleMigrationResult } from '../types/internal';
 import { getSettlerFees } from './getSettlerFees';
 import JSBI from 'jsbi';
+import type { UniswapV3Params } from '@/types/sdk';
 
 export const settleUniswapV3Migration = async ({
   sourceChainConfig,
@@ -19,7 +20,8 @@ export const settleUniswapV3Migration = async ({
   externalParams,
   owner,
 }: InternalSettleMigrationParams): Promise<InternalSettleMigrationResult> => {
-  const { destination, exactPath } = migration;
+  const { exactPath } = migration;
+  const destination = migration.destination as UniswapV3Params;
   if (routes.length === 0) throw new Error('No routes found');
   if (routes.length > 2) throw new Error('Invalid number of routes');
 

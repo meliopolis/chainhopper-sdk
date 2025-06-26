@@ -1,6 +1,13 @@
-import { SettlementParamsAbi, V4MintParamsAbi, V3MintParamsAbi, ParamsForSettlerAbi } from '../abis/SettlementParams';
+import {
+  SettlementParamsAbi,
+  V4MintParamsAbi,
+  V3MintParamsAbi,
+  ParamsForSettlerAbi,
+  AerodromeMintParamsAbi,
+} from '../abis/SettlementParams';
 import { MigrationParamsAbi, RouteAbi } from '../abis/MigrationParams';
 import type {
+  AerodromeMintParams,
   MigrationData,
   MigrationParams,
   SettlementParams,
@@ -48,6 +55,22 @@ export const encodeMintParamsForV4 = (params: UniswapV4MintParams): `0x${string}
       fee: params.fee,
       tickSpacing: params.tickSpacing,
       hooks: params.hooks,
+      sqrtPriceX96: params.sqrtPriceX96,
+      tickLower: params.tickLower,
+      tickUpper: params.tickUpper,
+      amount0Min: params.amount0Min,
+      amount1Min: params.amount1Min,
+      swapAmountInMilliBps: params.swapAmountInMilliBps,
+    },
+  ]);
+};
+
+export const encodeMintParamsForAerodrome = (params: AerodromeMintParams): `0x${string}` => {
+  return encodeAbiParameters(AerodromeMintParamsAbi, [
+    {
+      token0: params.token0,
+      token1: params.token1,
+      tickSpacing: params.tickSpacing,
       sqrtPriceX96: params.sqrtPriceX96,
       tickLower: params.tickLower,
       tickUpper: params.tickUpper,

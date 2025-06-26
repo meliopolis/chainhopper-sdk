@@ -36,11 +36,12 @@ import { positionValue } from './utils/position';
 import { withdraw } from './actions/withdraw';
 import { getSettlementCacheEntry } from './actions/getSettlementCacheEntry';
 import { getAerodromePosition } from './actions/getAerodromePosition';
+import { startAerodromeMigration } from './actions/startAerodromeMigration';
 
 const startFns = {
   [Protocol.UniswapV3]: startUniswapV3Migration,
   [Protocol.UniswapV4]: startUniswapV4Migration,
-  [Protocol.Aerodrome]: startUniswapV3Migration, // TODO: implement Aerodrome migration
+  [Protocol.Aerodrome]: startAerodromeMigration,
 };
 
 const settleFns = {
