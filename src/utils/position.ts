@@ -3,6 +3,7 @@ import { Pool as UniswapSDKV4Pool, type Position as V4Position } from '@uniswap/
 import type { Position, PathWithPosition, v3Pool, v4Pool, aerodromePool } from '../types/sdk';
 import { NATIVE_ETH_ADDRESS, Protocol } from './constants';
 import type { ChainConfig } from '../chains';
+import { tickSpacingToFee } from './aerodrome';
 
 const Q192 = 2n ** 192n;
 
@@ -32,11 +33,17 @@ export const positionValue = (
   }
 };
 
-export const toSDKPool = (
-  chainConfig: ChainConfig,
-  pool: UniswapSDKV3Pool | UniswapSDKV4Pool,
-  aerodromePoolAddress?: `0x${string}` // also implies this is aerodrome pool
-): v3Pool | v4Pool | aerodromePool => {
+export const toSDKPool = ({
+  chainConfig,
+  pool,
+  aerodromePoolAddress, // also implies this is aerodrome pool
+  aerodromeTickSpacing, // needed for aerodrome pool
+}: {
+  chainConfig: ChainConfig;
+  pool: UniswapSDKV3Pool | UniswapSDKV4Pool;
+  aerodromePoolAddress?: `0x${string}`;
+  aerodromeTickSpacing?: number;
+}): v3Pool | v4Pool | aerodromePool => {
   const isV4Pool = 'hooks' in pool;
   const poolAddress =
     aerodromePoolAddress ||
@@ -70,11 +77,11 @@ export const toSDKPool = (
       symbol: pool.token1.symbol,
       name: pool.token1.name,
     },
-    fee: pool.fee,
+    fee: aerodromeTickSpacing ? tickSpacingToFee(aerodromeTickSpacing) : pool.fee,
     sqrtPriceX96: BigInt(pool.sqrtRatioX96.toString()),
     liquidity: BigInt(pool.liquidity.toString()),
     tick: pool.tickCurrent,
-    tickSpacing: pool.tickSpacing,
+    tickSpacing: aerodromeTickSpacing || pool.tickSpacing,
     ...(isV4Pool && { hooks: pool.hooks }),
   };
   if (isV4Pool) {
@@ -102,19 +109,20 @@ export const toSDKPosition = ({
   chainConfig,
   position,
   aerodromePoolAddress,
+  aerodromeTickSpacing,
   slippagePosition,
   expectedRefund,
 }: {
   chainConfig: ChainConfig;
   position: V3Position | V4Position;
   aerodromePoolAddress?: `0x${string}`;
+  aerodromeTickSpacing?: number;
   slippagePosition?: V3Position | V4Position;
   expectedRefund?: { amount0Refund: bigint; amount1Refund: bigint };
-}
-): Position => {
+}): Position => {
   const { pool, tickLower, tickUpper, liquidity, amount0, amount1 } = position;
   return {
-    pool: toSDKPool(chainConfig, pool, aerodromePoolAddress),
+    pool: toSDKPool({ chainConfig, pool, aerodromePoolAddress, aerodromeTickSpacing }),
     tickLower,
     tickUpper,
     liquidity: BigInt(liquidity.toString()),
