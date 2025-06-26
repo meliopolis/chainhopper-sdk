@@ -1,3 +1,6 @@
+export * from './AerodromeFactory';
+export * from './AerodromePoolContract';
+export * from './AerodromeQuoter';
 export * from './IMigrator';
 export * from './ISettler';
 export * from './MigrationData';

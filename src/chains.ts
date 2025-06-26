@@ -17,6 +17,7 @@ import { v4PositionManagerAbi } from './abis/v4PositionManager';
 import { stateViewAbi } from './abis/v4StateView';
 import { v4QuoterAbi } from './abis/v4Quoter';
 import { v4DopplerQuoterAbi } from './abis/v4DopplerQuoter';
+import { AerodromeQuoterV2Abi } from './abis/AerodromeQuoter';
 
 type Contract = {
   address: `0x${string}`;
@@ -41,6 +42,11 @@ export type ChainConfig = {
   v4QuoterContract: Contract;
   v4DopplerQuoterContract?: Contract;
 
+  // aerodrome
+  aerodromeFactoryAddress?: `0x${string}`;
+  aerodromeNftPositionManagerContract?: Contract;
+  aerodromeQuoterContract?: Contract;
+
   // other
   multicallAddress: `0x${string}`;
   universalRouterAddress: `0x${string}`;
@@ -58,6 +64,8 @@ export type ChainConfig = {
   UniswapV3AcrossSettler?: `0x${string}`;
   UniswapV4AcrossMigrator?: `0x${string}`;
   UniswapV4AcrossSettler?: `0x${string}`;
+  AerodromeAcrossMigrator?: `0x${string}`;
+  AerodromeAcrossSettler?: `0x${string}`;
 };
 
 const multicallAddress = '0xcA11bde05977b3631167028862bE2a173976CA11';
@@ -220,6 +228,17 @@ export const chainConfigs: Record<number, ChainConfig> = {
       address: '0x9fb6E4Cd3E52Ae6BBcedF32D6efFE8c26F894903',
       abi: v4DopplerQuoterAbi,
     },
+    aerodromeFactoryAddress: '0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A',
+    // v3
+    aerodromeNftPositionManagerContract: {
+      address: '0x827922686190790b37229fd06084350E74485b72',
+      abi: NonfungiblePositionManager.abi as Abi,
+    },
+    aerodromeQuoterContract: {
+      // TODO: update
+      address: '0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0',
+      abi: AerodromeQuoterV2Abi as Abi,
+    },
     spokePoolAddress: '0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64',
     multicallAddress,
     universalRouterAddress: '0x6ff5693b99212da76ad316178a184ab56d299b43',
@@ -230,6 +249,8 @@ export const chainConfigs: Record<number, ChainConfig> = {
     UniswapV3AcrossSettler: '0xb7c7aed64dce174ded2bcbc5b2fdda1f47b9d983',
     UniswapV4AcrossMigrator: '0xffbf8fa63dec14f433ce771a054334c09347f098',
     UniswapV4AcrossSettler: '0x805713811d19f1e4da5ab82d80d50090a01e6f27',
+    AerodromeAcrossMigrator: '0xa0D73D1a3F583e3e7A306add84dA86fD87609FCf',
+    AerodromeAcrossSettler: '0x5715E048340A3f62E44Ae38673733d6999D354Bc',
   },
   42161: {
     chainId: 42161,
