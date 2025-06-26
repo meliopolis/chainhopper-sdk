@@ -249,8 +249,8 @@ export const chainConfigs: Record<number, ChainConfig> = {
     UniswapV3AcrossSettler: '0xb7c7aed64dce174ded2bcbc5b2fdda1f47b9d983',
     UniswapV4AcrossMigrator: '0xffbf8fa63dec14f433ce771a054334c09347f098',
     UniswapV4AcrossSettler: '0x805713811d19f1e4da5ab82d80d50090a01e6f27',
-    AerodromeAcrossMigrator: '0xa0D73D1a3F583e3e7A306add84dA86fD87609FCf', // TODO: update
-    AerodromeAcrossSettler: '0xb7c7aed64dce174ded2bcbc5b2fdda1f47b9d983', // TODO: update
+    AerodromeAcrossMigrator: '0xa0D73D1a3F583e3e7A306add84dA86fD87609FCf',
+    AerodromeAcrossSettler: '0x5715E048340A3f62E44Ae38673733d6999D354Bc',
   },
   42161: {
     chainId: 42161,

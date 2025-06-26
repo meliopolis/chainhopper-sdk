@@ -6,8 +6,8 @@ import type { Token } from '@uniswap/sdk-core';
 import JSBI from 'jsbi';
 import type { Abi, MulticallReturnType } from 'viem';
 import { AerodromeFactoryABI } from '../abis/AerodromeFactory';
-import { AerodromePoolContractABI } from '@/abis/AerodromePoolContract';
-import { tickSpacingToFee } from '@/utils/aerodrome';
+import { AerodromePoolContractABI } from '../abis/AerodromePoolContract';
+import { tickSpacingToFee } from '../utils/aerodrome';
 
 type IPoolCallResult = [[bigint, number, number, number, number, number, boolean], bigint];
 

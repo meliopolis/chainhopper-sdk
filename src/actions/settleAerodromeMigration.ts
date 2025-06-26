@@ -37,7 +37,7 @@ export const settleAerodromeMigration = async ({
   // get the settler fees
   const { protocolShareBps, protocolShareOfSenderFeePct } = await getSettlerFees(
     destinationChainConfig,
-    destinationChainConfig.UniswapV3AcrossSettler
+    destinationChainConfig.AerodromeAcrossSettler!
   );
   const senderShareBps = BigInt(externalParams.senderShareBps || 0);
   const settlerFeesInBps = protocolShareBps + senderShareBps;

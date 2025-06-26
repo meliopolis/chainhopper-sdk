@@ -21,7 +21,7 @@ import type {
   CheckMigrationIdResponse,
   AerodromeParams,
 } from './types';
-import { startUniswapV3Migration, settleUniswapV3Migration } from './actions';
+import { startUniswapV3Migration, settleUniswapV3Migration, settleAerodromeMigration } from './actions';
 import { getV4Position } from './actions/getV4Position';
 import { startUniswapV4Migration } from './actions/startUniswapV4Migration';
 import { settleUniswapV4Migration } from './actions/settleUniswapV4Migration';
@@ -48,17 +48,17 @@ const settleFns = {
   [Protocol.UniswapV3]: {
     [Protocol.UniswapV3]: settleUniswapV3Migration,
     [Protocol.UniswapV4]: settleUniswapV4Migration,
-    [Protocol.Aerodrome]: settleUniswapV3Migration, // TODO: implement Aerodrome migration
+    [Protocol.Aerodrome]: settleAerodromeMigration,
   },
   [Protocol.UniswapV4]: {
     [Protocol.UniswapV3]: settleUniswapV3Migration,
     [Protocol.UniswapV4]: settleUniswapV4Migration,
-    [Protocol.Aerodrome]: settleUniswapV3Migration, // TODO: implement Aerodrome migration
+    [Protocol.Aerodrome]: settleAerodromeMigration,
   },
   [Protocol.Aerodrome]: {
     [Protocol.UniswapV3]: settleUniswapV3Migration,
     [Protocol.UniswapV4]: settleUniswapV4Migration,
-    [Protocol.Aerodrome]: settleUniswapV3Migration, // TODO: implement Aerodrome migration
+    [Protocol.Aerodrome]: settleAerodromeMigration,
   },
 };
 
