@@ -5,12 +5,14 @@ import {
   MigrationMethod,
   NATIVE_ETH_ADDRESS,
 } from '../utils/constants';
-import { generateSettlerData } from '../utils/helpers';
+import { generateSettlerData, resolveSettler } from '../utils/helpers';
 import { getV4Quote } from './getV4Quote';
 import type { InternalStartMigrationParams, InternalStartMigrationResult } from '../types/internal';
 import { getAcrossQuote } from '../lib/acrossClient';
 import type { v4Pool } from '../types/sdk';
 import type { PoolKey } from '@uniswap/v4-sdk';
+import { getV4Pool } from './getV4Pool';
+import { CurrencyAmount, Price } from '@uniswap/sdk-core';
 
 export const startUniswapV4Migration = async ({
   sourceChainConfig,
@@ -21,7 +23,6 @@ export const startUniswapV4Migration = async ({
 }: InternalStartMigrationParams): Promise<InternalStartMigrationResult> => {
   const { destination, exactPath } = migration;
   const { pool } = positionWithFees as { pool: v4Pool };
-
   // find ETH/WETH in position
   const isToken0EthOrWeth =
     pool.token0.address === NATIVE_ETH_ADDRESS || pool.token0.address === sourceChainConfig.wethAddress;
@@ -47,6 +48,9 @@ export const startUniswapV4Migration = async ({
       hooks: pool.hooks,
     } as PoolKey;
 
+    const uniswapSDKPool = await getV4Pool(sourceChainConfig, poolKey);
+    const preSwapPrice = isToken0EthOrWeth ? uniswapSDKPool.currency1Price : uniswapSDKPool.currency0Price;
+
     if (exactAmount > 0n) {
       const quote = await getV4Quote(
         sourceChainConfig,
@@ -59,7 +63,23 @@ export const startUniswapV4Migration = async ({
       amountOut = quote;
     }
 
-    // TODO check that quote price is not much worse than current price
+    const execPrice = new Price({
+      baseAmount: CurrencyAmount.fromRawAmount(
+        isToken0EthOrWeth ? uniswapSDKPool.currency1 : uniswapSDKPool.currency0,
+        exactAmount.toString()
+      ),
+      quoteAmount: CurrencyAmount.fromRawAmount(
+        isToken0EthOrWeth ? uniswapSDKPool.currency0 : uniswapSDKPool.currency1,
+        amountOut.toString()
+      ),
+    });
+
+    const sourceSlippageBps = Number(execPrice.divide(preSwapPrice).subtract(1).multiply(10_000).toSignificant(18));
+
+    if (-1 * sourceSlippageBps > exactPath.slippageInBps) {
+      throw new Error('Price impact exceeds slippage');
+    }
+
     const totalWethAvailable = isToken0EthOrWeth ? totalToken0 + amountOut : totalToken1 + amountOut;
 
     if (exactPath.bridgeType === BridgeType.Across) {
@@ -96,6 +116,8 @@ export const startUniswapV4Migration = async ({
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
             exclusiveRelayer: acrossQuote.deposit.exclusiveRelayer,
             exclusivityDeadline: acrossQuote.deposit.exclusivityDeadline,
+            destinationSettler: resolveSettler(destination.protocol, destinationChainConfig),
+            sourceSlippageBps,
           },
         ],
       };
@@ -158,6 +180,7 @@ export const startUniswapV4Migration = async ({
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
             exclusiveRelayer: acrossQuote0.deposit.exclusiveRelayer,
             exclusivityDeadline: acrossQuote0.deposit.exclusivityDeadline,
+            destinationSettler: resolveSettler(destination.protocol, destinationChainConfig),
           },
           {
             inputToken: acrossQuote1.deposit.inputToken,
@@ -172,6 +195,7 @@ export const startUniswapV4Migration = async ({
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
             exclusiveRelayer: acrossQuote1.deposit.exclusiveRelayer,
             exclusivityDeadline: acrossQuote1.deposit.exclusivityDeadline + 10, // giving extra time for second quote to mint position
+            destinationSettler: resolveSettler(destination.protocol, destinationChainConfig),
           },
         ],
       };

@@ -333,20 +333,27 @@ export class ChainHopperClient {
 
     const settle = settleFns[sourceProtocol][destProtocol];
 
-    const { destPosition, migratorMessage, settlerMessage, swapAmountInMilliBps, senderFees, protocolFees } =
-      await settle({
-        sourceChainConfig: this.chainConfigs[sourceChainId],
-        destinationChainConfig: this.chainConfigs[destChainId],
-        routes,
-        migration,
-        externalParams: params,
-        owner: sourcePosition.owner,
-      });
+    const {
+      destPosition,
+      migratorMessage,
+      settlerMessage,
+      swapAmountInMilliBps,
+      destinationSlippageBps,
+      senderFees,
+      protocolFees,
+    } = await settle({
+      sourceChainConfig: this.chainConfigs[sourceChainId],
+      destinationChainConfig: this.chainConfigs[destChainId],
+      routes,
+      migration,
+      externalParams: params,
+      owner: sourcePosition.owner,
+    });
 
     const baseReturn = {
       position: destPosition,
       exactPath,
-      routes,
+      routes: { ...routes, destinationSlippageBps },
       executionParams: generateExecutionParams({
         sourceChainId,
         owner: sourcePosition.owner,

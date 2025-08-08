@@ -46,6 +46,7 @@ export type InternalSettleMigrationResult = {
   migratorMessage: `0x${string}`;
   settlerMessage: `0x${string}`;
   swapAmountInMilliBps?: number;
+  destinationSlippageBps?: number;
   senderFees: MigrationFees;
   protocolFees: MigrationFees;
 };
@@ -60,6 +61,7 @@ export type InternalGenerateMigrationParamsInput = {
   maxPositionUsingRouteMinAmountOut: V3Position | V4Position;
   owner: `0x${string}`;
   swapAmountInMilliBps?: number;
+  destinationSlippageBps?: number;
   expectedRefund?: { amount0Refund: bigint; amount1Refund: bigint };
   senderFees: MigrationFees;
   protocolFees: MigrationFees;

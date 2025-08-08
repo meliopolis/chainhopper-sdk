@@ -10,7 +10,6 @@ import {
 } from '../utils/helpers';
 import type { InternalSettleMigrationParams, InternalSettleMigrationResult } from '../types/internal';
 import { getSettlerFees } from './getSettlerFees';
-import type { Position } from '@uniswap/v4-sdk';
 import JSBI from 'jsbi';
 import type { UniswapV4Params } from '@/types/sdk';
 
@@ -27,7 +26,7 @@ export const settleUniswapV4Migration = async ({
   if (routes.length > 2) throw new Error('Invalid number of routes');
 
   const { tickSpacing, hooks } = destination as UniswapV4Params;
-  const slippageInBps = exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS;
+  const slippageLimit = exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS;
 
   // now we need fetch the pool on the destination chain, or specify a sqrtPriceX96 to initialize one
   const pool = await getV4Pool(
@@ -87,22 +86,19 @@ export const settleUniswapV4Migration = async ({
 
     const baseTokenAvailable = CurrencyAmount.fromRawAmount(pool.token0, amountIn.toString());
     const maxOtherTokenAvailable = CurrencyAmount.fromRawAmount(pool.token1, 0);
-    const maxPosition = (await generateMaxV3orV4PositionWithSwapAllowed(
-      destinationChainConfig,
-      pool,
-      baseTokenAvailable,
-      maxOtherTokenAvailable,
-      destination.tickLower,
-      destination.tickUpper,
-      new Fraction(slippageInBps, 10000).divide(20),
-      10
-    )) as Position;
+    const { position: maxPosition, slippageBps: destinationSlippageBps } =
+      await generateMaxV3orV4PositionWithSwapAllowed(
+        destinationChainConfig,
+        pool,
+        baseTokenAvailable,
+        maxOtherTokenAvailable,
+        destination.tickLower,
+        destination.tickUpper,
+        new Fraction(slippageLimit, 10000).divide(20),
+        10
+      );
 
-    const originalRatio = Number(pool.sqrtRatioX96.toString());
-    const newRatio = Number(maxPosition.pool.sqrtRatioX96.toString());
-    const priceImpactBps = ((newRatio / originalRatio) ** 2 - 1) * 10000;
-
-    if (Math.abs(priceImpactBps) > slippageInBps) {
+    if (-1 * destinationSlippageBps > slippageLimit) {
       throw new Error('Price impact exceeds slippage');
     }
 
@@ -112,16 +108,16 @@ export const settleUniswapV4Migration = async ({
       amountInUsingRouteMinAmountOut.toString()
     );
     const maxOtherTokenAvailableUsingRouteMinAmountOut = CurrencyAmount.fromRawAmount(pool.token1, 0);
-    const maxPositionUsingRouteMinAmountOut = (await generateMaxV3orV4PositionWithSwapAllowed(
+    const { position: maxPositionUsingRouteMinAmountOut } = await generateMaxV3orV4PositionWithSwapAllowed(
       destinationChainConfig,
       pool,
       baseTokenAvailableUsingRouteMinAmountOut,
       maxOtherTokenAvailableUsingRouteMinAmountOut,
       destination.tickLower,
       destination.tickUpper,
-      new Fraction(slippageInBps, 10000).divide(20),
+      new Fraction(slippageLimit, 10000).divide(20),
       10
-    )) as Position;
+    );
 
     // calculate swapAmountInMilliBps
     const swapAmountInMilliBps =
@@ -149,6 +145,7 @@ export const settleUniswapV4Migration = async ({
       senderFees,
       protocolFees,
       swapAmountInMilliBps: 10_000_000 - Number(swapAmountInMilliBps),
+      destinationSlippageBps,
     });
   } else {
     // logically has to be (routes.length) === 2 but needs to look exhaustive for ts compiler

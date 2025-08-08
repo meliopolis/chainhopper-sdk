@@ -83,22 +83,19 @@ export const settleUniswapV3Migration = async ({
     const otherTokenAvailable = isWethToken0
       ? CurrencyAmount.fromRawAmount(pool.token1, 0)
       : CurrencyAmount.fromRawAmount(pool.token0, 0);
-    const maxPositionWithSwap = await generateMaxV3orV4PositionWithSwapAllowed(
-      destinationChainConfig,
-      pool,
-      isWethToken0 ? baseTokenAvailable : otherTokenAvailable,
-      isWethToken0 ? otherTokenAvailable : baseTokenAvailable,
-      destination.tickLower,
-      destination.tickUpper,
-      new Fraction(exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000).divide(20),
-      numIterations
-    );
+    const { position: maxPositionWithSwap, slippageBps: destinationSlippageBps } =
+      await generateMaxV3orV4PositionWithSwapAllowed(
+        destinationChainConfig,
+        pool,
+        isWethToken0 ? baseTokenAvailable : otherTokenAvailable,
+        isWethToken0 ? otherTokenAvailable : baseTokenAvailable,
+        destination.tickLower,
+        destination.tickUpper,
+        new Fraction(exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000).divide(20),
+        numIterations
+      );
 
-    const originalRatio = Number(pool.sqrtRatioX96.toString());
-    const newRatio = Number(maxPositionWithSwap.pool.sqrtRatioX96.toString());
-    const priceImpactBps = ((newRatio / originalRatio) ** 2 - 1) * 10000;
-
-    if (Math.abs(priceImpactBps) > (exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS)) {
+    if (-1 * destinationSlippageBps > (exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS)) {
       throw new Error('Price impact exceeds slippage');
     }
 
@@ -111,7 +108,7 @@ export const settleUniswapV3Migration = async ({
     const otherTokenAvailableUsingRouteMinAmountOut = isWethToken0
       ? CurrencyAmount.fromRawAmount(pool.token1, 0)
       : CurrencyAmount.fromRawAmount(pool.token0, 0);
-    const maxPositionWithSwapUsingRouteMinAmountOut = await generateMaxV3orV4PositionWithSwapAllowed(
+    const { position: maxPositionWithSwapUsingRouteMinAmountOut } = await generateMaxV3orV4PositionWithSwapAllowed(
       destinationChainConfig,
       pool,
       isWethToken0 ? baseTokenAvailableUsingRouteMinAmountOut : otherTokenAvailableUsingRouteMinAmountOut,
@@ -141,6 +138,7 @@ export const settleUniswapV3Migration = async ({
       protocolFees,
       senderFees,
       swapAmountInMilliBps: 10_000_000 - Number(swapAmountInMilliBps.toString()),
+      destinationSlippageBps,
     });
   } else {
     // logically has to be (routes.length) === 2 but needs to look exhaustive for ts compiler
