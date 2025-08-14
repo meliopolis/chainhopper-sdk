@@ -287,7 +287,7 @@ describe('invalid migrations', () => {
       },
       exactPath: {
         bridgeType: BridgeType.Across,
-        migrationMethod: MigrationMethod.SingleToken,
+        migrationMethod: MigrationMethod.DualToken,
         slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };

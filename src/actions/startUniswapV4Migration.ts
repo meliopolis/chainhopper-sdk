@@ -63,7 +63,7 @@ export const startUniswapV4Migration = async ({
       amountOut = quote;
     }
 
-    const execPrice = new Price({
+    const execPrice = amountOut > 0 ? new Price({
       baseAmount: CurrencyAmount.fromRawAmount(
         isToken0EthOrWeth ? uniswapSDKPool.currency1 : uniswapSDKPool.currency0,
         exactAmount.toString()
@@ -72,11 +72,11 @@ export const startUniswapV4Migration = async ({
         isToken0EthOrWeth ? uniswapSDKPool.currency0 : uniswapSDKPool.currency1,
         amountOut.toString()
       ),
-    });
+    }) : undefined;
 
-    const sourceSlippageBps = Number(execPrice.divide(preSwapPrice).subtract(1).multiply(10_000).toSignificant(18));
+    const sourceSlippageBps = execPrice ? Number(execPrice.divide(preSwapPrice).subtract(1).multiply(10_000).toSignificant(18)) : undefined;
 
-    if (-1 * sourceSlippageBps > exactPath.slippageInBps) {
+    if (sourceSlippageBps && (-1 * sourceSlippageBps > exactPath.slippageInBps)) {
       throw new Error('Price impact exceeds slippage');
     }
 

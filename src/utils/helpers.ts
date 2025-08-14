@@ -9,6 +9,7 @@ import type {
   SettlerExecutionParams,
   RequestMigrationParams,
   MigrationFees,
+  v3Pool,
 } from '../types/sdk';
 
 import {
@@ -26,7 +27,7 @@ import { chainConfigs, type ChainConfig } from '../chains';
 import { getV4CombinedQuote } from '../actions/getV4CombinedQuote';
 import { NFTSafeTransferFrom } from '../abis/NFTSafeTransferFrom';
 import type { InternalDestinationWithExactPath, InternalGenerateMigrationParamsInput } from '../types/internal';
-import { toSDKPosition } from './position';
+import { toSDKPool, toSDKPosition } from './position';
 import { SpokePoolABI } from '../abis';
 
 export const generateSettlerData = (
@@ -352,7 +353,7 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
         chainConfig,
         inputBalance.currency.wrapped,
         outputBalance.currency.wrapped,
-        pool.fee,
+        toSDKPool(chainConfig, pool) as v3Pool,
         BigInt(currencyAmountToSwap.quotient.toString()),
         0n
       );

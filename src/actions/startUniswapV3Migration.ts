@@ -10,6 +10,7 @@ import type { InternalStartMigrationParams, InternalStartMigrationResult } from 
 import { generateSettlerData, resolveSettler } from '../utils/helpers';
 import { getAcrossQuote } from '../lib/acrossClient';
 import { Token as UniswapSDKToken } from '@uniswap/sdk-core';
+import type { v3Pool } from '@/types';
 
 export const startUniswapV3Migration = async ({
   sourceChainConfig,
@@ -56,7 +57,7 @@ export const startUniswapV3Migration = async ({
         sourceChainConfig,
         isWethToken0 ? uniswapSDKToken1 : uniswapSDKToken0,
         isWethToken0 ? uniswapSDKToken0 : uniswapSDKToken1,
-        positionWithFees.pool.fee,
+        positionWithFees.pool as v3Pool,
         amountIn,
         0n
       );
