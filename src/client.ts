@@ -201,7 +201,6 @@ export class ChainHopperClient {
       ...rest,
       migrations: [{ destination, path: exactPath }],
     });
-    console.log(sourcePosition);
     if (unavailableMigrations.length > 0) {
       throw new Error(`Specified destination not available:\n  - ${unavailableMigrations[0].reasons.join('\n  - ')}`);
     }

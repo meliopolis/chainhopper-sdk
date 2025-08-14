@@ -801,8 +801,8 @@ describe('in-range v3→ migrations', () => {
               tickUpper,
             })
           ),
-          feeAmount0: 100000000000n,
-          feeAmount1: 20000000n,
+          feeAmount0: 10000000n,
+          feeAmount1: 2000000000000000n,
         };
       }),
     }));
@@ -846,7 +846,7 @@ describe('in-range v3→ migrations', () => {
 
     await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
       getV3Position: mock(() => {
-        const tickCurrent = -199000;
+        const tickCurrent = -191000;
         const liquidity = 10_000_000_000n;
         const pool = new V3Pool(
           new Token(sourceChainId, token0, 18, 'WETH'),
@@ -862,13 +862,13 @@ describe('in-range v3→ migrations', () => {
             client.chainConfigs[sourceChainId],
             new V3Position({
               pool,
-              liquidity: 10_000_000_000,
+              liquidity: '1000000000000000000000',
               tickLower,
               tickUpper,
             })
           ),
-          feeAmount0: 1000000n,
-          feeAmount1: 2000000n,
+          feeAmount0: 100000000n,
+          feeAmount1: 0n,
         };
       }),
     }));
@@ -923,17 +923,18 @@ describe('in-range v3→ migrations', () => {
         );
         return {
           owner: ownerAddress,
+          tokenId: 963499n,
           ...toSDKPosition(
             client.chainConfigs[sourceChainId],
             new V3Position({
               pool,
-              liquidity: 10_000_000_000,
+              liquidity: 10_000_000,
               tickLower,
               tickUpper,
             })
           ),
           feeAmount0: 1000000n,
-          feeAmount1: 2000000n,
+          feeAmount1: 200000000000000n,
         };
       }),
     }));
@@ -986,11 +987,12 @@ describe('in-range v3→ migrations', () => {
         );
         return {
           owner: ownerAddress,
+          tokenId: 963499n,
           ...toSDKPosition(
             client.chainConfigs[sourceChainId],
             new V3Position({
               pool,
-              liquidity: 10_000_000_000,
+              liquidity: 10000,
               tickLower,
               tickUpper,
             })
@@ -1047,17 +1049,18 @@ describe('in-range v3→ migrations', () => {
         );
         return {
           owner: ownerAddress,
+          tokenId: 963499n,
           ...toSDKPosition(
             client.chainConfigs[sourceChainId],
             new V3Position({
               pool,
-              liquidity: 10_000_000_000,
+              liquidity: 1000000,
               tickLower,
               tickUpper,
             })
           ),
           feeAmount0: 1000000n,
-          feeAmount1: 2000000n,
+          feeAmount1: 200000000000000n,
         };
       }),
     }));
@@ -1065,7 +1068,7 @@ describe('in-range v3→ migrations', () => {
     const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: v3ChainId,
-        tokenId: v3TokenId,
+        tokenId: 963499n,
         protocol: Protocol.UniswapV3,
       },
       destination: {
@@ -1118,8 +1121,8 @@ describe('in-range v3→ migrations', () => {
               tickUpper,
             })
           ),
-          feeAmount0: 1000000n,
-          feeAmount1: 2000000n,
+          feeAmount0: 10000000000000000n,
+          feeAmount1: 20000000000n,
         };
       }),
     }));
@@ -1392,14 +1395,13 @@ describe('out of range v3→ migrations', () => {
 
         await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
           getV3Position: mock(() => {
-            const tickCurrent = -300000; // Current price below range, so position has only token1
-            const liquidity = 0n; // Out of range position has no active liquidity
+            const tickCurrent = -300000;
             const pool = new V3Pool(
               new Token(sourceChainId, token0, 18, 'WETH'),
               new Token(sourceChainId, token1, 6, 'USDC'),
               fee,
               BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
-              '1000000000000',
+              '100000000000000',
               tickCurrent
             );
             return {
@@ -1409,13 +1411,13 @@ describe('out of range v3→ migrations', () => {
                 client.chainConfigs[sourceChainId],
                 new V3Position({
                   pool,
-                  liquidity: '1000000000000',
+                  liquidity: '0',
                   tickLower,
                   tickUpper,
                 })
               ),
               feeAmount0: 0n,
-              feeAmount1: 5000000n, // Only token1 fees since position is out of range
+              feeAmount1: 5000000000000000n,
             };
           }),
         }));
@@ -1873,13 +1875,13 @@ describe('pool creation:', () => {
               client.chainConfigs[sourceChainId],
               new V3Position({
                 pool,
-                liquidity: 10_000_000_000,
+                liquidity: 10_000_000,
                 tickLower: -203450,
                 tickUpper: -193130,
               })
             ),
-            feeAmount0: 1000000n,
-            feeAmount1: 2000000n,
+            feeAmount0: 0n,
+            feeAmount1: 0n,
           };
         }),
       }));
@@ -1992,7 +1994,7 @@ describe('pool creation:', () => {
       await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
         getV3Position: mock(() => {
           const tickCurrent = -199000;
-          const liquidity = 10_000_000_000n;
+          const liquidity = 10_000_000n;
           const pool = new V3Pool(
             new Token(sourceChainId, token0, 18, 'WETH'),
             new Token(sourceChainId, token1, 6, 'USDC'),
@@ -2106,8 +2108,8 @@ describe('pool creation:', () => {
           protocol: Protocol.UniswapV3,
           token0: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
           token1: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
-          tickLower: -887220,
-          tickUpper: 887220,
+          tickLower: -198660,
+          tickUpper: -187670,
           fee: 500,
         },
         exactPath: {
@@ -2131,8 +2133,8 @@ describe('pool creation:', () => {
 
       await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
         getV3Position: mock(() => {
-          const tickCurrent = -199000;
-          const liquidity = 10_000_000_000n;
+          const tickCurrent = 191728;
+          const liquidity = 2751742179046000n;
           const pool = new V3Pool(
             new Token(sourceChainId, token0, 18, 'WETH'),
             new Token(sourceChainId, token1, 6, 'USDC'),
@@ -2148,9 +2150,9 @@ describe('pool creation:', () => {
               client.chainConfigs[sourceChainId],
               new V3Position({
                 pool,
-                liquidity: 10_000,
-                tickLower: -203450,
-                tickUpper: -193130,
+                liquidity: '2751742179046',
+                tickLower: 187670,
+                tickUpper: 198660,
               })
             ),
             feeAmount0: 0n,
@@ -2278,7 +2280,7 @@ describe('pool creation:', () => {
               client.chainConfigs[sourceChainId],
               new V3Position({
                 pool,
-                liquidity: '10000000000000000000',
+                liquidity: '1000000000000000000000',
                 tickLower: -203450,
                 tickUpper: -193130,
               })
