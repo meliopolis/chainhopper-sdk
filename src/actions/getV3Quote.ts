@@ -11,14 +11,13 @@ export const getV3Quote = async (
   amountIn: bigint,
   sqrtPriceLimitX96?: bigint
 ): Promise<{ amountOut: bigint; sqrtPriceX96After: bigint; slippageBps: number }> => {
-
   const result = await chainConfig.publicClient?.readContract({
     address: pool.poolAddress,
     abi: v3PoolAbi,
     functionName: 'slot0',
   });
 
-  if (!result) throw new Error("getV3Quote failed to receive a quote")
+  if (!result) throw new Error('getV3Quote failed to receive a quote');
 
   const preSwapSqrtPriceX96 = result[0];
   const numerator = preSwapSqrtPriceX96 ** 2n;

@@ -1461,7 +1461,6 @@ describe('out of range v3→ migrations', () => {
         await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
           getV3Position: mock(() => {
             const tickCurrent = -280000; // Current price above range, so position has only token0
-            const liquidity = 0n; // Out of range position has no active liquidity
             const pool = new V3Pool(
               new Token(sourceChainId, token0, 18, 'WETH'),
               new Token(sourceChainId, token1, 6, 'USDC'),
@@ -2217,7 +2216,7 @@ describe('pool creation:', () => {
                 pool,
                 liquidity: 2751742179046,
                 tickLower: 187670,
-                tickUpper: 198660
+                tickUpper: 198660,
               })
             ),
             feeAmount0: 0n,
