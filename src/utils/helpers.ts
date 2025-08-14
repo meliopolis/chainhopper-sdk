@@ -9,6 +9,7 @@ import type {
   SettlerExecutionParams,
   RequestMigrationParams,
   MigrationFees,
+  v3Pool,
 } from '../types/sdk';
 
 import {
@@ -26,7 +27,7 @@ import { chainConfigs, type ChainConfig } from '../chains';
 import { getV4CombinedQuote } from '../actions/getV4CombinedQuote';
 import { NFTSafeTransferFrom } from '../abis/NFTSafeTransferFrom';
 import type { InternalDestinationWithExactPath, InternalGenerateMigrationParamsInput } from '../types/internal';
-import { toSDKPosition } from './position';
+import { toSDKPool, toSDKPosition } from './position';
 import { SpokePoolABI } from '../abis';
 
 export const generateSettlerData = (
@@ -99,12 +100,14 @@ export const generateMigrationParams = async ({
   maxPositionUsingRouteMinAmountOut,
   owner,
   swapAmountInMilliBps,
+  destinationSlippageBps,
   protocolFees,
   senderFees,
   expectedRefund,
 }: InternalGenerateMigrationParamsInput): Promise<{
   destPosition: Position;
-  swapAmountInMilliBps: number;
+  swapAmountInMilliBps?: number;
+  destinationSlippageBps: number;
   migratorMessage: `0x${string}`;
   settlerMessage: `0x${string}`;
   senderFees: MigrationFees;
@@ -159,6 +162,7 @@ export const generateMigrationParams = async ({
   return {
     destPosition: toSDKPosition(destinationChainConfig, maxPosition, maxPositionUsingRouteMinAmountOut, expectedRefund),
     swapAmountInMilliBps: swapAmountInMilliBps ? swapAmountInMilliBps : 0,
+    destinationSlippageBps: destinationSlippageBps ? destinationSlippageBps : 0,
     senderFees,
     protocolFees,
     migratorMessage,
@@ -288,7 +292,7 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
   tickUpper: number,
   slippageTolerance: Fraction,
   numIterations: number
-): Promise<V3Position | V4Position> => {
+): Promise<{ position: V3Position | V4Position; slippageBps: number }> => {
   const isV4 = 'hooks' in pool;
   // calculate optimal ratio returns 0 for out of range case
   let preSwapOptimalRatio = calculateOptimalRatio(tickLower, tickUpper, pool.sqrtRatioX96, true);
@@ -312,12 +316,16 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
   let exchangeRate = zeroForOne ? pool.token0Price : pool.token1Price;
   let inputBalanceUpdated = inputBalance;
   let outputBalanceUpdated = outputBalance;
+  const preSwapPrice = exchangeRate;
+  let currencyAmountToSwap: CurrencyAmount<Token>;
+  let currencyAmountOut: CurrencyAmount<Currency>;
+
   while (!ratioAchieved) {
     n++;
     if (n > numIterations) {
       break;
     }
-    const currencyAmountToSwap = calculateRatioAmountIn(
+    currencyAmountToSwap = calculateRatioAmountIn(
       optimalRatio,
       exchangeRate,
       inputBalance,
@@ -343,16 +351,16 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
     } else {
       const quote = await getV3Quote(
         chainConfig,
-        inputBalance.currency.wrapped.address as `0x${string}`,
-        outputBalance.currency.wrapped.address as `0x${string}`,
-        pool.fee,
+        inputBalance.currency.wrapped,
+        outputBalance.currency.wrapped,
+        toSDKPool(chainConfig, pool) as v3Pool,
         BigInt(currencyAmountToSwap.quotient.toString()),
         0n
       );
       amountOut = quote.amountOut;
       sqrtPriceX96After = quote.sqrtPriceX96After;
     }
-    const currencyAmountOut = CurrencyAmount.fromRawAmount(outputBalance.currency, amountOut.toString());
+    currencyAmountOut = CurrencyAmount.fromRawAmount(outputBalance.currency, amountOut.toString());
     inputBalanceUpdated = inputBalance.subtract(currencyAmountToSwap);
     outputBalanceUpdated = outputBalance.add(currencyAmountOut);
     const newRatio = inputBalanceUpdated.divide(outputBalanceUpdated);
@@ -391,6 +399,7 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
     // @ts-expect-error - Types from different package versions conflict
     exchangeRate = new Price({ baseAmount: currencyAmountToSwap, quoteAmount: currencyAmountOut });
   }
+
   const [token0BalanceUpdated, token1BalanceUpdated] =
     inputBalanceUpdated.currency.isNative ||
     inputBalanceUpdated.currency.wrapped.sortsBefore(outputBalanceUpdated.currency.wrapped)
@@ -416,7 +425,9 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
           useFullPrecision: true,
         });
 
-  return returnPosition;
+  const slippageBps = Number(exchangeRate.divide(preSwapPrice).subtract(1).multiply(10_000).toSignificant(18));
+
+  return { position: returnPosition, slippageBps };
 };
 
 export const subIn256 = (x: bigint, y: bigint): bigint => {

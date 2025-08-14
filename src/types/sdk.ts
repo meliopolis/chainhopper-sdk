@@ -163,6 +163,9 @@ export type Route = {
   fillDeadlineOffset: number;
   exclusivityDeadline: number;
   exclusiveRelayer: `0x${string}`;
+  destinationSettler: `0x${string}`;
+  sourceSlippageBps?: number;
+  destinationSlippageBps?: number;
 };
 
 export type MigratorExecutionParams = {
