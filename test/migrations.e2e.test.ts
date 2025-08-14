@@ -501,6 +501,40 @@ describe('invalid migrations', () => {
   });
 
   test('reject migration from v3 where neither token is weth', async () => {
+    const sourceChainId = 1;
+    const token0 = '0x078D782b760474a361dDA0AF3839290b0EF57AD6';
+    const token1 = '0x588CE4F028D8e7B53B687865d6A67b3A54C75518';
+    const fee = 100;
+
+    await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+      getV3Position: mock(() => {
+        const tickCurrent = -276325;
+        const liquidity = 1000n;
+        const pool = new V3Pool(
+          new Token(sourceChainId, token0, 18, 'RANDOM1'),
+          new Token(sourceChainId, token1, 18, 'RANDOM2'),
+          fee,
+          BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+          liquidity.toString(),
+          tickCurrent
+        );
+        return {
+          owner: ownerAddress,
+          ...toSDKPosition(
+            client.chainConfigs[sourceChainId],
+            new V3Position({
+              pool,
+              liquidity: liquidity.toString(),
+              tickLower: -276352,
+              tickUpper: -276299,
+            })
+          ),
+          feeAmount0: 0n,
+          feeAmount1: 0n,
+        };
+      }),
+    }));
+
     try {
       const params: RequestExactMigrationParams = {
         sourcePosition: {
@@ -595,6 +629,41 @@ describe('invalid migrations', () => {
   });
 
   test('reject migration when neither token is weth or eth in destination', async () => {
+    const sourceChainId = 1;
+    const token0 = client.chainConfigs[sourceChainId].wethAddress;
+    const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+    const fee = 3000;
+
+    await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+      getV3Position: mock(() => {
+        const tickCurrent = -199980;
+        const liquidity = 10_000_000_000n;
+        const pool = new V3Pool(
+          new Token(sourceChainId, token0, 18, 'WETH'),
+          new Token(sourceChainId, token1, 6, 'USDC'),
+          fee,
+          BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+          liquidity.toString(),
+          tickCurrent
+        );
+        return {
+          owner: ownerAddress,
+          tokenId: 963499n,
+          ...toSDKPosition(
+            client.chainConfigs[sourceChainId],
+            new V3Position({
+              pool,
+              liquidity: 10_000_000,
+              tickLower: -886980,
+              tickUpper: 886980,
+            })
+          ),
+          feeAmount0: 1000n,
+          feeAmount1: 2000n,
+        };
+      }),
+    }));
+
     try {
       const params: RequestExactMigrationParams = {
         sourcePosition: {
@@ -629,18 +698,51 @@ describe('invalid migrations', () => {
 describe('in-range v3→ migrations', () => {
   let v3ChainId: number;
   let v3TokenId: bigint;
-  let v3Response: PositionWithFees;
 
   beforeAll(async () => {
     v3ChainId = 1;
     v3TokenId = 963499n; // https://app.uniswap.org/positions/v3/ethereum/963499
-    v3Response = await client.getV3Position({
-      chainId: v3ChainId,
-      tokenId: v3TokenId,
-    });
   });
 
   test('generate valid mainnet v3 → unichain v4 single-token migration', async () => {
+    const sourceChainId = 1;
+    const token0 = client.chainConfigs[sourceChainId].wethAddress;
+    const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+    const fee = 500;
+    const tickSpacing = 10;
+    const tickLower = -203450;
+    const tickUpper = -193130;
+
+    await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+      getV3Position: mock(() => {
+        const tickCurrent = -199000;
+        const liquidity = 10_000_000_000n;
+        const pool = new V3Pool(
+          new Token(sourceChainId, token0, 18, 'WETH'),
+          new Token(sourceChainId, token1, 6, 'USDC'),
+          fee,
+          BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+          liquidity.toString(),
+          tickCurrent
+        );
+        return {
+          owner: ownerAddress,
+          tokenId: v3TokenId,
+          ...toSDKPosition(
+            client.chainConfigs[sourceChainId],
+            new V3Position({
+              pool,
+              liquidity: 10_000_000,
+              tickLower,
+              tickUpper,
+            })
+          ),
+          feeAmount0: 1000n,
+          feeAmount1: 2000n,
+        };
+      }),
+    }));
+
     const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: v3ChainId,
@@ -652,10 +754,10 @@ describe('in-range v3→ migrations', () => {
         protocol: Protocol.UniswapV4,
         token0: NATIVE_ETH_ADDRESS,
         token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
-        tickLower: -1 * v3Response.tickUpper,
-        tickUpper: -1 * v3Response.tickLower,
-        fee: v3Response.pool.fee,
-        tickSpacing: v3Response.pool.tickSpacing,
+        tickLower: -1 * tickUpper,
+        tickUpper: -1 * tickLower,
+        fee: fee,
+        tickSpacing: tickSpacing,
         hooks: '0x0000000000000000000000000000000000000000',
       },
       exactPath: {
@@ -668,6 +770,43 @@ describe('in-range v3→ migrations', () => {
   });
 
   test('v3 → v4 single-token and dual-token migration with pathFilter returns ordered by position value desc', async () => {
+    const sourceChainId = 1;
+    const token0 = client.chainConfigs[sourceChainId].wethAddress;
+    const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+    const fee = 500;
+    const tickSpacing = 10;
+    const tickLower = -203450;
+    const tickUpper = -193130;
+
+    await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+      getV3Position: mock(() => {
+        const tickCurrent = -199000;
+        const liquidity = 10_000_000_000n;
+        const pool = new V3Pool(
+          new Token(sourceChainId, token0, 18, 'WETH'),
+          new Token(sourceChainId, token1, 6, 'USDC'),
+          fee,
+          BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+          liquidity.toString(),
+          tickCurrent
+        );
+        return {
+          owner: ownerAddress,
+          ...toSDKPosition(
+            client.chainConfigs[sourceChainId],
+            new V3Position({
+              pool,
+              liquidity: 10_000_000,
+              tickLower,
+              tickUpper,
+            })
+          ),
+          feeAmount0: 10000000n,
+          feeAmount1: 2000000000000000n,
+        };
+      }),
+    }));
+
     const params: RequestMigrationParams = {
       sourcePosition: {
         chainId: v3ChainId,
@@ -679,10 +818,10 @@ describe('in-range v3→ migrations', () => {
         protocol: Protocol.UniswapV4,
         token0: NATIVE_ETH_ADDRESS,
         token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
-        tickLower: -1 * v3Response.tickUpper,
-        tickUpper: -1 * v3Response.tickLower,
-        fee: v3Response.pool.fee,
-        tickSpacing: v3Response.pool.tickSpacing,
+        tickLower: -1 * tickUpper,
+        tickUpper: -1 * tickLower,
+        fee: fee,
+        tickSpacing: tickSpacing,
         hooks: '0x0000000000000000000000000000000000000000',
       },
       path: {
@@ -698,6 +837,42 @@ describe('in-range v3→ migrations', () => {
   });
 
   test('v3 → v3 single-token and dual-token migration with pathFilter returns ordered by position value desc', async () => {
+    const sourceChainId = 1;
+    const token0 = client.chainConfigs[sourceChainId].wethAddress;
+    const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+    const fee = 500;
+    const tickLower = -203450;
+    const tickUpper = -193130;
+
+    await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+      getV3Position: mock(() => {
+        const tickCurrent = -191000;
+        const liquidity = 10_000_000_000n;
+        const pool = new V3Pool(
+          new Token(sourceChainId, token0, 18, 'WETH'),
+          new Token(sourceChainId, token1, 6, 'USDC'),
+          fee,
+          BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+          liquidity.toString(),
+          tickCurrent
+        );
+        return {
+          owner: ownerAddress,
+          ...toSDKPosition(
+            client.chainConfigs[sourceChainId],
+            new V3Position({
+              pool,
+              liquidity: '1000000000000000000000',
+              tickLower,
+              tickUpper,
+            })
+          ),
+          feeAmount0: 100000000n,
+          feeAmount1: 0n,
+        };
+      }),
+    }));
+
     const params: RequestMigrationParams = {
       sourcePosition: {
         chainId: v3ChainId,
@@ -709,9 +884,9 @@ describe('in-range v3→ migrations', () => {
         protocol: Protocol.UniswapV3,
         token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
         token1: '0x4200000000000000000000000000000000000006',
-        tickLower: -1 * v3Response.tickUpper,
-        tickUpper: -1 * v3Response.tickLower,
-        fee: v3Response.pool.fee,
+        tickLower: -1 * tickUpper,
+        tickUpper: -1 * tickLower,
+        fee: fee,
       },
       path: {
         bridgeType: BridgeType.Across,
@@ -726,6 +901,44 @@ describe('in-range v3→ migrations', () => {
   });
 
   test('generate valid mainnet v3 → unichain v4 dual-token migration', async () => {
+    const sourceChainId = 1;
+    const token0 = client.chainConfigs[sourceChainId].wethAddress;
+    const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+    const fee = 500;
+    const tickSpacing = 10;
+    const tickLower = -203450;
+    const tickUpper = -193130;
+
+    await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+      getV3Position: mock(() => {
+        const tickCurrent = -199000;
+        const liquidity = 10_000_000_000n;
+        const pool = new V3Pool(
+          new Token(sourceChainId, token0, 18, 'WETH'),
+          new Token(sourceChainId, token1, 6, 'USDC'),
+          fee,
+          BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+          liquidity.toString(),
+          tickCurrent
+        );
+        return {
+          owner: ownerAddress,
+          tokenId: 963499n,
+          ...toSDKPosition(
+            client.chainConfigs[sourceChainId],
+            new V3Position({
+              pool,
+              liquidity: 10_000_000,
+              tickLower,
+              tickUpper,
+            })
+          ),
+          feeAmount0: 1000000n,
+          feeAmount1: 200000000000000n,
+        };
+      }),
+    }));
+
     const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: v3ChainId,
@@ -737,10 +950,10 @@ describe('in-range v3→ migrations', () => {
         protocol: Protocol.UniswapV4,
         token0: NATIVE_ETH_ADDRESS,
         token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
-        tickLower: -1 * v3Response.tickUpper,
-        tickUpper: -1 * v3Response.tickLower,
-        fee: v3Response.pool.fee,
-        tickSpacing: v3Response.pool.tickSpacing,
+        tickLower: -1 * tickUpper,
+        tickUpper: -1 * tickLower,
+        fee: fee,
+        tickSpacing: tickSpacing,
         hooks: '0x0000000000000000000000000000000000000000',
       },
       exactPath: {
@@ -753,6 +966,43 @@ describe('in-range v3→ migrations', () => {
   });
 
   test('generate valid mainnet v3 → unichain v3 single-token migration', async () => {
+    const sourceChainId = 1;
+    const token0 = client.chainConfigs[sourceChainId].wethAddress;
+    const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+    const fee = 500;
+    const tickLower = -203450;
+    const tickUpper = -193130;
+
+    await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+      getV3Position: mock(() => {
+        const tickCurrent = -199000;
+        const liquidity = 10_000_000_000n;
+        const pool = new V3Pool(
+          new Token(sourceChainId, token0, 18, 'WETH'),
+          new Token(sourceChainId, token1, 6, 'USDC'),
+          fee,
+          BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+          liquidity.toString(),
+          tickCurrent
+        );
+        return {
+          owner: ownerAddress,
+          tokenId: 963499n,
+          ...toSDKPosition(
+            client.chainConfigs[sourceChainId],
+            new V3Position({
+              pool,
+              liquidity: 10000,
+              tickLower,
+              tickUpper,
+            })
+          ),
+          feeAmount0: 1000000n,
+          feeAmount1: 2000000n,
+        };
+      }),
+    }));
+
     const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: v3ChainId,
@@ -764,9 +1014,9 @@ describe('in-range v3→ migrations', () => {
         protocol: Protocol.UniswapV3,
         token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
         token1: '0x4200000000000000000000000000000000000006',
-        tickLower: v3Response.tickLower,
-        tickUpper: v3Response.tickUpper,
-        fee: v3Response.pool.fee,
+        tickLower: tickLower,
+        tickUpper: tickUpper,
+        fee: fee,
       },
       exactPath: {
         bridgeType: BridgeType.Across,
@@ -778,10 +1028,47 @@ describe('in-range v3→ migrations', () => {
   });
 
   test('generate valid mainnet v3 → unichain v3 dual-token migration', async () => {
+    const sourceChainId = 1;
+    const token0 = client.chainConfigs[sourceChainId].wethAddress;
+    const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+    const fee = 500;
+    const tickLower = -203450;
+    const tickUpper = -193130;
+
+    await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+      getV3Position: mock(() => {
+        const tickCurrent = -199000;
+        const liquidity = 10_000_000_000n;
+        const pool = new V3Pool(
+          new Token(sourceChainId, token0, 18, 'WETH'),
+          new Token(sourceChainId, token1, 6, 'USDC'),
+          fee,
+          BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+          liquidity.toString(),
+          tickCurrent
+        );
+        return {
+          owner: ownerAddress,
+          tokenId: 963499n,
+          ...toSDKPosition(
+            client.chainConfigs[sourceChainId],
+            new V3Position({
+              pool,
+              liquidity: 1000000,
+              tickLower,
+              tickUpper,
+            })
+          ),
+          feeAmount0: 1000000n,
+          feeAmount1: 200000000000000n,
+        };
+      }),
+    }));
+
     const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: v3ChainId,
-        tokenId: v3TokenId,
+        tokenId: 963499n,
         protocol: Protocol.UniswapV3,
       },
       destination: {
@@ -789,9 +1076,9 @@ describe('in-range v3→ migrations', () => {
         protocol: Protocol.UniswapV3,
         token0: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
         token1: '0x4200000000000000000000000000000000000006',
-        tickLower: v3Response.tickLower,
-        tickUpper: v3Response.tickUpper,
-        fee: v3Response.pool.fee,
+        tickLower: tickLower,
+        tickUpper: tickUpper,
+        fee: fee,
       },
       exactPath: {
         bridgeType: BridgeType.Across,
@@ -803,6 +1090,43 @@ describe('in-range v3→ migrations', () => {
   });
 
   test('generate valid base v3 → arbitrum v4 dual-token migration with (w)eth as token0', async () => {
+    const sourceChainId = 8453;
+    const token0 = client.chainConfigs[sourceChainId].wethAddress;
+    const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+    const fee = 500;
+    const tickLower = -203450;
+    const tickUpper = -193130;
+
+    await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+      getV3Position: mock(() => {
+        const tickCurrent = -195000;
+        const liquidity = 100_000_000_000n;
+        const pool = new V3Pool(
+          new Token(sourceChainId, token0, 18, 'WETH'),
+          new Token(sourceChainId, token1, 6, 'USDC'),
+          fee,
+          BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+          liquidity.toString(),
+          tickCurrent
+        );
+        return {
+          owner: ownerAddress,
+          tokenId: 2825070n,
+          ...toSDKPosition(
+            client.chainConfigs[sourceChainId],
+            new V3Position({
+              pool,
+              liquidity: 100_000_000_000,
+              tickLower,
+              tickUpper,
+            })
+          ),
+          feeAmount0: 10000000000000000n,
+          feeAmount1: 20000000000n,
+        };
+      }),
+    }));
+
     const params: RequestExactMigrationParams = {
       sourcePosition: {
         chainId: 8453,
@@ -1061,6 +1385,43 @@ describe('out of range v3→ migrations', () => {
   describe('single token', () => {
     describe('current price below requested range', () => {
       test('generate valid mainnet v3 → unichain v4 migration', async () => {
+        const sourceChainId = 1;
+        const token0 = client.chainConfigs[sourceChainId].wethAddress;
+        const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+        const fee = 3000;
+        const tickSpacing = 60;
+        const tickLower = -276000;
+        const tickUpper = -267000;
+
+        await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+          getV3Position: mock(() => {
+            const tickCurrent = -300000;
+            const pool = new V3Pool(
+              new Token(sourceChainId, token0, 18, 'WETH'),
+              new Token(sourceChainId, token1, 6, 'USDC'),
+              fee,
+              BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+              '100000000000000',
+              tickCurrent
+            );
+            return {
+              owner: ownerAddress,
+              tokenId: 893202n,
+              ...toSDKPosition(
+                client.chainConfigs[sourceChainId],
+                new V3Position({
+                  pool,
+                  liquidity: '0',
+                  tickLower,
+                  tickUpper,
+                })
+              ),
+              feeAmount0: 0n,
+              feeAmount1: 5000000000000000n,
+            };
+          }),
+        }));
+
         const params: RequestExactMigrationParams = {
           sourcePosition: {
             chainId: v3ChainId,
@@ -1072,10 +1433,10 @@ describe('out of range v3→ migrations', () => {
             protocol: Protocol.UniswapV4,
             token0: NATIVE_ETH_ADDRESS,
             token1: '0x927B51f251480a681271180DA4de28D44EC4AfB8',
-            tickLower: -1 * v3Response.tickUpper,
-            tickUpper: -1 * v3Response.tickLower,
-            fee: v3Response.pool.fee,
-            tickSpacing: v3Response.pool.tickSpacing,
+            tickLower: -1 * tickUpper,
+            tickUpper: -1 * tickLower,
+            fee: fee,
+            tickSpacing: tickSpacing,
             hooks: '0x0000000000000000000000000000000000000000',
           },
           exactPath: {
@@ -1089,6 +1450,44 @@ describe('out of range v3→ migrations', () => {
     });
     describe('current price above requested range', () => {
       test('generate valid mainnet v3 → unichain v4 migration', async () => {
+        const sourceChainId = 1;
+        const token0 = client.chainConfigs[sourceChainId].wethAddress;
+        const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+        const fee = 3000;
+        const tickSpacing = 60;
+        const tickLower = -306000; // Position range that would map to destination -300000 to -289980
+        const tickUpper = -295800;
+
+        await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+          getV3Position: mock(() => {
+            const tickCurrent = -280000; // Current price above range, so position has only token0
+            const liquidity = 0n; // Out of range position has no active liquidity
+            const pool = new V3Pool(
+              new Token(sourceChainId, token0, 18, 'WETH'),
+              new Token(sourceChainId, token1, 6, 'USDC'),
+              fee,
+              BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+              '1000000000000',
+              tickCurrent
+            );
+            return {
+              owner: ownerAddress,
+              tokenId: 893202n,
+              ...toSDKPosition(
+                client.chainConfigs[sourceChainId],
+                new V3Position({
+                  pool,
+                  liquidity: '1000000000000',
+                  tickLower,
+                  tickUpper,
+                })
+              ),
+              feeAmount0: 5000000n, // Only token0 fees since position is out of range
+              feeAmount1: 0n,
+            };
+          }),
+        }));
+
         const params: RequestExactMigrationParams = {
           sourcePosition: {
             chainId: v3ChainId,
@@ -1100,10 +1499,10 @@ describe('out of range v3→ migrations', () => {
             protocol: Protocol.UniswapV4,
             token0: NATIVE_ETH_ADDRESS,
             token1: '0x927B51f251480a681271180DA4de28D44EC4AfB8',
-            tickLower: -299990,
-            tickUpper: -289990,
-            fee: v3Response.pool.fee,
-            tickSpacing: v3Response.pool.tickSpacing,
+            tickLower: -300000,
+            tickUpper: -289980,
+            fee: fee,
+            tickSpacing: tickSpacing,
             hooks: '0x0000000000000000000000000000000000000000',
           },
           exactPath: {
@@ -1198,7 +1597,7 @@ describe('out of range v4→ migrations', () => {
                 client.chainConfigs[130],
                 new V4Position({
                   pool,
-                  liquidity: 1_000_000_000_000_000_000,
+                  liquidity: '1000000000000000000',
                   tickLower: 50,
                   tickUpper: 100,
                 })
@@ -1385,7 +1784,42 @@ describe('pool creation:', () => {
     };
 
     test('does not create pool if no sqrtPriceX96 provided', async () => {
-      mockNoV4Pool();
+      await mockNoV4Pool();
+      const sourceChainId = 1;
+      const token0 = client.chainConfigs[sourceChainId].wethAddress;
+      const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+      const fee = 500;
+
+      await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+        getV3Position: mock(() => {
+          const tickCurrent = 191728;
+          const liquidity = 2751742179046000n;
+          const pool = new V3Pool(
+            new Token(sourceChainId, token0, 18, 'WETH'),
+            new Token(sourceChainId, token1, 6, 'USDC'),
+            fee,
+            BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+            liquidity.toString(),
+            tickCurrent
+          );
+          return {
+            owner: ownerAddress,
+            tokenId: 891583n,
+            ...toSDKPosition(
+              client.chainConfigs[sourceChainId],
+              new V3Position({
+                pool,
+                liquidity: '2751742179046',
+                tickLower: 187670,
+                tickUpper: 198660,
+              })
+            ),
+            feeAmount0: 0n,
+            feeAmount1: 0n,
+          };
+        }),
+      }));
+
       const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: 1,
@@ -1396,9 +1830,9 @@ describe('pool creation:', () => {
           chainId: 42161,
           protocol: Protocol.UniswapV4,
           token0: NATIVE_ETH_ADDRESS,
-          token1: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
-          tickLower: -887220,
-          tickUpper: 887220,
+          token1: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+          tickLower: 187670,
+          tickUpper: 198660,
           fee: 10000,
           tickSpacing: 200,
           hooks: '0x0000000000000000000000000000000000000000',
@@ -1415,7 +1849,43 @@ describe('pool creation:', () => {
     });
 
     test('single token migration does not create pool if swap needed', async () => {
-      mockNoV4Pool();
+      await mockNoV4Pool();
+
+      const sourceChainId = 1;
+      const token0 = client.chainConfigs[sourceChainId].wethAddress;
+      const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+      const fee = 500;
+
+      await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+        getV3Position: mock(() => {
+          const tickCurrent = -199000;
+          const liquidity = 10_000_000_000n;
+          const pool = new V3Pool(
+            new Token(sourceChainId, token0, 18, 'WETH'),
+            new Token(sourceChainId, token1, 6, 'USDC'),
+            fee,
+            BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+            liquidity.toString(),
+            tickCurrent
+          );
+          return {
+            owner: ownerAddress,
+            tokenId: 891583n,
+            ...toSDKPosition(
+              client.chainConfigs[sourceChainId],
+              new V3Position({
+                pool,
+                liquidity: 10_000_000,
+                tickLower: -203450,
+                tickUpper: -193130,
+              })
+            ),
+            feeAmount0: 0n,
+            feeAmount1: 0n,
+          };
+        }),
+      }));
+
       const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: 1,
@@ -1425,8 +1895,8 @@ describe('pool creation:', () => {
         destination: {
           chainId: 42161,
           protocol: Protocol.UniswapV4,
-          token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
-          token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+          token0: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+          token1: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
           tickLower: -887220,
           tickUpper: 887220,
           fee: 10000,
@@ -1440,13 +1910,50 @@ describe('pool creation:', () => {
           slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
         },
       };
+
       expect(async () => await client.requestExactMigration(params)).toThrow(
         'No liquidity for required swap in destination pool'
       );
     });
 
     test('dual token migration creates pool if sqrtPriceX96 provided', async () => {
-      mockNoV4Pool();
+      await mockNoV4Pool();
+
+      const sourceChainId = 1;
+      const token0 = client.chainConfigs[sourceChainId].wethAddress;
+      const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+      const fee = 500;
+
+      await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+        getV3Position: mock(() => {
+          const tickCurrent = 191728;
+          const liquidity = 2751742179046000n;
+          const pool = new V3Pool(
+            new Token(sourceChainId, token0, 18, 'WETH'),
+            new Token(sourceChainId, token1, 6, 'USDC'),
+            fee,
+            BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+            liquidity.toString(),
+            tickCurrent
+          );
+          return {
+            owner: ownerAddress,
+            tokenId: 891583n,
+            ...toSDKPosition(
+              client.chainConfigs[sourceChainId],
+              new V3Position({
+                pool,
+                liquidity: '2751742179046',
+                tickLower: 187670,
+                tickUpper: 198660,
+              })
+            ),
+            feeAmount0: 0n,
+            feeAmount1: 0n,
+          };
+        }),
+      }));
+
       const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: 1,
@@ -1456,14 +1963,14 @@ describe('pool creation:', () => {
         destination: {
           chainId: 42161,
           protocol: Protocol.UniswapV4,
-          token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
-          token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
-          tickLower: -887200,
-          tickUpper: 887200,
+          token0: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+          token1: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+          tickLower: 187600,
+          tickUpper: 198600,
           fee: 10000,
           tickSpacing: 200,
           hooks: '0x0000000000000000000000000000000000000000',
-          sqrtPriceX96: 736087614829673861315061733n,
+          sqrtPriceX96: 5442280774602240075777764n,
         },
         exactPath: {
           bridgeType: BridgeType.Across,
@@ -1478,6 +1985,42 @@ describe('pool creation:', () => {
 
     test('single token migration creates pool if no swap is needed', async () => {
       mockNoV4Pool();
+
+      const sourceChainId = 1;
+      const token0 = client.chainConfigs[sourceChainId].wethAddress;
+      const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+      const fee = 500;
+
+      await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+        getV3Position: mock(() => {
+          const tickCurrent = -199000;
+          const liquidity = 10_000_000n;
+          const pool = new V3Pool(
+            new Token(sourceChainId, token0, 18, 'WETH'),
+            new Token(sourceChainId, token1, 6, 'USDC'),
+            fee,
+            BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+            liquidity.toString(),
+            tickCurrent
+          );
+          return {
+            owner: ownerAddress,
+            tokenId: 891583n,
+            ...toSDKPosition(
+              client.chainConfigs[sourceChainId],
+              new V3Position({
+                pool,
+                liquidity: 10_000,
+                tickLower: -203450,
+                tickUpper: -193130,
+              })
+            ),
+            feeAmount0: 1000n,
+            feeAmount1: 2000n,
+          };
+        }),
+      }));
+
       const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: 1,
@@ -1488,7 +2031,7 @@ describe('pool creation:', () => {
           chainId: 42161,
           protocol: Protocol.UniswapV4,
           token0: NATIVE_ETH_ADDRESS,
-          token1: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
+          token1: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
           tickLower: 887000,
           tickUpper: 887200,
           fee: 10000,
@@ -1519,6 +2062,41 @@ describe('pool creation:', () => {
   describe('v3 settler ', () => {
     test('does not create pool if no sqrtPriceX96 provided', async () => {
       await mockNoV3Pool();
+      const sourceChainId = 1;
+      const token0 = client.chainConfigs[sourceChainId].wethAddress;
+      const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+      const fee = 500;
+
+      await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+        getV3Position: mock(() => {
+          const tickCurrent = 191728;
+          const liquidity = 2751742179046000n;
+          const pool = new V3Pool(
+            new Token(sourceChainId, token0, 18, 'WETH'),
+            new Token(sourceChainId, token1, 6, 'USDC'),
+            fee,
+            BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+            liquidity.toString(),
+            tickCurrent
+          );
+          return {
+            owner: ownerAddress,
+            tokenId: 891583n,
+            ...toSDKPosition(
+              client.chainConfigs[sourceChainId],
+              new V3Position({
+                pool,
+                liquidity: '2751742179046',
+                tickLower: 187670,
+                tickUpper: 198660,
+              })
+            ),
+            feeAmount0: 0n,
+            feeAmount1: 0n,
+          };
+        }),
+      }));
+
       const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: 1,
@@ -1528,10 +2106,10 @@ describe('pool creation:', () => {
         destination: {
           chainId: 42161,
           protocol: Protocol.UniswapV3,
-          token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
-          token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
-          tickLower: -887220,
-          tickUpper: 887220,
+          token0: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+          token1: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+          tickLower: -198660,
+          tickUpper: -187670,
           fee: 500,
         },
         exactPath: {
@@ -1547,6 +2125,42 @@ describe('pool creation:', () => {
 
     test('single token migration does not create pool if swap needed', async () => {
       await mockNoV3Pool();
+
+      const sourceChainId = 1;
+      const token0 = client.chainConfigs[sourceChainId].wethAddress;
+      const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+      const fee = 500;
+
+      await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+        getV3Position: mock(() => {
+          const tickCurrent = 191728;
+          const liquidity = 2751742179046000n;
+          const pool = new V3Pool(
+            new Token(sourceChainId, token0, 18, 'WETH'),
+            new Token(sourceChainId, token1, 6, 'USDC'),
+            fee,
+            BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+            liquidity.toString(),
+            tickCurrent
+          );
+          return {
+            owner: ownerAddress,
+            tokenId: 891583n,
+            ...toSDKPosition(
+              client.chainConfigs[sourceChainId],
+              new V3Position({
+                pool,
+                liquidity: '2751742179046',
+                tickLower: 187670,
+                tickUpper: 198660,
+              })
+            ),
+            feeAmount0: 0n,
+            feeAmount1: 0n,
+          };
+        }),
+      }));
+
       const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: 1,
@@ -1556,8 +2170,8 @@ describe('pool creation:', () => {
         destination: {
           chainId: 42161,
           protocol: Protocol.UniswapV3,
-          token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
-          token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+          token0: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+          token1: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
           tickLower: -887220,
           tickUpper: 887220,
           fee: 500,
@@ -1576,6 +2190,42 @@ describe('pool creation:', () => {
 
     test('dual token migration creates pool if sqrtPriceX96 provided', async () => {
       await mockNoV3Pool();
+
+      const sourceChainId = 1;
+      const token0 = client.chainConfigs[sourceChainId].wethAddress;
+      const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+      const fee = 500;
+
+      await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+        getV3Position: mock(() => {
+          const tickCurrent = 191728;
+          const liquidity = 10_000_000_000n;
+          const pool = new V3Pool(
+            new Token(sourceChainId, token0, 18, 'WETH'),
+            new Token(sourceChainId, token1, 6, 'USDC'),
+            fee,
+            BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+            liquidity.toString(),
+            tickCurrent
+          );
+          return {
+            owner: ownerAddress,
+            tokenId: 891583n,
+            ...toSDKPosition(
+              client.chainConfigs[sourceChainId],
+              new V3Position({
+                pool,
+                liquidity: 2751742179046,
+                tickLower: 187670,
+                tickUpper: 198660
+              })
+            ),
+            feeAmount0: 0n,
+            feeAmount1: 0n,
+          };
+        }),
+      }));
+
       const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: 1,
@@ -1585,12 +2235,12 @@ describe('pool creation:', () => {
         destination: {
           chainId: 42161,
           protocol: Protocol.UniswapV3,
-          token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
-          token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
-          tickLower: -887200,
-          tickUpper: 887200,
+          token0: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+          token1: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+          tickLower: -198660,
+          tickUpper: -187670,
           fee: 500,
-          sqrtPriceX96: 736087614829673861315061733n,
+          sqrtPriceX96: 5442280774602240075777764n,
         },
         exactPath: {
           bridgeType: BridgeType.Across,
@@ -1605,6 +2255,42 @@ describe('pool creation:', () => {
 
     test('single token migration creates pool if no swap is needed', async () => {
       await mockNoV3Pool();
+
+      const sourceChainId = 1;
+      const token0 = client.chainConfigs[sourceChainId].wethAddress;
+      const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+      const fee = 500;
+
+      await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+        getV3Position: mock(() => {
+          const tickCurrent = -191000;
+          const liquidity = 10_000_000_000_000n;
+          const pool = new V3Pool(
+            new Token(sourceChainId, token1, 6, 'USDC'),
+            new Token(sourceChainId, token0, 18, 'WETH'),
+            fee,
+            BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+            liquidity.toString(),
+            tickCurrent
+          );
+          return {
+            owner: ownerAddress,
+            tokenId: 891583n,
+            ...toSDKPosition(
+              client.chainConfigs[sourceChainId],
+              new V3Position({
+                pool,
+                liquidity: '1000000000000000000000',
+                tickLower: -203450,
+                tickUpper: -193130,
+              })
+            ),
+            feeAmount0: 0n,
+            feeAmount1: 0n,
+          };
+        }),
+      }));
+
       const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: 1,
@@ -1614,10 +2300,10 @@ describe('pool creation:', () => {
         destination: {
           chainId: 42161,
           protocol: Protocol.UniswapV3,
-          token0: '0x53691596d1BCe8CEa565b84d4915e69e03d9C99d',
-          token1: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
-          tickLower: -887200,
-          tickUpper: -887000,
+          token0: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+          token1: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+          tickLower: 193130,
+          tickUpper: 203450,
           fee: 500,
           sqrtPriceX96: 736087614829673861315061733n,
         },
