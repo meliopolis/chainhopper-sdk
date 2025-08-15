@@ -796,13 +796,13 @@ describe('in-range v3→ migrations', () => {
             client.chainConfigs[sourceChainId],
             new V3Position({
               pool,
-              liquidity: 10_000_000,
+              liquidity: 1000000,
               tickLower,
               tickUpper,
             })
           ),
-          feeAmount0: 10000000n,
-          feeAmount1: 2000000000000000n,
+          feeAmount0: 100000000n,
+          feeAmount1: 200000000000000000n,
         };
       }),
     }));
@@ -928,7 +928,7 @@ describe('in-range v3→ migrations', () => {
             client.chainConfigs[sourceChainId],
             new V3Position({
               pool,
-              liquidity: 10_000_000,
+              liquidity: 1000000,
               tickLower,
               tickUpper,
             })

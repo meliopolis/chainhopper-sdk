@@ -369,6 +369,11 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
     ratioAchieved =
       newRatio.asFraction.equalTo(optimalRatio) ||
       newRatio.asFraction.divide(optimalRatio).subtract(1).lessThan(slippageTolerance);
+
+    // update current exchangeRate for slippage (in case we break)
+    // @ts-expect-error - Types from different package versions conflict
+    exchangeRate = new Price({ baseAmount: currencyAmountToSwap, quoteAmount: currencyAmountOut });
+
     // if slippage is acceptable, break
     if (ratioAchieved) {
       if (isV4) {
@@ -396,8 +401,6 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
       }
       break;
     }
-    // @ts-expect-error - Types from different package versions conflict
-    exchangeRate = new Price({ baseAmount: currencyAmountToSwap, quoteAmount: currencyAmountOut });
   }
 
   const [token0BalanceUpdated, token1BalanceUpdated] =

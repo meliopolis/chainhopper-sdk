@@ -350,6 +350,11 @@ export class ChainHopperClient {
       owner: sourcePosition.owner,
     });
 
+    if (routes.length === 1) {
+      // set destination slippage in SingleToken routes only
+      routes[0].destinationSlippageBps = destinationSlippageBps;
+    }
+
     const baseReturn = {
       position: destPosition,
       exactPath,
