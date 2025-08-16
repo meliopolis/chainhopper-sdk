@@ -358,7 +358,7 @@ export class ChainHopperClient {
     const baseReturn = {
       position: destPosition,
       exactPath,
-      routes: { ...routes, destinationSlippageBps },
+      routes: routes,
       executionParams: generateExecutionParams({
         sourceChainId,
         owner: sourcePosition.owner,
