@@ -128,8 +128,10 @@ export const settleAerodromeMigration = async ({
     // TODO improve this calculation
     const swapAmountInMilliBps =
       destination.token0 === destinationChainConfig.wethAddress
-        ? maxPositionWithSwap.position.amount0.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).quotient
-        : maxPositionWithSwap.position.amount1.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).quotient;
+        ? maxPositionWithSwap.position.amount0.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000)
+            .quotient
+        : maxPositionWithSwap.position.amount1.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000)
+            .quotient;
 
     return generateMigrationParams({
       externalParams,

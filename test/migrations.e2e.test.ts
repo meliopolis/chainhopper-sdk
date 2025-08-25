@@ -327,15 +327,15 @@ describe('invalid migrations', () => {
         );
         return {
           owner: ownerAddress,
-          ...toSDKPosition(
-            client.chainConfigs[8453],
-            new V3Position({
+          ...toSDKPosition({
+            chainConfig: client.chainConfigs[8453],
+            position: new V3Position({
               pool,
               liquidity: 1_000_000_000_000,
               tickLower: 10,
               tickUpper: 500,
             })
-          ),
+          }),
           feeAmount0: 0n,
           feeAmount1: 0n,
         };
@@ -520,15 +520,15 @@ describe('invalid migrations', () => {
         );
         return {
           owner: ownerAddress,
-          ...toSDKPosition(
-            client.chainConfigs[sourceChainId],
-            new V3Position({
+          ...toSDKPosition({
+            chainConfig: client.chainConfigs[sourceChainId],
+            position: new V3Position({
               pool,
               liquidity: liquidity.toString(),
               tickLower: -276352,
               tickUpper: -276299,
             })
-          ),
+          }),
           feeAmount0: 0n,
           feeAmount1: 0n,
         };
@@ -588,15 +588,15 @@ describe('invalid migrations', () => {
         );
         return {
           owner: ownerAddress,
-          ...toSDKPosition(
-            client.chainConfigs[130],
-            new V4Position({
+          ...toSDKPosition({
+            chainConfig: client.chainConfigs[130],
+            position: new V4Position({
               pool,
               liquidity: liquidity.toString(),
               tickLower: 0,
               tickUpper: 100,
             })
-          ),
+          }),
           feeAmount0: 0n,
           feeAmount1: 0n,
         };
@@ -649,15 +649,15 @@ describe('invalid migrations', () => {
         return {
           owner: ownerAddress,
           tokenId: 963499n,
-          ...toSDKPosition(
-            client.chainConfigs[sourceChainId],
-            new V3Position({
+          ...toSDKPosition({
+            chainConfig: client.chainConfigs[sourceChainId],
+            position: new V3Position({
               pool,
               liquidity: 10_000_000,
               tickLower: -886980,
               tickUpper: 886980,
             })
-          ),
+          }),
           feeAmount0: 1000n,
           feeAmount1: 2000n,
         };
@@ -728,15 +728,15 @@ describe('in-range v3→ migrations', () => {
         return {
           owner: ownerAddress,
           tokenId: v3TokenId,
-          ...toSDKPosition(
-            client.chainConfigs[sourceChainId],
-            new V3Position({
+          ...toSDKPosition({
+            chainConfig: client.chainConfigs[sourceChainId],
+            position: new V3Position({
               pool,
               liquidity: 10_000_000,
               tickLower,
               tickUpper,
             })
-          ),
+          }),
           feeAmount0: 1000n,
           feeAmount1: 2000n,
         };
@@ -792,15 +792,15 @@ describe('in-range v3→ migrations', () => {
         );
         return {
           owner: ownerAddress,
-          ...toSDKPosition(
-            client.chainConfigs[sourceChainId],
-            new V3Position({
+          ...toSDKPosition({
+            chainConfig: client.chainConfigs[sourceChainId],
+            position: new V3Position({
               pool,
               liquidity: 1000000,
               tickLower,
               tickUpper,
             })
-          ),
+          }),
           feeAmount0: 100000000n,
           feeAmount1: 200000000000000000n,
         };
@@ -858,15 +858,15 @@ describe('in-range v3→ migrations', () => {
         );
         return {
           owner: ownerAddress,
-          ...toSDKPosition(
-            client.chainConfigs[sourceChainId],
-            new V3Position({
+          ...toSDKPosition({
+            chainConfig: client.chainConfigs[sourceChainId],
+            position: new V3Position({
               pool,
               liquidity: '1000000000000000000000',
               tickLower,
               tickUpper,
             })
-          ),
+          }),
           feeAmount0: 100000000n,
           feeAmount1: 0n,
         };
@@ -924,15 +924,15 @@ describe('in-range v3→ migrations', () => {
         return {
           owner: ownerAddress,
           tokenId: 963499n,
-          ...toSDKPosition(
-            client.chainConfigs[sourceChainId],
-            new V3Position({
+          ...toSDKPosition({
+            chainConfig: client.chainConfigs[sourceChainId],
+            position: new V3Position({
               pool,
               liquidity: 1000000,
               tickLower,
               tickUpper,
             })
-          ),
+          }),
           feeAmount0: 1000000n,
           feeAmount1: 200000000000000n,
         };
@@ -988,15 +988,15 @@ describe('in-range v3→ migrations', () => {
         return {
           owner: ownerAddress,
           tokenId: 963499n,
-          ...toSDKPosition(
-            client.chainConfigs[sourceChainId],
-            new V3Position({
+          ...toSDKPosition({
+            chainConfig: client.chainConfigs[sourceChainId],
+            position: new V3Position({
               pool,
               liquidity: 10000,
               tickLower,
               tickUpper,
             })
-          ),
+          }),
           feeAmount0: 1000000n,
           feeAmount1: 2000000n,
         };
@@ -1050,15 +1050,15 @@ describe('in-range v3→ migrations', () => {
         return {
           owner: ownerAddress,
           tokenId: 963499n,
-          ...toSDKPosition(
-            client.chainConfigs[sourceChainId],
-            new V3Position({
+          ...toSDKPosition({
+            chainConfig: client.chainConfigs[sourceChainId],
+            position: new V3Position({
               pool,
               liquidity: 1000000,
               tickLower,
               tickUpper,
             })
-          ),
+          }),
           feeAmount0: 1000000n,
           feeAmount1: 200000000000000n,
         };
@@ -1112,17 +1112,17 @@ describe('in-range v3→ migrations', () => {
         return {
           owner: ownerAddress,
           tokenId: 2825070n,
-          ...toSDKPosition(
-            client.chainConfigs[sourceChainId],
-            new V3Position({
+          ...toSDKPosition({
+            chainConfig: client.chainConfigs[sourceChainId],
+            position: new V3Position({
               pool,
               liquidity: 100_000_000_000,
               tickLower,
               tickUpper,
             })
-          ),
+          }),
           feeAmount0: 10000000000000000n,
-          feeAmount1: 20000000000n,
+          feeAmount1: 2000000000n,
         };
       }),
     }));
@@ -1302,15 +1302,15 @@ describe('flipped token order between chains', () => {
         return {
           owner: ownerAddress,
           tokenId: 17447n,
-          ...toSDKPosition(
-            client.chainConfigs[sourceChainId],
-            new V4Position({
+          ...toSDKPosition({
+            chainConfig: client.chainConfigs[sourceChainId],
+            position: new V4Position({
               pool,
               liquidity: liquidity.toString(),
               tickLower: -250000,
               tickUpper: -109900,
             })
-          ),
+          }),
           feeAmount0: 0n,
           feeAmount1: 0n,
         };
@@ -1407,15 +1407,15 @@ describe('out of range v3→ migrations', () => {
             return {
               owner: ownerAddress,
               tokenId: 893202n,
-              ...toSDKPosition(
-                client.chainConfigs[sourceChainId],
-                new V3Position({
+              ...toSDKPosition({
+                chainConfig: client.chainConfigs[sourceChainId],
+                position: new V3Position({
                   pool,
                   liquidity: '0',
                   tickLower,
                   tickUpper,
                 })
-              ),
+              }),
               feeAmount0: 0n,
               feeAmount1: 5000000000000000n,
             };
@@ -1472,15 +1472,15 @@ describe('out of range v3→ migrations', () => {
             return {
               owner: ownerAddress,
               tokenId: 893202n,
-              ...toSDKPosition(
-                client.chainConfigs[sourceChainId],
-                new V3Position({
+              ...toSDKPosition({
+                chainConfig: client.chainConfigs[sourceChainId],
+                position: new V3Position({
                   pool,
                   liquidity: '1000000000000',
                   tickLower,
                   tickUpper,
                 })
-              ),
+              }),
               feeAmount0: 5000000n, // Only token0 fees since position is out of range
               feeAmount1: 0n,
             };
@@ -1517,6 +1517,43 @@ describe('out of range v3→ migrations', () => {
 
   describe('dual token', () => {
     test('mainnet v3 → unichain v4 migration throws unsupported token address', async () => {
+      const sourceChainId = 1;
+      const token0 = client.chainConfigs[sourceChainId].wethAddress;
+      const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+      const fee = 3000;
+      const tickSpacing = 60;
+      const tickLower = -306000;
+      const tickUpper = -295800;
+
+      await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+        getV3Position: mock(() => {
+          const tickCurrent = -300900;
+          const pool = new V3Pool(
+            new Token(sourceChainId, token0, 18, 'WETH'),
+            new Token(sourceChainId, token1, 6, 'USDC'),
+            fee,
+            BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+            '1000000000000',
+            tickCurrent
+          );
+          return {
+            owner: ownerAddress,
+            tokenId: 893202n,
+            ...toSDKPosition({
+              chainConfig: client.chainConfigs[sourceChainId],
+              position: new V3Position({
+                pool,
+                liquidity: '1000000000000',
+                tickLower,
+                tickUpper,
+              })
+            }),
+            feeAmount0: 0n,
+            feeAmount1: 0n,
+          };
+        }),
+      }));
+
       const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: v3ChainId,
@@ -1528,10 +1565,10 @@ describe('out of range v3→ migrations', () => {
           protocol: Protocol.UniswapV4,
           token0: NATIVE_ETH_ADDRESS,
           token1: '0x927B51f251480a681271180DA4de28D44EC4AfB8',
-          tickLower: -1 * v3Response.tickUpper,
-          tickUpper: -1 * v3Response.tickLower,
-          fee: v3Response.pool.fee,
-          tickSpacing: v3Response.pool.tickSpacing,
+          tickLower: -1 * tickUpper,
+          tickUpper: -1 * tickLower,
+          fee: fee,
+          tickSpacing: tickSpacing,
           hooks: '0x0000000000000000000000000000000000000000',
         },
         exactPath: {
@@ -1592,15 +1629,15 @@ describe('out of range v4→ migrations', () => {
             return {
               owner: ownerAddress,
               tokenId: v4TokenId,
-              ...toSDKPosition(
-                client.chainConfigs[130],
-                new V4Position({
+              ...toSDKPosition({
+                chainConfig: client.chainConfigs[130],
+                position: new V4Position({
                   pool,
                   liquidity: '1000000000000000000',
                   tickLower: 50,
                   tickUpper: 100,
                 })
-              ),
+              }),
               feeAmount0: 0n,
               feeAmount1: 0n,
             };
@@ -1658,15 +1695,15 @@ describe('out of range v4→ migrations', () => {
             return {
               owner: ownerAddress,
               tokenId: v4TokenId,
-              ...toSDKPosition(
-                client.chainConfigs[130],
-                new V4Position({
+              ...toSDKPosition({
+                chainConfig: client.chainConfigs[130],
+                position: new V4Position({
                   pool,
                   liquidity: 1_000_000_000_000,
                   tickLower: 10,
                   tickUpper: 50,
                 })
-              ),
+              }),
               feeAmount0: 0n,
               feeAmount1: 0n,
             };
@@ -1725,15 +1762,15 @@ describe('out of range v4→ migrations', () => {
           );
           return {
             owner: ownerAddress,
-            ...toSDKPosition(
-              client.chainConfigs[130],
-              new V4Position({
+            ...toSDKPosition({
+              chainConfig: client.chainConfigs[130],
+              position: new V4Position({
                 pool,
                 liquidity: 1_000_000_000,
                 tickLower: 10,
                 tickUpper: 500,
               })
-            ),
+            }),
             feeAmount0: 0n,
             feeAmount1: 0n,
           };
@@ -1804,15 +1841,15 @@ describe('pool creation:', () => {
           return {
             owner: ownerAddress,
             tokenId: 891583n,
-            ...toSDKPosition(
-              client.chainConfigs[sourceChainId],
-              new V3Position({
+            ...toSDKPosition({
+              chainConfig: client.chainConfigs[sourceChainId],
+              position: new V3Position({
                 pool,
                 liquidity: '2751742179046',
                 tickLower: 187670,
                 tickUpper: 198660,
               })
-            ),
+            }),
             feeAmount0: 0n,
             feeAmount1: 0n,
           };
@@ -1870,15 +1907,15 @@ describe('pool creation:', () => {
           return {
             owner: ownerAddress,
             tokenId: 891583n,
-            ...toSDKPosition(
-              client.chainConfigs[sourceChainId],
-              new V3Position({
+            ...toSDKPosition({
+              chainConfig: client.chainConfigs[sourceChainId],
+              position: new V3Position({
                 pool,
                 liquidity: 10_000_000,
                 tickLower: -203450,
                 tickUpper: -193130,
               })
-            ),
+            }),
             feeAmount0: 0n,
             feeAmount1: 0n,
           };
@@ -1938,15 +1975,15 @@ describe('pool creation:', () => {
           return {
             owner: ownerAddress,
             tokenId: 891583n,
-            ...toSDKPosition(
-              client.chainConfigs[sourceChainId],
-              new V3Position({
+            ...toSDKPosition({
+              chainConfig: client.chainConfigs[sourceChainId],
+              position: new V3Position({
                 pool,
                 liquidity: '2751742179046',
                 tickLower: 187670,
                 tickUpper: 198660,
               })
-            ),
+            }),
             feeAmount0: 0n,
             feeAmount1: 0n,
           };
@@ -2005,15 +2042,15 @@ describe('pool creation:', () => {
           return {
             owner: ownerAddress,
             tokenId: 891583n,
-            ...toSDKPosition(
-              client.chainConfigs[sourceChainId],
-              new V3Position({
+            ...toSDKPosition({
+              chainConfig: client.chainConfigs[sourceChainId],
+              position: new V3Position({
                 pool,
                 liquidity: 10_000,
                 tickLower: -203450,
                 tickUpper: -193130,
               })
-            ),
+            }),
             feeAmount0: 1000n,
             feeAmount1: 2000n,
           };
@@ -2081,15 +2118,15 @@ describe('pool creation:', () => {
           return {
             owner: ownerAddress,
             tokenId: 891583n,
-            ...toSDKPosition(
-              client.chainConfigs[sourceChainId],
-              new V3Position({
+            ...toSDKPosition({
+              chainConfig: client.chainConfigs[sourceChainId],
+              position: new V3Position({
                 pool,
                 liquidity: '2751742179046',
                 tickLower: 187670,
                 tickUpper: 198660,
               })
-            ),
+            }),
             feeAmount0: 0n,
             feeAmount1: 0n,
           };
@@ -2145,15 +2182,15 @@ describe('pool creation:', () => {
           return {
             owner: ownerAddress,
             tokenId: 891583n,
-            ...toSDKPosition(
-              client.chainConfigs[sourceChainId],
-              new V3Position({
+            ...toSDKPosition({
+              chainConfig: client.chainConfigs[sourceChainId],
+              position: new V3Position({
                 pool,
                 liquidity: '2751742179046',
                 tickLower: 187670,
                 tickUpper: 198660,
               })
-            ),
+            }),
             feeAmount0: 0n,
             feeAmount1: 0n,
           };
@@ -2210,15 +2247,15 @@ describe('pool creation:', () => {
           return {
             owner: ownerAddress,
             tokenId: 891583n,
-            ...toSDKPosition(
-              client.chainConfigs[sourceChainId],
-              new V3Position({
+            ...toSDKPosition({
+              chainConfig: client.chainConfigs[sourceChainId],
+              position: new V3Position({
                 pool,
                 liquidity: 2751742179046,
                 tickLower: 187670,
                 tickUpper: 198660,
               })
-            ),
+            }),
             feeAmount0: 0n,
             feeAmount1: 0n,
           };
@@ -2275,15 +2312,15 @@ describe('pool creation:', () => {
           return {
             owner: ownerAddress,
             tokenId: 891583n,
-            ...toSDKPosition(
-              client.chainConfigs[sourceChainId],
-              new V3Position({
+            ...toSDKPosition({
+              chainConfig: client.chainConfigs[sourceChainId],
+              position: new V3Position({
                 pool,
                 liquidity: '1000000000000000000000',
                 tickLower: -203450,
                 tickUpper: -193130,
               })
-            ),
+            }),
             feeAmount0: 0n,
             feeAmount1: 0n,
           };
