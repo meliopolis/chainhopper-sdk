@@ -7,8 +7,10 @@ import {
 } from '../utils/constants';
 import { getV3Quote } from './getV3Quote';
 import type { InternalStartMigrationParams, InternalStartMigrationResult } from '../types/internal';
-import { generateSettlerData } from '../utils/helpers';
+import { generateSettlerData, resolveSettler } from '../utils/helpers';
 import { getAcrossQuote } from '../lib/acrossClient';
+import { Token as UniswapSDKToken } from '@uniswap/sdk-core';
+import type { v3Pool } from '@/types';
 
 export const startUniswapV3Migration = async ({
   sourceChainConfig,
@@ -37,23 +39,37 @@ export const startUniswapV3Migration = async ({
     // get a quote from Uniswap Router to trade otherToken
     const amountIn = isWethToken0 ? totalToken1 : totalToken0;
     let amountOut = 0n;
+    let sourceSlippageBps = 0;
+
+    const uniswapSDKToken0 = new UniswapSDKToken(
+      sourceChainConfig.chain.id,
+      positionWithFees.pool.token0.address,
+      positionWithFees.pool.token0.decimals
+    );
+    const uniswapSDKToken1 = new UniswapSDKToken(
+      sourceChainConfig.chain.id,
+      positionWithFees.pool.token1.address,
+      positionWithFees.pool.token1.decimals
+    );
 
     if (amountIn > 0n) {
       const quote = await getV3Quote(
         sourceChainConfig,
-        isWethToken0 ? positionWithFees.pool.token1.address : positionWithFees.pool.token0.address,
-        isWethToken0 ? positionWithFees.pool.token0.address : positionWithFees.pool.token1.address,
-        positionWithFees.pool.fee,
+        isWethToken0 ? uniswapSDKToken1 : uniswapSDKToken0,
+        isWethToken0 ? uniswapSDKToken0 : uniswapSDKToken1,
+        positionWithFees.pool as v3Pool,
         amountIn,
         0n
       );
       // calculate total amount of WETH available
       amountOut = quote.amountOut;
+      sourceSlippageBps = quote.slippageBps;
     }
     const totalWethAvailable = isWethToken0 ? totalToken0 + amountOut : totalToken1 + amountOut;
 
-    // todo check that quote price is not much worse than current price
-    // otherwise trigger a slippage warning
+    if (-1 * sourceSlippageBps > exactPath.slippageInBps) {
+      throw new Error('Price impact exceeds slippage');
+    }
 
     if (exactPath.bridgeType === BridgeType.Across) {
       // generate the message that will be passed to the settler on the destination chain
@@ -90,6 +106,8 @@ export const startUniswapV3Migration = async ({
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
             exclusiveRelayer: acrossQuote.deposit.exclusiveRelayer,
             exclusivityDeadline: acrossQuote.deposit.exclusivityDeadline,
+            destinationSettler: resolveSettler(destination.protocol, destinationChainConfig),
+            sourceSlippageBps,
           },
         ],
       };
@@ -152,6 +170,7 @@ export const startUniswapV3Migration = async ({
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
             exclusiveRelayer: acrossQuote0.deposit.exclusiveRelayer,
             exclusivityDeadline: acrossQuote0.deposit.exclusivityDeadline,
+            destinationSettler: resolveSettler(destination.protocol, destinationChainConfig),
           },
           {
             inputToken: acrossQuote1.deposit.inputToken,
@@ -166,6 +185,7 @@ export const startUniswapV3Migration = async ({
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
             exclusiveRelayer: acrossQuote1.deposit.exclusiveRelayer,
             exclusivityDeadline: acrossQuote1.deposit.exclusivityDeadline + 10, // giving extra time for second quote to mint position
+            destinationSettler: resolveSettler(destination.protocol, destinationChainConfig),
           },
         ],
       };
