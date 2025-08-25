@@ -334,7 +334,7 @@ describe('invalid migrations', () => {
               liquidity: 1_000_000_000_000,
               tickLower: 10,
               tickUpper: 500,
-            })
+            }),
           }),
           feeAmount0: 0n,
           feeAmount1: 0n,
@@ -527,7 +527,7 @@ describe('invalid migrations', () => {
               liquidity: liquidity.toString(),
               tickLower: -276352,
               tickUpper: -276299,
-            })
+            }),
           }),
           feeAmount0: 0n,
           feeAmount1: 0n,
@@ -595,7 +595,7 @@ describe('invalid migrations', () => {
               liquidity: liquidity.toString(),
               tickLower: 0,
               tickUpper: 100,
-            })
+            }),
           }),
           feeAmount0: 0n,
           feeAmount1: 0n,
@@ -656,7 +656,7 @@ describe('invalid migrations', () => {
               liquidity: 10_000_000,
               tickLower: -886980,
               tickUpper: 886980,
-            })
+            }),
           }),
           feeAmount0: 1000n,
           feeAmount1: 2000n,
@@ -735,7 +735,7 @@ describe('in-range v3→ migrations', () => {
               liquidity: 10_000_000,
               tickLower,
               tickUpper,
-            })
+            }),
           }),
           feeAmount0: 1000n,
           feeAmount1: 2000n,
@@ -799,7 +799,7 @@ describe('in-range v3→ migrations', () => {
               liquidity: 1000000,
               tickLower,
               tickUpper,
-            })
+            }),
           }),
           feeAmount0: 100000000n,
           feeAmount1: 200000000000000000n,
@@ -865,7 +865,7 @@ describe('in-range v3→ migrations', () => {
               liquidity: '1000000000000000000000',
               tickLower,
               tickUpper,
-            })
+            }),
           }),
           feeAmount0: 100000000n,
           feeAmount1: 0n,
@@ -931,7 +931,7 @@ describe('in-range v3→ migrations', () => {
               liquidity: 1000000,
               tickLower,
               tickUpper,
-            })
+            }),
           }),
           feeAmount0: 1000000n,
           feeAmount1: 200000000000000n,
@@ -995,7 +995,7 @@ describe('in-range v3→ migrations', () => {
               liquidity: 10000,
               tickLower,
               tickUpper,
-            })
+            }),
           }),
           feeAmount0: 1000000n,
           feeAmount1: 2000000n,
@@ -1057,7 +1057,7 @@ describe('in-range v3→ migrations', () => {
               liquidity: 1000000,
               tickLower,
               tickUpper,
-            })
+            }),
           }),
           feeAmount0: 1000000n,
           feeAmount1: 200000000000000n,
@@ -1119,7 +1119,7 @@ describe('in-range v3→ migrations', () => {
               liquidity: 100_000_000_000,
               tickLower,
               tickUpper,
-            })
+            }),
           }),
           feeAmount0: 10000000000000000n,
           feeAmount1: 2000000000n,
@@ -1309,7 +1309,7 @@ describe('flipped token order between chains', () => {
               liquidity: liquidity.toString(),
               tickLower: -250000,
               tickUpper: -109900,
-            })
+            }),
           }),
           feeAmount0: 0n,
           feeAmount1: 0n,
@@ -1414,7 +1414,7 @@ describe('out of range v3→ migrations', () => {
                   liquidity: '0',
                   tickLower,
                   tickUpper,
-                })
+                }),
               }),
               feeAmount0: 0n,
               feeAmount1: 5000000000000000n,
@@ -1479,7 +1479,7 @@ describe('out of range v3→ migrations', () => {
                   liquidity: '1000000000000',
                   tickLower,
                   tickUpper,
-                })
+                }),
               }),
               feeAmount0: 5000000n, // Only token0 fees since position is out of range
               feeAmount1: 0n,
@@ -1546,7 +1546,7 @@ describe('out of range v3→ migrations', () => {
                 liquidity: '1000000000000',
                 tickLower,
                 tickUpper,
-              })
+              }),
             }),
             feeAmount0: 0n,
             feeAmount1: 0n,
@@ -1636,7 +1636,7 @@ describe('out of range v4→ migrations', () => {
                   liquidity: '1000000000000000000',
                   tickLower: 50,
                   tickUpper: 100,
-                })
+                }),
               }),
               feeAmount0: 0n,
               feeAmount1: 0n,
@@ -1702,7 +1702,7 @@ describe('out of range v4→ migrations', () => {
                   liquidity: 1_000_000_000_000,
                   tickLower: 10,
                   tickUpper: 50,
-                })
+                }),
               }),
               feeAmount0: 0n,
               feeAmount1: 0n,
@@ -1769,7 +1769,7 @@ describe('out of range v4→ migrations', () => {
                 liquidity: 1_000_000_000,
                 tickLower: 10,
                 tickUpper: 500,
-              })
+              }),
             }),
             feeAmount0: 0n,
             feeAmount1: 0n,
@@ -1848,7 +1848,7 @@ describe('pool creation:', () => {
                 liquidity: '2751742179046',
                 tickLower: 187670,
                 tickUpper: 198660,
-              })
+              }),
             }),
             feeAmount0: 0n,
             feeAmount1: 0n,
@@ -1914,7 +1914,7 @@ describe('pool creation:', () => {
                 liquidity: 10_000_000,
                 tickLower: -203450,
                 tickUpper: -193130,
-              })
+              }),
             }),
             feeAmount0: 0n,
             feeAmount1: 0n,
@@ -1982,7 +1982,7 @@ describe('pool creation:', () => {
                 liquidity: '2751742179046',
                 tickLower: 187670,
                 tickUpper: 198660,
-              })
+              }),
             }),
             feeAmount0: 0n,
             feeAmount1: 0n,
@@ -2049,7 +2049,7 @@ describe('pool creation:', () => {
                 liquidity: 10_000,
                 tickLower: -203450,
                 tickUpper: -193130,
-              })
+              }),
             }),
             feeAmount0: 1000n,
             feeAmount1: 2000n,
@@ -2125,7 +2125,7 @@ describe('pool creation:', () => {
                 liquidity: '2751742179046',
                 tickLower: 187670,
                 tickUpper: 198660,
-              })
+              }),
             }),
             feeAmount0: 0n,
             feeAmount1: 0n,
@@ -2189,7 +2189,7 @@ describe('pool creation:', () => {
                 liquidity: '2751742179046',
                 tickLower: 187670,
                 tickUpper: 198660,
-              })
+              }),
             }),
             feeAmount0: 0n,
             feeAmount1: 0n,
@@ -2254,7 +2254,7 @@ describe('pool creation:', () => {
                 liquidity: 2751742179046,
                 tickLower: 187670,
                 tickUpper: 198660,
-              })
+              }),
             }),
             feeAmount0: 0n,
             feeAmount1: 0n,
@@ -2319,7 +2319,7 @@ describe('pool creation:', () => {
                 liquidity: '1000000000000000000000',
                 tickLower: -203450,
                 tickUpper: -193130,
-              })
+              }),
             }),
             feeAmount0: 0n,
             feeAmount1: 0n,
