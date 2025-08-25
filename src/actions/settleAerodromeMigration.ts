@@ -97,7 +97,7 @@ export const settleAerodromeMigration = async ({
     );
 
     const originalRatio = Number(pool.sqrtRatioX96.toString());
-    const newRatio = Number(maxPositionWithSwap.pool.sqrtRatioX96.toString());
+    const newRatio = Number(maxPositionWithSwap.position.pool.sqrtRatioX96.toString());
     const priceImpactBps = ((newRatio / originalRatio) ** 2 - 1) * 10000;
 
     if (Math.abs(priceImpactBps) > (exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS)) {
@@ -128,8 +128,8 @@ export const settleAerodromeMigration = async ({
     // TODO improve this calculation
     const swapAmountInMilliBps =
       destination.token0 === destinationChainConfig.wethAddress
-        ? maxPositionWithSwap.amount0.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).quotient
-        : maxPositionWithSwap.amount1.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).quotient;
+        ? maxPositionWithSwap.position.amount0.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).quotient
+        : maxPositionWithSwap.position.amount1.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).quotient;
 
     return generateMigrationParams({
       externalParams,
@@ -137,8 +137,8 @@ export const settleAerodromeMigration = async ({
       destinationChainConfig,
       routes,
       migration,
-      maxPosition: maxPositionWithSwap,
-      maxPositionUsingRouteMinAmountOut: maxPositionWithSwapUsingRouteMinAmountOut,
+      maxPosition: maxPositionWithSwap.position,
+      maxPositionUsingRouteMinAmountOut: maxPositionWithSwapUsingRouteMinAmountOut.position,
       owner,
       protocolFees,
       senderFees,

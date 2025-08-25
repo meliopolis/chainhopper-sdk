@@ -6,7 +6,7 @@ import {
   NATIVE_ETH_ADDRESS,
 } from '../utils/constants';
 import type { InternalStartMigrationParams, InternalStartMigrationResult } from '../types/internal';
-import { generateSettlerData } from '../utils/helpers';
+import { generateSettlerData, resolveSettler } from '../utils/helpers';
 import { getAcrossQuote } from '../lib/acrossClient';
 import { getAerodromeQuote } from './getAerodromeQuote';
 
@@ -90,6 +90,7 @@ export const startAerodromeMigration = async ({
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
             exclusiveRelayer: acrossQuote.deposit.exclusiveRelayer,
             exclusivityDeadline: acrossQuote.deposit.exclusivityDeadline,
+            destinationSettler: resolveSettler(destination.protocol, destinationChainConfig),
           },
         ],
       };
@@ -152,6 +153,7 @@ export const startAerodromeMigration = async ({
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
             exclusiveRelayer: acrossQuote0.deposit.exclusiveRelayer,
             exclusivityDeadline: acrossQuote0.deposit.exclusivityDeadline,
+            destinationSettler: resolveSettler(destination.protocol, destinationChainConfig),
           },
           {
             inputToken: acrossQuote1.deposit.inputToken,
@@ -166,6 +168,7 @@ export const startAerodromeMigration = async ({
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
             exclusiveRelayer: acrossQuote1.deposit.exclusiveRelayer,
             exclusivityDeadline: acrossQuote1.deposit.exclusivityDeadline + 10, // giving extra time for second quote to mint position
+            destinationSettler: resolveSettler(destination.protocol, destinationChainConfig),
           },
         ],
       };
