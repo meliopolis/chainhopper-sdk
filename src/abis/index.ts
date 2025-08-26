@@ -1,3 +1,4 @@
+export * from './IDirectSettler';
 export * from './IMigrator';
 export * from './ISettler';
 export * from './MigrationData';
