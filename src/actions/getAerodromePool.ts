@@ -17,7 +17,7 @@ export const getAerodromePool = async (
   token1: `0x${string}`,
   tickSpacing: number,
   sqrtPriceX96?: bigint
-): Promise<Pool> => {
+): Promise<{ pool: Pool; address: `0x${string}` }> => {
   const tokens = await getTokens(chainConfig, [token0, token1]);
   if (tokens.some((t) => t.isNative)) {
     throw new Error('Native tokens not supported on Aerodrome');
@@ -69,7 +69,7 @@ export const getAerodromePool = async (
       poolDataResults[0][1]
     );
   }
-  return pool;
+  return { pool, address: poolAddress.result };
 };
 
 export const fetchRawAerodromePoolData = async (

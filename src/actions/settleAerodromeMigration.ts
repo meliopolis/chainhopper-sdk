@@ -26,7 +26,7 @@ export const settleAerodromeMigration = async ({
   if (routes.length > 2) throw new Error('Invalid number of routes');
 
   // fetch the pool on the destination chain
-  const pool = await getAerodromePool(
+  const { pool, address: destinationPoolAddress } = await getAerodromePool(
     destinationChainConfig,
     destination.token0,
     destination.token1,
@@ -85,22 +85,19 @@ export const settleAerodromeMigration = async ({
     const otherTokenAvailable = isWethToken0
       ? CurrencyAmount.fromRawAmount(pool.token1, 0)
       : CurrencyAmount.fromRawAmount(pool.token0, 0);
-    const maxPositionWithSwap = await generateMaxV3orV4PositionWithSwapAllowed(
-      destinationChainConfig,
-      pool,
-      isWethToken0 ? baseTokenAvailable : otherTokenAvailable,
-      isWethToken0 ? otherTokenAvailable : baseTokenAvailable,
-      destination.tickLower,
-      destination.tickUpper,
-      new Fraction(exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000).divide(20),
-      numIterations
-    );
+    const { position: maxPositionWithSwap, slippageBps: destinationSlippageBps } =
+      await generateMaxV3orV4PositionWithSwapAllowed(
+        destinationChainConfig,
+        pool,
+        isWethToken0 ? baseTokenAvailable : otherTokenAvailable,
+        isWethToken0 ? otherTokenAvailable : baseTokenAvailable,
+        destination.tickLower,
+        destination.tickUpper,
+        new Fraction(exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000).divide(20),
+        numIterations
+      );
 
-    const originalRatio = Number(pool.sqrtRatioX96.toString());
-    const newRatio = Number(maxPositionWithSwap.position.pool.sqrtRatioX96.toString());
-    const priceImpactBps = ((newRatio / originalRatio) ** 2 - 1) * 10000;
-
-    if (Math.abs(priceImpactBps) > (exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS)) {
+    if (-1 * destinationSlippageBps > (exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS)) {
       throw new Error('Price impact exceeds slippage');
     }
 
@@ -128,23 +125,23 @@ export const settleAerodromeMigration = async ({
     // TODO improve this calculation
     const swapAmountInMilliBps =
       destination.token0 === destinationChainConfig.wethAddress
-        ? maxPositionWithSwap.position.amount0.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000)
-            .quotient
-        : maxPositionWithSwap.position.amount1.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000)
-            .quotient;
+        ? maxPositionWithSwap.amount0.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).quotient
+        : maxPositionWithSwap.amount1.asFraction.divide(baseTokenAvailable.asFraction).multiply(10_000_000).quotient;
 
     return generateMigrationParams({
       externalParams,
       sourceChainConfig,
       destinationChainConfig,
+      destinationPoolAddress,
       routes,
       migration,
-      maxPosition: maxPositionWithSwap.position,
+      maxPosition: maxPositionWithSwap,
       maxPositionUsingRouteMinAmountOut: maxPositionWithSwapUsingRouteMinAmountOut.position,
       owner,
       protocolFees,
       senderFees,
       swapAmountInMilliBps: 10_000_000 - Number(swapAmountInMilliBps.toString()),
+      destinationSlippageBps,
     });
   } else {
     // logically has to be (routes.length) === 2 but needs to look exhaustive for ts compiler
@@ -222,6 +219,7 @@ export const settleAerodromeMigration = async ({
       externalParams,
       sourceChainConfig,
       destinationChainConfig,
+      destinationPoolAddress,
       routes,
       migration,
       maxPosition,

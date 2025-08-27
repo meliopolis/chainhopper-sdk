@@ -251,7 +251,7 @@ export class ChainHopperClient {
 
     if (!this.isChainSupported(destination.chainId)) reasons.push('chain not supported');
 
-    if (destination.protocol !== Protocol.UniswapV3 && destination.protocol !== Protocol.UniswapV4) {
+    if (!Object.values(Protocol).includes(destination.protocol)) {
       reasons.push('destination protocol not supported');
     }
 

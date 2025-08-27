@@ -9,6 +9,8 @@ import type { InternalStartMigrationParams, InternalStartMigrationResult } from 
 import { generateSettlerData, resolveSettler } from '../utils/helpers';
 import { getAcrossQuote } from '../lib/acrossClient';
 import { getAerodromeQuote } from './getAerodromeQuote';
+import { Token as UniswapSDKToken } from '@uniswap/sdk-core';
+import type { aerodromePool } from '@/types';
 
 export const startAerodromeMigration = async ({
   sourceChainConfig,
@@ -37,23 +39,37 @@ export const startAerodromeMigration = async ({
     // get a quote from Uniswap Router to trade otherToken
     const amountIn = isWethToken0 ? totalToken1 : totalToken0;
     let amountOut = 0n;
+    let sourceSlippageBps = 0;
+
+    const uniswapSDKToken0 = new UniswapSDKToken(
+      sourceChainConfig.chain.id,
+      positionWithFees.pool.token0.address,
+      positionWithFees.pool.token0.decimals
+    );
+    const uniswapSDKToken1 = new UniswapSDKToken(
+      sourceChainConfig.chain.id,
+      positionWithFees.pool.token1.address,
+      positionWithFees.pool.token1.decimals
+    );
 
     if (amountIn > 0n) {
       const quote = await getAerodromeQuote(
         sourceChainConfig,
-        isWethToken0 ? positionWithFees.pool.token1.address : positionWithFees.pool.token0.address,
-        isWethToken0 ? positionWithFees.pool.token0.address : positionWithFees.pool.token1.address,
-        positionWithFees.pool.tickSpacing,
+        isWethToken0 ? uniswapSDKToken1 : uniswapSDKToken0,
+        isWethToken0 ? uniswapSDKToken0 : uniswapSDKToken1,
+        positionWithFees.pool as aerodromePool,
         amountIn,
         0n
       );
       // calculate total amount of WETH available
       amountOut = quote.amountOut;
+      sourceSlippageBps = quote.slippageBps;
     }
     const totalWethAvailable = isWethToken0 ? totalToken0 + amountOut : totalToken1 + amountOut;
 
-    // todo check that quote price is not much worse than current price
-    // otherwise trigger a slippage warning
+    if (-1 * sourceSlippageBps > exactPath.slippageInBps) {
+      throw new Error('Price impact exceeds slippage');
+    }
 
     if (exactPath.bridgeType === BridgeType.Across) {
       // generate the message that will be passed to the settler on the destination chain
@@ -91,6 +107,7 @@ export const startAerodromeMigration = async ({
             exclusiveRelayer: acrossQuote.deposit.exclusiveRelayer,
             exclusivityDeadline: acrossQuote.deposit.exclusivityDeadline,
             destinationSettler: resolveSettler(destination.protocol, destinationChainConfig),
+            sourceSlippageBps,
           },
         ],
       };

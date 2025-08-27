@@ -113,7 +113,9 @@ export const encodeMigrationParams = (
   const mintParams =
     'hooks' in params.settlementParams
       ? encodeMintParamsForV4(params.settlementParams as SettlementParams & UniswapV4MintParams)
-      : encodeMintParamsForV3(params.settlementParams as SettlementParams & UniswapV3MintParams);
+      : 'fee' in params.settlementParams
+        ? encodeMintParamsForV3(params.settlementParams as SettlementParams & UniswapV3MintParams)
+        : encodeMintParamsForAerodrome(params.settlementParams as SettlementParams & AerodromeMintParams);
 
   const settlementParams = encodeSettlementParams(params.settlementParams, mintParams);
   const routes = params.tokenRoutes.map((route) =>

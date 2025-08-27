@@ -122,6 +122,7 @@ export const generateMigrationParams = async ({
   protocolFees,
   senderFees,
   expectedRefund,
+  destinationPoolAddress,
 }: InternalGenerateMigrationParamsInput): Promise<{
   destPosition: Position;
   swapAmountInMilliBps?: number;
@@ -174,6 +175,10 @@ export const generateMigrationParams = async ({
       position: maxPosition,
       slippagePosition: maxPositionUsingRouteMinAmountOut,
       expectedRefund,
+      ...(destination.protocol === Protocol.Aerodrome && {
+        aerodromeTickSpacing: destination.tickSpacing,
+        aerodromePoolAddress: destinationPoolAddress,
+      }),
     }),
     swapAmountInMilliBps: swapAmountInMilliBps ? swapAmountInMilliBps : 0,
     destinationSlippageBps: destinationSlippageBps ? destinationSlippageBps : 0,

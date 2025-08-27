@@ -56,6 +56,7 @@ export type InternalGenerateMigrationParamsInput = {
   externalParams: RequestMigrationParams;
   sourceChainConfig: ChainConfig;
   destinationChainConfig: ChainConfig;
+  destinationPoolAddress?: `0x${string}`;
   migration: InternalDestinationWithExactPath;
   routes: Route[];
   maxPosition: V3Position | V4Position;
