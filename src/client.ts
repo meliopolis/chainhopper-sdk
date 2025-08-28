@@ -19,13 +19,19 @@ import type {
   RequestWithdrawalParams,
   WithdrawalExecutionParams,
   CheckMigrationIdResponse,
+  AcrossRoute,
+  DirectRoute,
 } from './types';
 import { startUniswapV3Migration, settleUniswapV3Migration } from './actions';
 import { getV4Position } from './actions/getV4Position';
 import { startUniswapV4Migration } from './actions/startUniswapV4Migration';
 import { settleUniswapV4Migration } from './actions/settleUniswapV4Migration';
 import { isAddress, checksumAddress, zeroAddress } from 'viem';
-import { generateExecutionParams, generateSettlerExecutionParams } from './utils/helpers';
+import {
+  generateExecutionParams,
+  generateAcrossSettlerExecutionParams,
+  generateDirectSettlerExecutionParams,
+} from './utils/helpers';
 import type {
   InternalDestinationWithExactPath,
   InternalDestinationWithPathFilter,
@@ -231,7 +237,7 @@ export class ChainHopperClient {
 
     if (exactPath.bridgeType === undefined) {
       exactPath.bridgeType = BridgeType.Across;
-    } else if (exactPath.bridgeType !== BridgeType.Across) {
+    } else if (exactPath.bridgeType !== BridgeType.Across && exactPath.bridgeType !== BridgeType.Direct) {
       reasons.push('bridge type not supported');
     }
 
@@ -282,7 +288,7 @@ export class ChainHopperClient {
       if (pathFilter?.bridgeType) {
         bridgeTypes = [pathFilter.bridgeType];
       } else {
-        bridgeTypes = [BridgeType.Across];
+        bridgeTypes = [BridgeType.Across, BridgeType.Direct];
       }
 
       if (pathFilter?.migrationMethod) {
@@ -323,6 +329,11 @@ export class ChainHopperClient {
       throw new Error('Position has no liquidity or fees');
     }
 
+    // Additional validation for DirectTransfer at migration level
+    if (exactPath.bridgeType === BridgeType.Direct && sourceChainId !== destChainId) {
+      throw new Error('DirectTransfer bridge only supports same-chain migrations');
+    }
+
     const { routes } = await startFns[sourceProtocol]({
       sourceChainConfig: this.chainConfigs[sourceChainId],
       destinationChainConfig: this.chainConfigs[destChainId],
@@ -332,6 +343,14 @@ export class ChainHopperClient {
     });
 
     const settle = settleFns[sourceProtocol][destProtocol];
+    const settlementResult = await settle({
+      sourceChainConfig: this.chainConfigs[sourceChainId],
+      destinationChainConfig: this.chainConfigs[destChainId],
+      routes,
+      migration,
+      externalParams: params,
+      owner: sourcePosition.owner,
+    });
 
     const {
       destPosition,
@@ -341,14 +360,7 @@ export class ChainHopperClient {
       destinationSlippageBps,
       senderFees,
       protocolFees,
-    } = await settle({
-      sourceChainConfig: this.chainConfigs[sourceChainId],
-      destinationChainConfig: this.chainConfigs[destChainId],
-      routes,
-      migration,
-      externalParams: params,
-      owner: sourcePosition.owner,
-    });
+    } = settlementResult;
 
     if (routes.length === 1) {
       // set destination slippage in SingleToken routes only
@@ -365,6 +377,7 @@ export class ChainHopperClient {
         protocol: sourceProtocol,
         tokenId,
         message: migratorMessage,
+        bridgeType: exactPath.bridgeType,
       }),
       migrationFees: {
         sender: senderFees,
@@ -381,15 +394,23 @@ export class ChainHopperClient {
 
     return {
       ...baseReturn,
-      settlerExecutionParams: generateSettlerExecutionParams({
-        sourceChainId,
-        destChainId,
-        owner: sourcePosition.owner,
-        destProtocol: destProtocol,
-        routes,
-        fillDeadline: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
-        message: settlerMessage,
-      }),
+      settlerExecutionParams:
+        exactPath.bridgeType === BridgeType.Direct
+          ? generateDirectSettlerExecutionParams({
+              destChainId,
+              destProtocol,
+              routes: routes as DirectRoute[],
+              message: settlerMessage,
+            })
+          : generateAcrossSettlerExecutionParams({
+              sourceChainId,
+              destChainId,
+              owner: sourcePosition.owner,
+              destProtocol: destProtocol,
+              routes: routes as AcrossRoute[],
+              fillDeadline: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+              message: settlerMessage,
+            }),
       swapAmountInMilliBps,
     };
   }

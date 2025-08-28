@@ -58,6 +58,10 @@ export type ChainConfig = {
   UniswapV3AcrossSettler?: `0x${string}`;
   UniswapV4AcrossMigrator?: `0x${string}`;
   UniswapV4AcrossSettler?: `0x${string}`;
+  UniswapV3DirectMigrator?: `0x${string}`;
+  UniswapV3DirectSettler?: `0x${string}`;
+  UniswapV4DirectMigrator?: `0x${string}`;
+  UniswapV4DirectSettler?: `0x${string}`;
 };
 
 const multicallAddress = '0xcA11bde05977b3631167028862bE2a173976CA11';

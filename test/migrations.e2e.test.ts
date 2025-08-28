@@ -1517,6 +1517,41 @@ describe('out of range v3→ migrations', () => {
 
   describe('dual token', () => {
     test('mainnet v3 → unichain v4 migration throws unsupported token address', async () => {
+      const sourceChainId = 1;
+      const token0 = client.chainConfigs[sourceChainId].wethAddress;
+      const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+      const fee = 500;
+
+      await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+        getV3Position: mock(() => {
+          const tickCurrent = -199980;
+          const liquidity = 10_000_000_000n;
+          const pool = new V3Pool(
+            new Token(sourceChainId, token0, 18, 'WETH'),
+            new Token(sourceChainId, token1, 6, 'USDC'),
+            fee,
+            BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+            liquidity.toString(),
+            tickCurrent
+          );
+          return {
+            owner: ownerAddress,
+            tokenId: 963499n,
+            ...toSDKPosition(
+              client.chainConfigs[sourceChainId],
+              new V3Position({
+                pool,
+                liquidity: 10_000_000,
+                tickLower: -886980,
+                tickUpper: 886980,
+              })
+            ),
+            feeAmount0: 1000n,
+            feeAmount1: 2000n,
+          };
+        }),
+      }));
+
       const params: RequestExactMigrationParams = {
         sourcePosition: {
           chainId: v3ChainId,

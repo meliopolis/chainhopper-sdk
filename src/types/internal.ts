@@ -7,7 +7,8 @@ import type {
   MigrationFees,
   PathFilter,
   RequestMigrationParams,
-  Route,
+  AcrossRoute,
+  DirectRoute,
   UniswapV3Params,
   UniswapV4Params,
 } from './sdk';
@@ -29,13 +30,13 @@ export type InternalStartMigrationParams = {
 
 export type InternalStartMigrationResult = {
   acrossQuotes: Quote[];
-  routes: Route[];
+  routes: AcrossRoute[] | DirectRoute[];
 };
 
 export type InternalSettleMigrationParams = {
   sourceChainConfig: ChainConfig;
   destinationChainConfig: ChainConfig;
-  routes: Route[];
+  routes: AcrossRoute[] | DirectRoute[];
   migration: InternalDestinationWithExactPath;
   externalParams: RequestMigrationParams;
   owner: `0x${string}`;
@@ -56,7 +57,7 @@ export type InternalGenerateMigrationParamsInput = {
   sourceChainConfig: ChainConfig;
   destinationChainConfig: ChainConfig;
   migration: InternalDestinationWithExactPath;
-  routes: Route[];
+  routes: AcrossRoute[] | DirectRoute[];
   maxPosition: V3Position | V4Position;
   maxPositionUsingRouteMinAmountOut: V3Position | V4Position;
   owner: `0x${string}`;
