@@ -68,7 +68,7 @@ const validateMigrationResponse = (params: RequestExactMigrationParams, result: 
 
   // check correct output pool
   const pool: V4Pool = result.migration.position.pool as unknown as V4Pool;
-  expect(pool.fee).toBe(destination.fee);
+  if ('fee' in destination) expect(pool.fee).toBe(destination.fee);
   if ('hooks' in destination) expect(pool.hooks).toBe(destination.hooks as string);
   if ('tickSpacing' in destination) expect(pool.tickSpacing).toBe(destination.tickSpacing as number);
 
@@ -1371,15 +1371,10 @@ describe('flipped token order between chains', () => {
 describe('out of range v3→ migrations', () => {
   let v3ChainId: number;
   let v3TokenId: bigint;
-  let v3Response: PositionWithFees;
 
   beforeAll(async () => {
     v3ChainId = 1;
     v3TokenId = 893202n;
-    v3Response = await client.getV3Position({
-      chainId: v3ChainId,
-      tokenId: v3TokenId,
-    });
   });
 
   describe('single token', () => {

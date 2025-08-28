@@ -525,4 +525,4 @@ export const AerodromePoolContractABI = [
     type: 'function',
   },
   { inputs: [], name: 'updateRewardsGrowthGlobal', outputs: [], stateMutability: 'nonpayable', type: 'function' },
-];
+] as const;
