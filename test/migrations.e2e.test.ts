@@ -134,10 +134,17 @@ const validateMigrationResponse = (params: RequestExactMigrationParams, result: 
     expect(executionParams.args[1]).toBe(
       client.chainConfigs[sourcePosition.chainId].UniswapV3AcrossMigrator as `0x${string}`
     );
-  } else {
+  } else if (sourcePosition.protocol === Protocol.UniswapV4) {
     expect(executionParams.address).toBe(client.chainConfigs[sourcePosition.chainId].v4PositionManagerContract.address);
     expect(executionParams.args[1]).toBe(
       client.chainConfigs[sourcePosition.chainId].UniswapV4AcrossMigrator as `0x${string}`
+    );
+  } else if (sourcePosition.protocol === Protocol.Aerodrome) {
+    expect(executionParams.address).toBe(
+      client.chainConfigs[sourcePosition.chainId].aerodromeNftPositionManagerContract!.address
+    );
+    expect(executionParams.args[1]).toBe(
+      client.chainConfigs[sourcePosition.chainId].AerodromeAcrossMigrator as `0x${string}`
     );
   }
 };
@@ -763,6 +770,258 @@ describe('in-range v3→ migrations', () => {
       exactPath: {
         bridgeType: BridgeType.Across,
         migrationMethod: MigrationMethod.SingleToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
+      },
+    };
+    validateMigrationResponse(params, await client.requestExactMigration(params));
+  });
+
+  test('generate valid mainnet v3 → aerodrome single-token migration', async () => {
+    const sourceChainId = 1;
+    const token0 = client.chainConfigs[sourceChainId].wethAddress;
+    const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+    const fee = 500;
+    const tickLower = -203450;
+    const tickUpper = -193130;
+
+    await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+      getV3Position: mock(() => {
+        const tickCurrent = -199000;
+        const liquidity = 10_000_000_000n;
+        const pool = new V3Pool(
+          new Token(sourceChainId, token0, 18, 'WETH'),
+          new Token(sourceChainId, token1, 6, 'USDC'),
+          fee,
+          BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+          liquidity.toString(),
+          tickCurrent
+        );
+        return {
+          owner: ownerAddress,
+          tokenId: v3TokenId,
+          ...toSDKPosition({
+            chainConfig: client.chainConfigs[sourceChainId],
+            position: new V3Position({
+              pool,
+              liquidity: 10_000_000,
+              tickLower,
+              tickUpper,
+            }),
+          }),
+          feeAmount0: 1000n,
+          feeAmount1: 2000n,
+        };
+      }),
+    }));
+
+    const params: RequestExactMigrationParams = {
+      sourcePosition: {
+        chainId: v3ChainId,
+        tokenId: v3TokenId,
+        protocol: Protocol.UniswapV3,
+      },
+      destination: {
+        chainId: 8453,
+        protocol: Protocol.Aerodrome,
+        token0: '0x4200000000000000000000000000000000000006',
+        token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+        tickLower: -1 * tickUpper,
+        tickUpper: -1 * tickLower,
+        tickSpacing: 100,
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.SingleToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
+      },
+    };
+    validateMigrationResponse(params, await client.requestExactMigration(params));
+  });
+
+  test('generate valid mainnet v3 → aerodrome dual-token migration', async () => {
+    const sourceChainId = 1;
+    const token0 = client.chainConfigs[sourceChainId].wethAddress;
+    const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+    const fee = 500;
+    const tickLower = -203450;
+    const tickUpper = -193130;
+
+    await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+      getV3Position: mock(() => {
+        const tickCurrent = -199000;
+        const liquidity = 10_000_000_000n;
+        const pool = new V3Pool(
+          new Token(sourceChainId, token0, 18, 'WETH'),
+          new Token(sourceChainId, token1, 6, 'USDC'),
+          fee,
+          BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+          liquidity.toString(),
+          tickCurrent
+        );
+        return {
+          owner: ownerAddress,
+          tokenId: v3TokenId,
+          ...toSDKPosition({
+            chainConfig: client.chainConfigs[sourceChainId],
+            position: new V3Position({
+              pool,
+              liquidity: 10_000_000,
+              tickLower,
+              tickUpper,
+            }),
+          }),
+          feeAmount0: 10000000n,
+          feeAmount1: 20000000000000000n,
+        };
+      }),
+    }));
+
+    const params: RequestExactMigrationParams = {
+      sourcePosition: {
+        chainId: v3ChainId,
+        tokenId: v3TokenId,
+        protocol: Protocol.UniswapV3,
+      },
+      destination: {
+        chainId: 8453,
+        protocol: Protocol.Aerodrome,
+        token0: '0x4200000000000000000000000000000000000006',
+        token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+        tickLower: -1 * tickUpper,
+        tickUpper: -1 * tickLower,
+        tickSpacing: 100,
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.DualToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
+      },
+    };
+    validateMigrationResponse(params, await client.requestExactMigration(params));
+  });
+
+  test('generate valid aerodrome → unichain v4 single-token migration', async () => {
+    const sourceChainId = 8453;
+    const token0 = client.chainConfigs[sourceChainId].wethAddress;
+    const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+    const fee = 100;
+    const tickLower = 193130;
+    const tickUpper = 203450;
+
+    await moduleMocker.mock('../src/actions/getAerodromePosition.ts', () => ({
+      getAerodromePosition: mock(() => {
+        const tickCurrent = 199000;
+        const liquidity = 10_000_000_000n;
+        const pool = new V3Pool(
+          new Token(sourceChainId, token0, 18, 'WETH'),
+          new Token(sourceChainId, token1, 6, 'USDC'),
+          fee,
+          BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+          liquidity.toString(),
+          tickCurrent
+        );
+        return {
+          owner: ownerAddress,
+          tokenId: 12345n,
+          ...toSDKPosition({
+            chainConfig: client.chainConfigs[sourceChainId],
+            position: new V3Position({
+              pool,
+              liquidity: 1000000,
+              tickLower,
+              tickUpper,
+            }),
+          }),
+          feeAmount0: 200000000000000n,
+          feeAmount1: 10000000n,
+        };
+      }),
+    }));
+
+    const params: RequestExactMigrationParams = {
+      sourcePosition: {
+        chainId: 8453,
+        tokenId: 12345n,
+        protocol: Protocol.Aerodrome,
+      },
+      destination: {
+        chainId: 130,
+        protocol: Protocol.UniswapV4,
+        token0: NATIVE_ETH_ADDRESS,
+        token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+        tickLower: tickLower,
+        tickUpper: tickUpper,
+        fee: 500,
+        tickSpacing: 10,
+        hooks: '0x0000000000000000000000000000000000000000',
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.SingleToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
+      },
+    };
+    validateMigrationResponse(params, await client.requestExactMigration(params));
+  });
+
+  test('generate valid aerodrome → unichain v4 dual-token migration', async () => {
+    const sourceChainId = 8453;
+    const token0 = client.chainConfigs[sourceChainId].wethAddress;
+    const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+    const fee = 100;
+    const tickLower = 193130;
+    const tickUpper = 203450;
+
+    await moduleMocker.mock('../src/actions/getAerodromePosition.ts', () => ({
+      getAerodromePosition: mock(() => {
+        const tickCurrent = 199000;
+        const liquidity = 10_000_000_000n;
+        const pool = new V3Pool(
+          new Token(sourceChainId, token0, 18, 'WETH'),
+          new Token(sourceChainId, token1, 6, 'USDC'),
+          fee,
+          BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+          liquidity.toString(),
+          tickCurrent
+        );
+        return {
+          owner: ownerAddress,
+          tokenId: 12345n,
+          ...toSDKPosition({
+            chainConfig: client.chainConfigs[sourceChainId],
+            position: new V3Position({
+              pool,
+              liquidity: 10_000_000,
+              tickLower,
+              tickUpper,
+            }),
+          }),
+          feeAmount0: 20000000000000000n,
+          feeAmount1: 10000000n,
+        };
+      }),
+    }));
+
+    const params: RequestExactMigrationParams = {
+      sourcePosition: {
+        chainId: 8453,
+        tokenId: 12345n,
+        protocol: Protocol.Aerodrome,
+      },
+      destination: {
+        chainId: 130,
+        protocol: Protocol.UniswapV4,
+        token0: NATIVE_ETH_ADDRESS,
+        token1: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+        tickLower: tickLower,
+        tickUpper: tickUpper,
+        fee: 500,
+        tickSpacing: 10,
+        hooks: '0x0000000000000000000000000000000000000000',
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.DualToken,
         slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
       },
     };
