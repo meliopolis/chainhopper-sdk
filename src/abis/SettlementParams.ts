@@ -55,6 +55,24 @@ export const V4MintParamsAbi = [
   },
 ];
 
+export const AerodromeMintParamsAbi = [
+  {
+    name: 'V3MintParams',
+    type: 'tuple',
+    components: [
+      { internalType: 'address', name: 'token0', type: 'address' },
+      { internalType: 'address', name: 'token1', type: 'address' },
+      { internalType: 'int24', name: 'tickSpacing', type: 'int24' },
+      { internalType: 'uint160', name: 'sqrtPriceX96', type: 'uint160' },
+      { internalType: 'int24', name: 'tickLower', type: 'int24' },
+      { internalType: 'int24', name: 'tickUpper', type: 'int24' },
+      { internalType: 'uint24', name: 'swapAmountInMilliBps', type: 'uint24' },
+      { internalType: 'uint256', name: 'amount0Min', type: 'uint256' },
+      { internalType: 'uint256', name: 'amount1Min', type: 'uint256' },
+    ],
+  },
+];
+
 export const ParamsForSettlerAbi = [
   {
     name: 'migrationId',

@@ -1,6 +1,13 @@
-import { SettlementParamsAbi, V4MintParamsAbi, V3MintParamsAbi, ParamsForSettlerAbi } from '../abis/SettlementParams';
+import {
+  SettlementParamsAbi,
+  V4MintParamsAbi,
+  V3MintParamsAbi,
+  ParamsForSettlerAbi,
+  AerodromeMintParamsAbi,
+} from '../abis/SettlementParams';
 import { MigrationParamsAbi, RouteAbi } from '../abis/MigrationParams';
 import type {
+  AerodromeMintParams,
   MigrationData,
   MigrationParams,
   SettlementParams,
@@ -58,6 +65,22 @@ export const encodeMintParamsForV4 = (params: UniswapV4MintParams): `0x${string}
   ]);
 };
 
+export const encodeMintParamsForAerodrome = (params: AerodromeMintParams): `0x${string}` => {
+  return encodeAbiParameters(AerodromeMintParamsAbi, [
+    {
+      token0: params.token0,
+      token1: params.token1,
+      tickSpacing: params.tickSpacing,
+      sqrtPriceX96: params.sqrtPriceX96,
+      tickLower: params.tickLower,
+      tickUpper: params.tickUpper,
+      amount0Min: params.amount0Min,
+      amount1Min: params.amount1Min,
+      swapAmountInMilliBps: params.swapAmountInMilliBps,
+    },
+  ]);
+};
+
 export const encodeSettlementParams = (params: SettlementParams, mintParams: `0x${string}`): `0x${string}` => {
   return encodeAbiParameters(SettlementParamsAbi, [
     {
@@ -90,7 +113,9 @@ export const encodeMigrationParams = (
   const mintParams =
     'hooks' in params.settlementParams
       ? encodeMintParamsForV4(params.settlementParams as SettlementParams & UniswapV4MintParams)
-      : encodeMintParamsForV3(params.settlementParams as SettlementParams & UniswapV3MintParams);
+      : 'fee' in params.settlementParams
+        ? encodeMintParamsForV3(params.settlementParams as SettlementParams & UniswapV3MintParams)
+        : encodeMintParamsForAerodrome(params.settlementParams as SettlementParams & AerodromeMintParams);
 
   const settlementParams = encodeSettlementParams(params.settlementParams, mintParams);
   const routes = params.tokenRoutes.map((route) =>

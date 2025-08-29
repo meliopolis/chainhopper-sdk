@@ -1,4 +1,7 @@
 export * from './encode';
+export * from './getAerodromePool';
+export * from './getAerodromePosition';
+export * from './getAerodromeQuote';
 export * from './getSettlerFees';
 export * from './getTokens';
 export * from './getV3Pool';
@@ -11,5 +14,7 @@ export * from './getV4Position';
 export * from './getV4Quote';
 export * from './settleUniswapV3Migration';
 export * from './settleUniswapV4Migration';
+export * from './settleAerodromeMigration';
 export * from './startUniswapV3Migration';
 export * from './startUniswapV4Migration';
+export * from './startAerodromeMigration';
