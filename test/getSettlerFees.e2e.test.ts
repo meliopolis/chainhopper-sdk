@@ -26,16 +26,16 @@ describe('getSettlerFees', () => {
       if (chainConfig.UniswapV3AcrossSettler) {
         test('should return fees for UniswapV3AcrossSettler', async () => {
           const fees = await getSettlerFees(chainConfig, chainConfig.UniswapV3AcrossSettler);
-          expect(fees.protocolShareOfSenderFeePct).toBe(15n);
-          expect(fees.protocolShareBps).toBe(10n);
+          expect(fees.protocolShareOfSenderFeePct).toBe(20n);
+          expect(fees.protocolShareBps).toBe(0n);
         });
       }
 
       if (chainConfig.UniswapV4AcrossSettler) {
         test('should return fees for UniswapV4AcrossSettler', async () => {
           const fees = await getSettlerFees(chainConfig, chainConfig.UniswapV4AcrossSettler);
-          expect(fees.protocolShareOfSenderFeePct).toBe(15n);
-          expect(fees.protocolShareBps).toBe(10n);
+          expect(fees.protocolShareOfSenderFeePct).toBe(20n);
+          expect(fees.protocolShareBps).toBe(0n);
         });
       }
     });

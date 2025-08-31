@@ -84,7 +84,7 @@ const validateMigrationResponse = (params: RequestExactMigrationParams, result: 
   // check fees
   const senderShareBps = params.senderShareBps ? BigInt(params.senderShareBps) : 0n;
   // don't want to call getSettlerFees excessively, can update if this changes:
-  const protocolShareBps = 10n;
+  const protocolShareBps = 0n;
 
   expect(migration.migrationFees.sender.bps).toBe(Number(senderShareBps));
   expect(migration.migrationFees.protocol.bps).toBe(Number(protocolShareBps));

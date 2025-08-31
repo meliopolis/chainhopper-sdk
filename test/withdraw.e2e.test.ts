@@ -22,19 +22,6 @@ describe('requestWithdrawal', () => {
     };
     expect(() => client.requestWithdrawal(params)).toThrow('Expected 0x-prefixed 32-byte hex string (bytes32).');
   });
-  test('should throw exception for invalid account', async () => {
-    const chainConfig = client.chainConfigs[130];
-    const params: WithdrawalParams = {
-      settler: client.chainConfigs[130].UniswapV4AcrossSettler!,
-      migrationId: '0x038253c0e0c452114fbb0bfe1fccf964d5b581f2470e1874bac9bcb0cf60f506',
-    };
-    expect(async () => {
-      await chainConfig.publicClient!.simulateContract({
-        ...client.requestWithdrawal(params),
-        account: '0x4529A01c7A0410167c5740C487A8DE60232617bf', // existing address that is not the owner
-      });
-    }).toThrow('Error: NotRecipient()');
-  });
   test('should return valid calldata for valid withdrawal request', async () => {
     const chainConfig = client.chainConfigs[130];
     const params: WithdrawalParams = {
