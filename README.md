@@ -1,10 +1,10 @@
 # ChainHopper Protocol SDK
 
-[ChainHopper Protocol](https://github.com/meliopolis/chainhopper-protocol) allows Uniswap v3 and v4 LP positions to migrate between supported chains with a single click.
+[ChainHopper Protocol](https://github.com/meliopolis/chainhopper-protocol) allows Uniswap v3, v4 and Aerodrome LP positions to migrate between supported chains with a single click.
 
 Supports:
 
-- One-click migration from any v3/v4 pool to any v3/v4 pool
+- One-click migration from any v3/v4/Aerodrome pool to any v3/v4/Aerodrome pool
 - Smart bridging: Single or Dual Token migrations
 - Native token support for v4
 - Initialize new pools through the migration, if needed
@@ -92,7 +92,7 @@ import { zeroAddress } from 'viem';
 const migrationParams: RequestMigrationParams = {
   sourcePosition: {
     chainId: 8453, // Base, in this example
-    protocol: Protocol.UniswapV3, // source protocol: UniswapV3 or UniswapV4
+    protocol: Protocol.UniswapV3, // source protocol: UniswapV3, UniswapV4, or Aerodrome (Base only)
     tokenId: 1806423n, // change to the position you want to migrate
   },
   destination: {
@@ -372,7 +372,7 @@ const migrationParams: RequestMigrationParams = {
 
 _1. What chains are supported?_
 
-Currently, we support Ethereum, Optimism, Arbitrum, Base and Unichain. Please get in touch if you want us to support additional chains.
+Currently, we support Ethereum, Optimism, Arbitrum, Base and Unichain. Aerodrome protocol is supported on Base only. Please get in touch if you want us to support additional chains.
 
 _2. Do you have plans to support additional bridges?_
 
