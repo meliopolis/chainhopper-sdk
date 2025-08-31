@@ -375,7 +375,7 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
         chainConfig,
         inputBalance.currency.wrapped,
         outputBalance.currency.wrapped,
-        toSDKPool({ chainConfig, pool }) as v3Pool,
+        toSDKPool({ chainConfig, pool }) as unknown as v3Pool,
         BigInt(currencyAmountToSwap.quotient.toString()),
         0n
       );

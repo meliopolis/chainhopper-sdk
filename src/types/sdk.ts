@@ -115,7 +115,7 @@ export type Token = {
   name?: string;
 };
 
-export type Pool = {
+export type CommonPoolParams = {
   chainId: number;
   token0: Token;
   token1: Token;
@@ -126,24 +126,26 @@ export type Pool = {
   tick?: number;
 };
 
-export type v3Pool = Pool & {
+export type v3Pool = CommonPoolParams & {
   protocol: Protocol.UniswapV3;
   poolAddress: `0x${string}`;
 };
 
-export type v4Pool = Pool & {
+export type v4Pool = CommonPoolParams & {
   protocol: Protocol.UniswapV4;
   hooks: `0x${string}`;
   poolId: `0x${string}`;
 };
 
-export type aerodromePool = Pool & {
+export type aerodromePool = CommonPoolParams & {
   protocol: Protocol.Aerodrome;
   poolAddress: `0x${string}`;
 };
 
+export type Pool = v3Pool | v4Pool | aerodromePool;
+
 export type Position = {
-  pool: v3Pool | v4Pool | aerodromePool;
+  pool: Pool;
   tickLower: number;
   tickUpper: number;
   liquidity: bigint;

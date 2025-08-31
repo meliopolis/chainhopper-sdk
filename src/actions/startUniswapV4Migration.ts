@@ -96,21 +96,16 @@ export const startUniswapV4Migration = async ({
       const routes: DirectRoute[] = [];
 
       // Create route for ETH/WETH (the single token we're transferring)
-      const inputToken = isToken0EthOrWeth ? pool.token0.address : pool.token1.address;
-      const outputToken =
-        destination.token0 === sourceChainConfig.wethAddress || destination.token0 === NATIVE_ETH_ADDRESS
-          ? destination.token0
-          : destination.token1;
       const totalAmount = isToken0EthOrWeth ? totalToken0 : totalToken1;
 
       const directRoute: DirectRoute = {
-        inputToken,
-        outputToken,
+        inputToken: sourceChainConfig.wethAddress,
+        outputToken: sourceChainConfig.wethAddress,
         inputAmount: totalAmount,
         outputAmount: totalAmount,
         minOutputAmount: (totalAmount * BigInt(10000 - exactPath.slippageInBps)) / BigInt(10000),
         destinationSettler: resolveSettler(destination.protocol, destinationChainConfig, BridgeType.Direct),
-        sourceSlippageBps: 0,
+        sourceSlippageBps,
         destinationSlippageBps: exactPath.slippageInBps,
       };
 
@@ -170,18 +165,11 @@ export const startUniswapV4Migration = async ({
       }
 
       const routes: DirectRoute[] = [];
-
-      // Create route for ETH/WETH (the single token we're transferring)
-      const inputToken = isToken0EthOrWeth ? pool.token0.address : pool.token1.address;
-      const outputToken =
-        destination.token0 === sourceChainConfig.wethAddress || destination.token0 === NATIVE_ETH_ADDRESS
-          ? destination.token0
-          : destination.token1;
       const totalAmount = isToken0EthOrWeth ? totalToken0 : totalToken1;
 
       const directRoute: DirectRoute = {
-        inputToken,
-        outputToken,
+        inputToken: sourceChainConfig.wethAddress,
+        outputToken: sourceChainConfig.wethAddress,
         inputAmount: totalAmount,
         outputAmount: totalAmount,
         minOutputAmount: (totalAmount * BigInt(10000 - exactPath.slippageInBps)) / BigInt(10000),

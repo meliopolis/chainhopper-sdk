@@ -119,7 +119,7 @@ export const encodeMigrationParams = (
 
   const settlementParams = encodeSettlementParams(params.settlementParams, mintParams);
   const routes = params.tokenRoutes.map((route) => {
-    if ('outputToken' in route) {
+    if ('maxFees' in route) {
       // check for Across route
       return encodeAbiParameters(RouteAbi, [
         {

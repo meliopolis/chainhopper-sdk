@@ -82,7 +82,7 @@ export const startUniswapV3Migration = async ({
       // Create route for WETH (the single token we're transferring)
       const directRoute: DirectRoute = {
         inputToken: sourceChainConfig.wethAddress,
-        outputToken: destination.token0 === sourceChainConfig.wethAddress ? destination.token0 : destination.token1,
+        outputToken: sourceChainConfig.wethAddress,
         inputAmount: totalWethAvailable,
         outputAmount: totalWethAvailable,
         minOutputAmount: (totalWethAvailable * BigInt(10000 - exactPath.slippageInBps)) / BigInt(10000),

@@ -118,6 +118,10 @@ export const chainConfigs: Record<number, ChainConfig> = {
     UniswapV3AcrossSettler: '0x04efac76263d0dd17c2acff3bf932c801d9ade78',
     UniswapV4AcrossMigrator: '0x6b19fdf76fc1eac6e10259855af85b7d5e1b5c6c',
     UniswapV4AcrossSettler: '0x76066eb0a660f2bca149757651dedb33487fdbb4',
+    UniswapV3DirectMigrator: '0x2ab8947736D3ECB47f95c4a1B798e02dC012e66D', // TODO: need to deploy
+    UniswapV3DirectSettler: '0xe1e5c975C577Ec251B065D6299f524E3fe47B261', // TODO: need to deploy
+    UniswapV4DirectMigrator: '0x0000000000000000000000000000000000000000', // TODO: need to deploy
+    UniswapV4DirectSettler: '0x0000000000000000000000000000000000000000', // TODO: need to deploy
   },
   10: {
     chainId: 10,
@@ -255,6 +259,10 @@ export const chainConfigs: Record<number, ChainConfig> = {
     UniswapV3AcrossSettler: '0xd640dd4a0549b3223414e62be90f4af179b6b7ab',
     UniswapV4AcrossMigrator: '0xd8ca296a9fd140d86109203b100f11f6060b7a8a',
     UniswapV4AcrossSettler: '0x5e2549ca01d4a97670ecdb72a90ed607f3aeb6db',
+    UniswapV3DirectMigrator: '0x876e9A1bF124D61e205c54320206a8C50AbF0821',
+    UniswapV3DirectSettler: '0x310b4Bc03f4D5F74da5eD78682C15685686e9932',
+    UniswapV4DirectMigrator: '0x9a9b37A37015FE4a5Bdf76e93c0dc92e7df06362',
+    UniswapV4DirectSettler: '0xcB82fc478a4553baA8261d9974dAf0c5A2A392D6',
   },
   42161: {
     chainId: 42161,
