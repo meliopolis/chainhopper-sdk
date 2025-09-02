@@ -33,6 +33,7 @@ export const settleUniswapV3Migration = async ({
     destination.fee,
     destination.sqrtPriceX96
   );
+  const { tickSpacing } = pool;
 
   // get the settler fees
   const { protocolShareBps, protocolShareOfSenderFeePct } = await getSettlerFees(
@@ -88,11 +89,13 @@ export const settleUniswapV3Migration = async ({
     const { position: maxPositionWithSwap, slippageBps: destinationSlippageBps } =
       await generateMaxV3orV4PositionWithSwapAllowed(
         destinationChainConfig,
+        destination.protocol,
         pool,
         isWethToken0 ? baseTokenAvailable : otherTokenAvailable,
         isWethToken0 ? otherTokenAvailable : baseTokenAvailable,
         destination.tickLower,
         destination.tickUpper,
+        tickSpacing,
         new Fraction(exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000).divide(20),
         numIterations
       );
@@ -112,11 +115,13 @@ export const settleUniswapV3Migration = async ({
       : CurrencyAmount.fromRawAmount(pool.token0, 0);
     const { position: maxPositionWithSwapUsingRouteMinAmountOut } = await generateMaxV3orV4PositionWithSwapAllowed(
       destinationChainConfig,
+      destination.protocol,
       pool,
       isWethToken0 ? baseTokenAvailableUsingRouteMinAmountOut : otherTokenAvailableUsingRouteMinAmountOut,
       isWethToken0 ? otherTokenAvailableUsingRouteMinAmountOut : baseTokenAvailableUsingRouteMinAmountOut,
       destination.tickLower,
       destination.tickUpper,
+      tickSpacing,
       new Fraction(exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000).divide(20),
       numIterations
     );
@@ -194,19 +199,23 @@ export const settleUniswapV3Migration = async ({
     }
 
     const maxPosition = generateMaxV3Position(
+      destination.protocol,
       pool,
       settleAmountOut0,
       settleAmountOut1,
       destination.tickLower,
-      destination.tickUpper
+      destination.tickUpper,
+      tickSpacing
     );
 
     const maxPositionUsingSettleMinAmountsOut = generateMaxV3Position(
+      destination.protocol,
       pool,
       settleMinAmountOut0,
       settleMinAmountOut1,
       destination.tickLower,
-      destination.tickUpper
+      destination.tickUpper,
+      tickSpacing
     );
 
     const expectedRefund = {

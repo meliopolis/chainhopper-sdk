@@ -88,11 +88,13 @@ export const settleAerodromeMigration = async ({
     const { position: maxPositionWithSwap, slippageBps: destinationSlippageBps } =
       await generateMaxV3orV4PositionWithSwapAllowed(
         destinationChainConfig,
+        destination.protocol,
         pool,
         isWethToken0 ? baseTokenAvailable : otherTokenAvailable,
         isWethToken0 ? otherTokenAvailable : baseTokenAvailable,
         destination.tickLower,
         destination.tickUpper,
+        destination.tickSpacing,
         new Fraction(exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000).divide(20),
         numIterations
       );
@@ -112,11 +114,13 @@ export const settleAerodromeMigration = async ({
       : CurrencyAmount.fromRawAmount(pool.token0, 0);
     const maxPositionWithSwapUsingRouteMinAmountOut = await generateMaxV3orV4PositionWithSwapAllowed(
       destinationChainConfig,
+      destination.protocol,
       pool,
       isWethToken0 ? baseTokenAvailableUsingRouteMinAmountOut : otherTokenAvailableUsingRouteMinAmountOut,
       isWethToken0 ? otherTokenAvailableUsingRouteMinAmountOut : baseTokenAvailableUsingRouteMinAmountOut,
       destination.tickLower,
       destination.tickUpper,
+      destination.tickSpacing,
       new Fraction(exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000).divide(20),
       numIterations
     );
@@ -195,19 +199,23 @@ export const settleAerodromeMigration = async ({
     }
 
     const maxPosition = generateMaxV3Position(
+      destination.protocol,
       pool,
       settleAmountOut0,
       settleAmountOut1,
       destination.tickLower,
-      destination.tickUpper
+      destination.tickUpper,
+      destination.tickSpacing
     );
 
     const maxPositionUsingSettleMinAmountsOut = generateMaxV3Position(
+      destination.protocol,
       pool,
       settleMinAmountOut0,
       settleMinAmountOut1,
       destination.tickLower,
-      destination.tickUpper
+      destination.tickUpper,
+      destination.tickSpacing
     );
 
     const expectedRefund = {

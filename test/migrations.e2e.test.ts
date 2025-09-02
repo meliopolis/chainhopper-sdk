@@ -66,6 +66,11 @@ const validateMigrationResponse = (params: RequestExactMigrationParams, result: 
   expect(position.tickLower).toBe(destination.tickLower);
   expect(position.tickUpper).toBe(destination.tickUpper);
 
+  const tickSpacing = migration.position.pool.tickSpacing;
+  // need Math.abs because -0 != 0 in bun test matching
+  expect(Math.abs(position.tickLower % tickSpacing)).toEqual(0);
+  expect(Math.abs(position.tickUpper % tickSpacing)).toEqual(0);
+
   // check correct output pool
   const pool: V4Pool = result.migration.position.pool as unknown as V4Pool;
   if ('fee' in destination) expect(pool.fee).toBe(destination.fee);
@@ -776,7 +781,69 @@ describe('in-range v3→ migrations', () => {
     validateMigrationResponse(params, await client.requestExactMigration(params));
   });
 
-  test('generate valid mainnet v3 → aerodrome single-token migration', async () => {
+  test('generate valid mainnet v3 → aerodrome single-token migration - tickSpacing 1', async () => {
+    const sourceChainId = 1;
+    const token0 = client.chainConfigs[sourceChainId].wethAddress;
+    const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+    const fee = 100;
+    const tickLower = -203450;
+    const tickUpper = -193130;
+
+    await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+      getV3Position: mock(() => {
+        const tickCurrent = -199000;
+        const liquidity = 10_000_000_000n;
+        const pool = new V3Pool(
+          new Token(sourceChainId, token0, 18, 'WETH'),
+          new Token(sourceChainId, token1, 6, 'USDC'),
+          fee,
+          BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+          liquidity.toString(),
+          tickCurrent
+        );
+        return {
+          owner: ownerAddress,
+          tokenId: v3TokenId,
+          ...toSDKPosition({
+            chainConfig: client.chainConfigs[sourceChainId],
+            position: new V3Position({
+              pool,
+              liquidity: 1_000_000,
+              tickLower,
+              tickUpper,
+            }),
+          }),
+          feeAmount0: 1000n,
+          feeAmount1: 2000n,
+        };
+      }),
+    }));
+
+    const params: RequestExactMigrationParams = {
+      sourcePosition: {
+        chainId: v3ChainId,
+        tokenId: v3TokenId,
+        protocol: Protocol.UniswapV3,
+      },
+      destination: {
+        chainId: 8453,
+        protocol: Protocol.Aerodrome,
+        token0: '0x4200000000000000000000000000000000000006',
+        token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+        tickLower: -203500,
+        tickUpper: -193100,
+        tickSpacing: 1,
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.SingleToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
+      },
+    };
+    validateMigrationResponse(params, await client.requestExactMigration(params));
+  });
+
+  test('generate valid mainnet v3 → aerodrome single-token migration - tickSpacing 100', async () => {
     const sourceChainId = 1;
     const token0 = client.chainConfigs[sourceChainId].wethAddress;
     const token1 = client.chainConfigs[sourceChainId].usdcAddress;
@@ -803,7 +870,7 @@ describe('in-range v3→ migrations', () => {
             chainConfig: client.chainConfigs[sourceChainId],
             position: new V3Position({
               pool,
-              liquidity: 10_000_000,
+              liquidity: 1_000_000,
               tickLower,
               tickUpper,
             }),
@@ -825,9 +892,71 @@ describe('in-range v3→ migrations', () => {
         protocol: Protocol.Aerodrome,
         token0: '0x4200000000000000000000000000000000000006',
         token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-        tickLower: -1 * tickUpper,
-        tickUpper: -1 * tickLower,
+        tickLower: -203500,
+        tickUpper: -193100,
         tickSpacing: 100,
+      },
+      exactPath: {
+        bridgeType: BridgeType.Across,
+        migrationMethod: MigrationMethod.SingleToken,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
+      },
+    };
+    validateMigrationResponse(params, await client.requestExactMigration(params));
+  });
+
+  test('generate valid mainnet v3 → aerodrome single-token migration - tickSpacing 2000', async () => {
+    const sourceChainId = 1;
+    const token0 = client.chainConfigs[sourceChainId].wethAddress;
+    const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+    const fee = 500;
+    const tickLower = -203450;
+    const tickUpper = -193130;
+
+    await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+      getV3Position: mock(() => {
+        const tickCurrent = -199000;
+        const liquidity = 10_000_000_000n;
+        const pool = new V3Pool(
+          new Token(sourceChainId, token0, 18, 'WETH'),
+          new Token(sourceChainId, token1, 6, 'USDC'),
+          fee,
+          BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+          liquidity.toString(),
+          tickCurrent
+        );
+        return {
+          owner: ownerAddress,
+          tokenId: v3TokenId,
+          ...toSDKPosition({
+            chainConfig: client.chainConfigs[sourceChainId],
+            position: new V3Position({
+              pool,
+              liquidity: 10000,
+              tickLower,
+              tickUpper,
+            }),
+          }),
+          feeAmount0: 1000n,
+          feeAmount1: 2000n,
+        };
+      }),
+    }));
+
+    const params: RequestExactMigrationParams = {
+      sourcePosition: {
+        chainId: v3ChainId,
+        tokenId: v3TokenId,
+        protocol: Protocol.UniswapV3,
+      },
+      destination: {
+        chainId: 8453,
+        protocol: Protocol.Aerodrome,
+        token0: '0x4200000000000000000000000000000000000006',
+        token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+        tickLower: -204000,
+        tickUpper: -194000,
+        tickSpacing: 2000,
       },
       exactPath: {
         bridgeType: BridgeType.Across,
@@ -887,8 +1016,8 @@ describe('in-range v3→ migrations', () => {
         protocol: Protocol.Aerodrome,
         token0: '0x4200000000000000000000000000000000000006',
         token1: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-        tickLower: -1 * tickUpper,
-        tickUpper: -1 * tickLower,
+        tickLower: 193100,
+        tickUpper: 203500,
         tickSpacing: 100,
       },
       exactPath: {

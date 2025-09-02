@@ -1,6 +1,6 @@
 import { CurrencyAmount, Fraction, Percent, Price, Token, type Currency } from '@uniswap/sdk-core';
 import { DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, Protocol } from './constants';
-import { nearestUsableTick, Pool as V3Pool, SqrtPriceMath, TickMath, Position as V3Position } from '@uniswap/v3-sdk';
+import { Pool as V3Pool, SqrtPriceMath, TickMath, Position as V3Position } from '@uniswap/v3-sdk';
 import { Position as V4Position, Pool as V4Pool } from '@uniswap/v4-sdk';
 import type {
   MigratorExecutionParams,
@@ -26,6 +26,7 @@ import {
 import { zeroAddress, type Abi } from 'viem';
 
 import JSBI from 'jsbi';
+import { nearestUsableTick } from './tick';
 import { getV3Quote } from '../actions/getV3Quote';
 import { chainConfigs, type ChainConfig } from '../chains';
 import { getV4CombinedQuote } from '../actions/getV4CombinedQuote';
@@ -218,11 +219,13 @@ export const resolveSettler = (destinationProtocol: Protocol, destinationChainCo
 };
 
 export const generateMaxV3Position = (
+  protocol: Protocol,
   pool: V3Pool,
   currencyAmount0: CurrencyAmount<Currency>,
   currencyAmount1: CurrencyAmount<Currency>,
   tickLower: number,
-  tickUpper: number
+  tickUpper: number,
+  tickSpacing: number
 ): V3Position => {
   const [amount0, amount1] = [
     currencyAmount0.asFraction.toFixed(0).toString(),
@@ -231,8 +234,8 @@ export const generateMaxV3Position = (
   // estimate max position possible given the ticks and both tokens maxed out
   const maxPosition = V3Position.fromAmounts({
     pool: pool,
-    tickLower: nearestUsableTick(tickLower, pool.tickSpacing),
-    tickUpper: nearestUsableTick(tickUpper, pool.tickSpacing),
+    tickLower: nearestUsableTick(protocol, tickLower, tickSpacing),
+    tickUpper: nearestUsableTick(protocol, tickUpper, tickSpacing),
     amount0: amount0,
     amount1: amount1,
     useFullPrecision: true,
@@ -242,11 +245,13 @@ export const generateMaxV3Position = (
 };
 
 export const generateMaxV4Position = (
+  protocol: Protocol,
   pool: V4Pool,
   currencyAmount0: CurrencyAmount<Currency>,
   currencyAmount1: CurrencyAmount<Currency>,
   tickLower: number,
-  tickUpper: number
+  tickUpper: number,
+  tickSpacing: number
 ): V4Position => {
   const [amount0, amount1] = [
     currencyAmount0.asFraction.toFixed(0).toString(),
@@ -256,8 +261,8 @@ export const generateMaxV4Position = (
   // estimate max position possible given the ticks and both tokens maxed out
   const maxPosition = V4Position.fromAmounts({
     pool: pool,
-    tickLower: nearestUsableTick(tickLower, pool.tickSpacing),
-    tickUpper: nearestUsableTick(tickUpper, pool.tickSpacing),
+    tickLower: nearestUsableTick(protocol, tickLower, tickSpacing),
+    tickUpper: nearestUsableTick(protocol, tickUpper, tickSpacing),
     amount0: amount0,
     amount1: amount1,
     useFullPrecision: true,
@@ -311,11 +316,13 @@ const calculateRatioAmountIn = (
 
 export const generateMaxV3orV4PositionWithSwapAllowed = async (
   chainConfig: ChainConfig,
+  protocol: Protocol,
   pool: V3Pool | V4Pool,
   token0Balance: CurrencyAmount<Currency>,
   token1Balance: CurrencyAmount<Currency>,
   tickLower: number,
   tickUpper: number,
+  tickSpacing: number,
   slippageTolerance: Fraction,
   numIterations: number
 ): Promise<{ position: V3Position | V4Position; slippageBps: number }> => {
@@ -439,16 +446,16 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
     isV4 && 'hooks' in postSwapPool
       ? V4Position.fromAmounts({
           pool: postSwapPool,
-          tickLower: nearestUsableTick(tickLower, pool.tickSpacing),
-          tickUpper: nearestUsableTick(tickUpper, pool.tickSpacing),
+          tickLower: nearestUsableTick(protocol, tickLower, tickSpacing),
+          tickUpper: nearestUsableTick(protocol, tickUpper, tickSpacing),
           amount0: token0BalanceUpdated.quotient.toString(),
           amount1: token1BalanceUpdated.quotient.toString(),
           useFullPrecision: true,
         })
       : V3Position.fromAmounts({
           pool: postSwapPool as V3Pool,
-          tickLower: nearestUsableTick(tickLower, pool.tickSpacing),
-          tickUpper: nearestUsableTick(tickUpper, pool.tickSpacing),
+          tickLower: nearestUsableTick(protocol, tickLower, tickSpacing),
+          tickUpper: nearestUsableTick(protocol, tickUpper, tickSpacing),
           amount0: token0BalanceUpdated.quotient.toString(),
           amount1: token1BalanceUpdated.quotient.toString(),
           useFullPrecision: true,
