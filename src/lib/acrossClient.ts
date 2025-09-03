@@ -1,7 +1,7 @@
 import { type Quote, AcrossClient } from '@across-protocol/app-sdk';
 import { type ChainConfig, chainConfigs } from '../chains';
 import { resolveSettler } from '../utils/helpers';
-import type { Protocol } from '@/utils/constants';
+import { BridgeType, type Protocol } from '../utils/constants';
 
 const acrossClient = ({ testnet }: { testnet: boolean }): AcrossClient => {
   // fetch chains from chainConfigs
@@ -47,7 +47,7 @@ export const getAcrossQuote = async (
       outputToken: outputTokenAddress,
     },
     inputAmount: inputTokenAmount,
-    recipient: resolveSettler(protocol, destinationChainConfig),
+    recipient: resolveSettler(protocol, destinationChainConfig, BridgeType.Across),
     crossChainMessage: interimMessageForSettler,
   });
 };

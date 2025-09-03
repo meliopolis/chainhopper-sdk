@@ -1,11 +1,12 @@
 import { CurrencyAmount, Fraction } from '@uniswap/sdk-core';
 import { getV3Pool } from './getV3Pool';
-import { DEFAULT_SLIPPAGE_IN_BPS } from '../utils/constants';
+import { DEFAULT_SLIPPAGE_IN_BPS, Protocol } from '../utils/constants';
 import {
   generateMaxV3Position,
   generateMaxV3orV4PositionWithSwapAllowed,
   generateMigrationParams,
   calculateFees,
+  resolveSettler,
 } from '../utils/helpers';
 import type { InternalSettleMigrationParams, InternalSettleMigrationResult } from '../types/internal';
 import { getSettlerFees } from './getSettlerFees';
@@ -36,9 +37,10 @@ export const settleUniswapV3Migration = async ({
   const { tickSpacing } = pool;
 
   // get the settler fees
+  const settlerAddress = resolveSettler(Protocol.UniswapV3, destinationChainConfig, exactPath.bridgeType);
   const { protocolShareBps, protocolShareOfSenderFeePct } = await getSettlerFees(
     destinationChainConfig,
-    destinationChainConfig.UniswapV3AcrossSettler
+    settlerAddress
   );
   const senderShareBps = BigInt(externalParams.senderShareBps || 0);
   const settlerFeesInBps = protocolShareBps + senderShareBps;

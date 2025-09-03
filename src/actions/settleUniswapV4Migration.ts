@@ -1,12 +1,13 @@
 import { CurrencyAmount, Fraction } from '@uniswap/sdk-core';
 import { getV4Pool } from './getV4Pool';
-import { DEFAULT_SLIPPAGE_IN_BPS, NATIVE_ETH_ADDRESS } from '../utils/constants';
+import { DEFAULT_SLIPPAGE_IN_BPS, NATIVE_ETH_ADDRESS, Protocol } from '../utils/constants';
 import { zeroAddress } from 'viem';
 import {
   generateMaxV4Position,
   generateMigrationParams,
   generateMaxV3orV4PositionWithSwapAllowed,
   calculateFees,
+  resolveSettler,
 } from '../utils/helpers';
 import type { InternalSettleMigrationParams, InternalSettleMigrationResult } from '../types/internal';
 import { getSettlerFees } from './getSettlerFees';
@@ -43,9 +44,10 @@ export const settleUniswapV4Migration = async ({
   );
 
   // get the settler fees
+  const settlerAddress = resolveSettler(Protocol.UniswapV4, destinationChainConfig, exactPath.bridgeType);
   const { protocolShareBps, protocolShareOfSenderFeePct } = await getSettlerFees(
     destinationChainConfig,
-    destinationChainConfig.UniswapV4AcrossSettler
+    settlerAddress
   );
   const senderShareBps = BigInt(externalParams.senderShareBps || 0);
   const settlerFeesInBps = protocolShareBps + senderShareBps;

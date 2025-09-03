@@ -10,7 +10,7 @@ import type { InternalStartMigrationParams, InternalStartMigrationResult } from 
 import { generateSettlerData, resolveSettler } from '../utils/helpers';
 import { getAcrossQuote } from '../lib/acrossClient';
 import { Token as UniswapSDKToken } from '@uniswap/sdk-core';
-import type { v3Pool } from '@/types';
+import type { v3Pool, DirectRoute } from '@/types';
 
 export const startUniswapV3Migration = async ({
   sourceChainConfig,
@@ -71,7 +71,33 @@ export const startUniswapV3Migration = async ({
       throw new Error('Price impact exceeds slippage');
     }
 
-    if (exactPath.bridgeType === BridgeType.Across) {
+    if (exactPath.bridgeType === BridgeType.Direct) {
+      // For direct transfers on same chain, create simplified routes
+      if (sourceChainConfig.chainId !== destination.chainId) {
+        throw new Error('Direct Transfer Bridge can only be used for same-chain migrations');
+      }
+
+      const routes: DirectRoute[] = [];
+
+      // Create route for WETH (the single token we're transferring)
+      const directRoute: DirectRoute = {
+        inputToken: sourceChainConfig.wethAddress,
+        outputToken: destination.token0 === sourceChainConfig.wethAddress ? destination.token0 : destination.token1,
+        inputAmount: totalWethAvailable,
+        outputAmount: totalWethAvailable,
+        minOutputAmount: (totalWethAvailable * BigInt(10000 - exactPath.slippageInBps)) / BigInt(10000),
+        destinationSettler: resolveSettler(destination.protocol, destinationChainConfig, BridgeType.Direct),
+        sourceSlippageBps: sourceSlippageBps,
+        destinationSlippageBps: exactPath.slippageInBps,
+      };
+
+      routes.push(directRoute);
+
+      return {
+        acrossQuotes: [],
+        routes,
+      };
+    } else if (exactPath.bridgeType === BridgeType.Across) {
       // generate the message that will be passed to the settler on the destination chain
       // note that this is different than the message that is passed to Migrator on the source chain
       const { interimMessageForSettler } = generateSettlerData(
@@ -106,7 +132,7 @@ export const startUniswapV3Migration = async ({
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
             exclusiveRelayer: acrossQuote.deposit.exclusiveRelayer,
             exclusivityDeadline: acrossQuote.deposit.exclusivityDeadline,
-            destinationSettler: resolveSettler(destination.protocol, destinationChainConfig),
+            destinationSettler: resolveSettler(destination.protocol, destinationChainConfig, exactPath.bridgeType),
             sourceSlippageBps,
           },
         ],
@@ -115,7 +141,46 @@ export const startUniswapV3Migration = async ({
       throw new Error('Bridge type not supported');
     }
   } else if (exactPath.migrationMethod === MigrationMethod.DualToken) {
-    if (exactPath.bridgeType === BridgeType.Across) {
+    if (exactPath.bridgeType === BridgeType.Direct) {
+      // For direct transfers on same chain, create simplified dual token routes
+      if (sourceChainConfig.chainId !== destination.chainId) {
+        throw new Error('Direct Transfer Bridge can only be used for same-chain migrations');
+      }
+
+      const routes: DirectRoute[] = [];
+
+      // Create routes for both tokens
+      if (totalToken0 > 0n) {
+        routes.push({
+          inputToken: positionWithFees.pool.token0.address,
+          outputToken: destination.token0,
+          inputAmount: totalToken0,
+          outputAmount: totalToken0,
+          minOutputAmount: (totalToken0 * BigInt(10000 - exactPath.slippageInBps)) / BigInt(10000),
+          destinationSettler: resolveSettler(destination.protocol, destinationChainConfig, BridgeType.Direct),
+          sourceSlippageBps: 0,
+          destinationSlippageBps: exactPath.slippageInBps,
+        });
+      }
+
+      if (totalToken1 > 0n) {
+        routes.push({
+          inputToken: positionWithFees.pool.token1.address,
+          outputToken: destination.token1,
+          inputAmount: totalToken1,
+          outputAmount: totalToken1,
+          minOutputAmount: (totalToken1 * BigInt(10000 - exactPath.slippageInBps)) / BigInt(10000),
+          destinationSettler: resolveSettler(destination.protocol, destinationChainConfig, BridgeType.Direct),
+          sourceSlippageBps: 0,
+          destinationSlippageBps: exactPath.slippageInBps,
+        });
+      }
+
+      return {
+        acrossQuotes: [],
+        routes,
+      };
+    } else if (exactPath.bridgeType === BridgeType.Across) {
       const { interimMessageForSettler } = generateSettlerData(
         sourceChainConfig,
         migration,
@@ -170,7 +235,7 @@ export const startUniswapV3Migration = async ({
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
             exclusiveRelayer: acrossQuote0.deposit.exclusiveRelayer,
             exclusivityDeadline: acrossQuote0.deposit.exclusivityDeadline,
-            destinationSettler: resolveSettler(destination.protocol, destinationChainConfig),
+            destinationSettler: resolveSettler(destination.protocol, destinationChainConfig, exactPath.bridgeType),
           },
           {
             inputToken: acrossQuote1.deposit.inputToken,
@@ -185,7 +250,7 @@ export const startUniswapV3Migration = async ({
             fillDeadlineOffset: DEFAULT_FILL_DEADLINE_OFFSET,
             exclusiveRelayer: acrossQuote1.deposit.exclusiveRelayer,
             exclusivityDeadline: acrossQuote1.deposit.exclusivityDeadline + 10, // giving extra time for second quote to mint position
-            destinationSettler: resolveSettler(destination.protocol, destinationChainConfig),
+            destinationSettler: resolveSettler(destination.protocol, destinationChainConfig, exactPath.bridgeType),
           },
         ],
       };

@@ -163,7 +163,9 @@ export type PositionWithFees = Position & {
   feeAmount1: bigint;
 };
 
-export type Route = {
+export type Route = AcrossRoute | DirectRoute;
+
+export type AcrossRoute = {
   inputToken: `0x${string}`;
   outputToken: `0x${string}`;
   inputAmount: bigint;
@@ -178,6 +180,17 @@ export type Route = {
   destinationSlippageBps?: number;
 };
 
+export type DirectRoute = {
+  inputToken: `0x${string}`;
+  outputToken: `0x${string}`;
+  inputAmount: bigint;
+  outputAmount: bigint;
+  minOutputAmount: bigint;
+  destinationSettler: `0x${string}`;
+  sourceSlippageBps?: number;
+  destinationSlippageBps?: number;
+};
+
 export type MigratorExecutionParams = {
   address: `0x${string}`;
   abi: Abi;
@@ -185,7 +198,7 @@ export type MigratorExecutionParams = {
   args: [`0x${string}`, `0x${string}`, bigint, `0x${string}`];
 };
 
-export type SettlerExecutionParams = {
+export type AcrossSettlerExecutionParams = {
   address: `0x${string}`;
   abi: Abi;
   functionName: string;
@@ -207,6 +220,15 @@ export type SettlerExecutionParams = {
     bigint,
   ];
 };
+
+export type DirectSettlerExecutionParams = {
+  address: `0x${string}`;
+  abi: Abi;
+  functionName: 'handleDirectTransfer';
+  args: [`0x${string}`, bigint, `0x${string}`];
+};
+
+export type SettlerExecutionParams = AcrossSettlerExecutionParams | DirectSettlerExecutionParams;
 
 export type MigrationFees = {
   bps: number;

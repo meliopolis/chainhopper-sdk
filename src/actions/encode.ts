@@ -118,23 +118,28 @@ export const encodeMigrationParams = (
         : encodeMintParamsForAerodrome(params.settlementParams as SettlementParams & AerodromeMintParams);
 
   const settlementParams = encodeSettlementParams(params.settlementParams, mintParams);
-  const routes = params.tokenRoutes.map((route) =>
-    encodeAbiParameters(RouteAbi, [
-      {
-        outputToken: route.outputToken,
-        maxFees: route.maxFees,
-        quoteTimestamp: route.quoteTimestamp,
-        fillDeadlineOffset: route.fillDeadlineOffset,
-        exclusiveRelayer: route.exclusiveRelayer,
-        exclusivityDeadline: route.exclusivityDeadline,
-      },
-    ])
-  );
+  const routes = params.tokenRoutes.map((route) => {
+    if ('outputToken' in route) {
+      // check for Across route
+      return encodeAbiParameters(RouteAbi, [
+        {
+          outputToken: route.outputToken,
+          maxFees: route.maxFees,
+          quoteTimestamp: route.quoteTimestamp,
+          fillDeadlineOffset: route.fillDeadlineOffset,
+          exclusiveRelayer: route.exclusiveRelayer,
+          exclusivityDeadline: route.exclusivityDeadline,
+        },
+      ]);
+    } else {
+      return '0x' as `0x${string}`;
+    }
+  });
   const routesDataForSettler =
     params.tokenRoutes.length > 1
       ? encodeAbiParameters(RoutesDataAbi, [
-          params.tokenRoutes[0].outputToken,
-          params.tokenRoutes[1].outputToken,
+          'outputToken' in params.tokenRoutes[0] ? params.tokenRoutes[0].outputToken : params.tokenRoutes[0].inputToken,
+          'outputToken' in params.tokenRoutes[1] ? params.tokenRoutes[1].outputToken : params.tokenRoutes[1].inputToken,
           params.tokenRoutes[0].minAmountOut,
           params.tokenRoutes[1].minAmountOut,
         ])

@@ -11,7 +11,7 @@ export enum MigrationMethod {
 
 export enum BridgeType {
   Across = 'Across',
-  Wormhole = 'Wormhole',
+  Direct = 'Direct',
 }
 
 export const DEFAULT_SLIPPAGE_IN_BPS = 100; // 1%
