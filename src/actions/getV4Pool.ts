@@ -15,9 +15,7 @@ export const getV4Pool = async (chainConfig: ChainConfig, poolKey: PoolKey, sqrt
     throw new Error('Failed to get pool data');
   }
   const poolDataResults = poolData.map((p) => p.result) as IPoolCallResult;
-  console.log('poolDataResults', poolDataResults);
   const poolNotInitialized = poolDataResults[0][0] === 0n;
-  console.log('poolNotInitialized', poolNotInitialized);
   const initializePool = poolNotInitialized && sqrtPriceX96 && sqrtPriceX96 > 0;
 
   let pool: Pool;

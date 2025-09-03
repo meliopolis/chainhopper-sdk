@@ -165,20 +165,33 @@ export const startUniswapV4Migration = async ({
       }
 
       const routes: DirectRoute[] = [];
-      const totalAmount = isToken0EthOrWeth ? totalToken0 : totalToken1;
 
-      const directRoute: DirectRoute = {
-        inputToken: sourceChainConfig.wethAddress,
-        outputToken: sourceChainConfig.wethAddress,
-        inputAmount: totalAmount,
-        outputAmount: totalAmount,
-        minOutputAmount: (totalAmount * BigInt(10000 - exactPath.slippageInBps)) / BigInt(10000),
-        destinationSettler: resolveSettler(destination.protocol, destinationChainConfig, BridgeType.Direct),
-        sourceSlippageBps: 0,
-        destinationSlippageBps: exactPath.slippageInBps,
-      };
+      // Create routes for both tokens
+      if (totalToken0 > 0n) {
+        routes.push({
+          inputToken: positionWithFees.pool.token0.address,
+          outputToken: destination.token0,
+          inputAmount: totalToken0,
+          outputAmount: totalToken0,
+          minOutputAmount: (totalToken0 * BigInt(10000 - exactPath.slippageInBps)) / BigInt(10000),
+          destinationSettler: resolveSettler(destination.protocol, destinationChainConfig, BridgeType.Direct),
+          sourceSlippageBps: 0,
+          destinationSlippageBps: exactPath.slippageInBps,
+        });
+      }
 
-      routes.push(directRoute);
+      if (totalToken1 > 0n) {
+        routes.push({
+          inputToken: positionWithFees.pool.token1.address,
+          outputToken: destination.token1,
+          inputAmount: totalToken1,
+          outputAmount: totalToken1,
+          minOutputAmount: (totalToken1 * BigInt(10000 - exactPath.slippageInBps)) / BigInt(10000),
+          destinationSettler: resolveSettler(destination.protocol, destinationChainConfig, BridgeType.Direct),
+          sourceSlippageBps: 0,
+          destinationSlippageBps: exactPath.slippageInBps,
+        });
+      }
 
       return {
         acrossQuotes: [],
