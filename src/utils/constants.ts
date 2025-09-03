@@ -1,6 +1,7 @@
 export enum Protocol {
   UniswapV3 = 'UniswapV3',
   UniswapV4 = 'UniswapV4',
+  Aerodrome = 'Aerodrome',
 }
 
 export enum MigrationMethod {

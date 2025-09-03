@@ -19,8 +19,9 @@ import type {
   RequestWithdrawalParams,
   WithdrawalExecutionParams,
   CheckMigrationIdResponse,
+  AerodromeParams,
 } from './types';
-import { startUniswapV3Migration, settleUniswapV3Migration } from './actions';
+import { startUniswapV3Migration, settleUniswapV3Migration, settleAerodromeMigration } from './actions';
 import { getV4Position } from './actions/getV4Position';
 import { startUniswapV4Migration } from './actions/startUniswapV4Migration';
 import { settleUniswapV4Migration } from './actions/settleUniswapV4Migration';
@@ -29,25 +30,35 @@ import { generateExecutionParams, generateSettlerExecutionParams } from './utils
 import type {
   InternalDestinationWithExactPath,
   InternalDestinationWithPathFilter,
-  IUniswapPositionParams,
+  IPositionParams,
 } from './types/internal';
 import { positionValue } from './utils/position';
 import { withdraw } from './actions/withdraw';
 import { getSettlementCacheEntry } from './actions/getSettlementCacheEntry';
+import { getAerodromePosition } from './actions/getAerodromePosition';
+import { startAerodromeMigration } from './actions/startAerodromeMigration';
 
 const startFns = {
   [Protocol.UniswapV3]: startUniswapV3Migration,
   [Protocol.UniswapV4]: startUniswapV4Migration,
+  [Protocol.Aerodrome]: startAerodromeMigration,
 };
 
 const settleFns = {
   [Protocol.UniswapV3]: {
     [Protocol.UniswapV3]: settleUniswapV3Migration,
     [Protocol.UniswapV4]: settleUniswapV4Migration,
+    [Protocol.Aerodrome]: settleAerodromeMigration,
   },
   [Protocol.UniswapV4]: {
     [Protocol.UniswapV3]: settleUniswapV3Migration,
     [Protocol.UniswapV4]: settleUniswapV4Migration,
+    [Protocol.Aerodrome]: settleAerodromeMigration,
+  },
+  [Protocol.Aerodrome]: {
+    [Protocol.UniswapV3]: settleUniswapV3Migration,
+    [Protocol.UniswapV4]: settleUniswapV4Migration,
+    [Protocol.Aerodrome]: settleAerodromeMigration,
   },
 };
 
@@ -88,12 +99,16 @@ export class ChainHopperClient {
     if (address !== checksumAddress(address)) return `${address} is not a checksummed address`;
   }
 
-  public getV3Position(params: IUniswapPositionParams): Promise<PositionWithFees> {
+  public getV3Position(params: IPositionParams): Promise<PositionWithFees> {
     return getV3Position(this.chainConfigs[params.chainId], params);
   }
 
-  public getV4Position(params: IUniswapPositionParams): Promise<PositionWithFees> {
+  public getV4Position(params: IPositionParams): Promise<PositionWithFees> {
     return getV4Position(this.chainConfigs[params.chainId], params);
+  }
+
+  public getAerodromePosition(params: IPositionParams): Promise<PositionWithFees> {
+    return getAerodromePosition(this.chainConfigs[params.chainId], params);
   }
 
   public async requestMigration(params: RequestMigrationParams): Promise<MigrationResponse> {
@@ -122,7 +137,8 @@ export class ChainHopperClient {
 
     if (
       params.sourcePosition.protocol !== Protocol.UniswapV3 &&
-      params.sourcePosition.protocol !== Protocol.UniswapV4
+      params.sourcePosition.protocol !== Protocol.UniswapV4 &&
+      params.sourcePosition.protocol !== Protocol.Aerodrome
     ) {
       throw new Error('sourceProtocol not supported');
     }
@@ -146,7 +162,7 @@ export class ChainHopperClient {
             (
               m:
                 | {
-                    destination: UniswapV3Params | UniswapV4Params;
+                    destination: UniswapV3Params | UniswapV4Params | AerodromeParams;
                     exactPath: ExactPath;
                   }
                 | undefined
@@ -155,10 +171,20 @@ export class ChainHopperClient {
       }
     );
 
-    const sourcePosition =
-      params.sourcePosition.protocol === Protocol.UniswapV3
-        ? await this.getV3Position(params.sourcePosition)
-        : await this.getV4Position(params.sourcePosition);
+    let sourcePosition: PositionWithFees;
+    switch (params.sourcePosition.protocol) {
+      case Protocol.UniswapV3:
+        sourcePosition = await this.getV3Position(params.sourcePosition);
+        break;
+      case Protocol.UniswapV4:
+        sourcePosition = await this.getV4Position(params.sourcePosition);
+        break;
+      case Protocol.Aerodrome:
+        sourcePosition = await this.getAerodromePosition(params.sourcePosition);
+        break;
+      default:
+        throw new Error('source protocol not supported');
+    }
 
     const pathWithPositions = await Promise.all(
       migrationOptions.map(async (migrations) => {
@@ -225,7 +251,7 @@ export class ChainHopperClient {
 
     if (!this.isChainSupported(destination.chainId)) reasons.push('chain not supported');
 
-    if (destination.protocol !== Protocol.UniswapV3 && destination.protocol !== Protocol.UniswapV4) {
+    if (!Object.values(Protocol).includes(destination.protocol)) {
       reasons.push('destination protocol not supported');
     }
 
@@ -273,7 +299,7 @@ export class ChainHopperClient {
   private enumerateMigrations(requests: InternalDestinationWithPathFilter[]): InternalDestinationWithExactPath[][] {
     return requests.map(({ destination, path: pathFilter }) => {
       const exactMigrationRequests: {
-        destination: UniswapV3Params | UniswapV4Params;
+        destination: UniswapV3Params | UniswapV4Params | AerodromeParams;
         exactPath: ExactPath;
       }[] = [];
       let bridgeTypes: BridgeType[];

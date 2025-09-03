@@ -17,6 +17,7 @@ import { v4PositionManagerAbi } from './abis/v4PositionManager';
 import { stateViewAbi } from './abis/v4StateView';
 import { v4QuoterAbi } from './abis/v4Quoter';
 import { v4DopplerQuoterAbi } from './abis/v4DopplerQuoter';
+import { AerodromeQuoterV2Abi } from './abis/AerodromeQuoter';
 
 type Contract = {
   address: `0x${string}`;
@@ -41,6 +42,11 @@ export type ChainConfig = {
   v4QuoterContract: Contract;
   v4DopplerQuoterContract?: Contract;
 
+  // aerodrome
+  aerodromeFactoryAddress?: `0x${string}`;
+  aerodromeNftPositionManagerContract?: Contract;
+  aerodromeQuoterContract?: Contract;
+
   // other
   multicallAddress: `0x${string}`;
   universalRouterAddress: `0x${string}`;
@@ -58,6 +64,8 @@ export type ChainConfig = {
   UniswapV3AcrossSettler?: `0x${string}`;
   UniswapV4AcrossMigrator?: `0x${string}`;
   UniswapV4AcrossSettler?: `0x${string}`;
+  AerodromeAcrossMigrator?: `0x${string}`;
+  AerodromeAcrossSettler?: `0x${string}`;
 };
 
 const multicallAddress = '0xcA11bde05977b3631167028862bE2a173976CA11';
@@ -102,10 +110,10 @@ export const chainConfigs: Record<number, ChainConfig> = {
     permit2Address: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
     wethAddress: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
     usdcAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-    UniswapV3AcrossMigrator: '0x87333a90cc67e448eda65f14292bba42bd8ed143',
-    UniswapV3AcrossSettler: '0x141d6b489e617278fe408417c5caedcd43c5562a',
-    UniswapV4AcrossMigrator: '0xe63052b8e8b4c27d7bee48669c097a3630fa2645',
-    UniswapV4AcrossSettler: '0x5d0ee7895d974c0ff170aafdd4d63535f06954c4',
+    UniswapV3AcrossMigrator: '0x570711ffbc9711971818bcdc843e6758214c2c48',
+    UniswapV3AcrossSettler: '0x04efac76263d0dd17c2acff3bf932c801d9ade78',
+    UniswapV4AcrossMigrator: '0x6b19fdf76fc1eac6e10259855af85b7d5e1b5c6c',
+    UniswapV4AcrossSettler: '0x76066eb0a660f2bca149757651dedb33487fdbb4',
   },
   10: {
     chainId: 10,
@@ -143,10 +151,10 @@ export const chainConfigs: Record<number, ChainConfig> = {
     permit2Address: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
     wethAddress: '0x4200000000000000000000000000000000000006',
     usdcAddress: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85',
-    UniswapV3AcrossMigrator: '0xf65d7a5b7d361721cd59d70d6513d054d4a0e6fe',
-    UniswapV3AcrossSettler: '0x4817139b45450482ad09a183fd540126f2e124cc',
-    UniswapV4AcrossMigrator: '0x04282a84db3de5bb86ffe8325221fab6fff1eaf9',
-    UniswapV4AcrossSettler: '0x570f172ed6eb3748db046c244710bf473cb8a912',
+    UniswapV3AcrossMigrator: '0xde94fb0e0241fc3d1d5d36c861e4fdc1e56edc42',
+    UniswapV3AcrossSettler: '0x128efbbf6833004fcf6ef5a24c7f7e0684e71be2',
+    UniswapV4AcrossMigrator: '0x78a61eb6a4ba589f214b0758e3d50610729ca15d',
+    UniswapV4AcrossSettler: '0x66d187b107fdf8c67f3de26f717538f4a5df561e',
   },
   130: {
     chainId: 130,
@@ -184,10 +192,10 @@ export const chainConfigs: Record<number, ChainConfig> = {
     permit2Address: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
     wethAddress: '0x4200000000000000000000000000000000000006',
     usdcAddress: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
-    UniswapV3AcrossMigrator: '0x35401866c52beffb2e45c9bf2ebeab6e9f542f3e',
-    UniswapV3AcrossSettler: '0x57456eca3aa33570f5ac6e1dd3862591065c7518',
-    UniswapV4AcrossMigrator: '0x11e79a37a056bae1967b090aaf0217e06bf66578',
-    UniswapV4AcrossSettler: '0xf65d7a5b7d361721cd59d70d6513d054d4a0e6fe',
+    UniswapV3AcrossMigrator: '0xd8d60393c888aed9bbce0e2fc255b50116943390',
+    UniswapV3AcrossSettler: '0x38593e48c2e8ac5bf6b07f60654fb40b2f45d453',
+    UniswapV4AcrossMigrator: '0x228f3f2847c7411f9c854581da1c80d36df25af5',
+    UniswapV4AcrossSettler: '0xabd86e13be6fd6ac358e014ef1b33700de05978a',
   },
   8453: {
     chainId: 8453,
@@ -220,16 +228,29 @@ export const chainConfigs: Record<number, ChainConfig> = {
       address: '0x9fb6E4Cd3E52Ae6BBcedF32D6efFE8c26F894903',
       abi: v4DopplerQuoterAbi,
     },
+    aerodromeFactoryAddress: '0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A',
+    // v3
+    aerodromeNftPositionManagerContract: {
+      address: '0x827922686190790b37229fd06084350E74485b72',
+      abi: NonfungiblePositionManager.abi as Abi,
+    },
+    aerodromeQuoterContract: {
+      // TODO: update
+      address: '0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0',
+      abi: AerodromeQuoterV2Abi as Abi,
+    },
     spokePoolAddress: '0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64',
     multicallAddress,
     universalRouterAddress: '0x6ff5693b99212da76ad316178a184ab56d299b43',
     permit2Address: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
     wethAddress: '0x4200000000000000000000000000000000000006',
     usdcAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-    UniswapV3AcrossMigrator: '0x193bdd94ac22e9bbce90da70790741694cb0fddd',
-    UniswapV3AcrossSettler: '0xb7c7aed64dce174ded2bcbc5b2fdda1f47b9d983',
-    UniswapV4AcrossMigrator: '0xffbf8fa63dec14f433ce771a054334c09347f098',
-    UniswapV4AcrossSettler: '0x805713811d19f1e4da5ab82d80d50090a01e6f27',
+    AerodromeAcrossMigrator: '0x9617058d4d2c6b51fb624b5a50565aeeef9d366b',
+    AerodromeAcrossSettler: '0xa9c1cee53bf576a1cf3c4751960bb6e627efe4b4',
+    UniswapV3AcrossMigrator: '0x1d5b9fed0c4a5745b117a1c51dd99b17c2459a02',
+    UniswapV3AcrossSettler: '0xd640dd4a0549b3223414e62be90f4af179b6b7ab',
+    UniswapV4AcrossMigrator: '0xd8ca296a9fd140d86109203b100f11f6060b7a8a',
+    UniswapV4AcrossSettler: '0x5e2549ca01d4a97670ecdb72a90ed607f3aeb6db',
   },
   42161: {
     chainId: 42161,
@@ -267,10 +288,10 @@ export const chainConfigs: Record<number, ChainConfig> = {
     permit2Address: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
     wethAddress: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
     usdcAddress: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
-    UniswapV3AcrossMigrator: '0x6eadea742a7bd21ee3858c0f9fe3df4d506c6f9f',
-    UniswapV3AcrossSettler: '0xc6079f81c43b61a56952660b06f8e3b4e0237883',
-    UniswapV4AcrossMigrator: '0xb12e7789a1ede61a6bcb7172b11ab1a85a2ff253',
-    UniswapV4AcrossSettler: '0xfd210095ada6e35aca6b0f374c59805c02ec4521',
+    UniswapV3AcrossMigrator: '0xb3b9dc8aea4cd27065d1a04eee4fdb8f97f04201',
+    UniswapV3AcrossSettler: '0x3aa146f0a8df32b2a3c3d6a9e2eaf1a6797c0360',
+    UniswapV4AcrossMigrator: '0x505ec9cb1eeb1102935c1ef53ccc8c84cdb8627e',
+    UniswapV4AcrossSettler: '0x37a28c8beb48452ebf78fae41f0e3149891a457b',
   },
 
   // testnets

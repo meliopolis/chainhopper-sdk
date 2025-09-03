@@ -21,11 +21,12 @@ export const settleUniswapV4Migration = async ({
   externalParams,
   owner,
 }: InternalSettleMigrationParams): Promise<InternalSettleMigrationResult> => {
-  const { destination, exactPath } = migration;
+  const { exactPath } = migration;
+  const destination = migration.destination as UniswapV4Params;
   if (routes.length === 0) throw new Error('No routes found');
   if (routes.length > 2) throw new Error('Invalid number of routes');
 
-  const { tickSpacing, hooks } = destination as UniswapV4Params;
+  const { tickSpacing, hooks, protocol } = destination as UniswapV4Params;
   const slippageLimit = exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS;
 
   // now we need fetch the pool on the destination chain, or specify a sqrtPriceX96 to initialize one
@@ -89,11 +90,13 @@ export const settleUniswapV4Migration = async ({
     const { position: maxPosition, slippageBps: destinationSlippageBps } =
       await generateMaxV3orV4PositionWithSwapAllowed(
         destinationChainConfig,
+        protocol,
         pool,
         baseTokenAvailable,
         maxOtherTokenAvailable,
         destination.tickLower,
         destination.tickUpper,
+        tickSpacing,
         new Fraction(slippageLimit, 10000).divide(20),
         10
       );
@@ -110,11 +113,13 @@ export const settleUniswapV4Migration = async ({
     const maxOtherTokenAvailableUsingRouteMinAmountOut = CurrencyAmount.fromRawAmount(pool.token1, 0);
     const { position: maxPositionUsingRouteMinAmountOut } = await generateMaxV3orV4PositionWithSwapAllowed(
       destinationChainConfig,
+      protocol,
       pool,
       baseTokenAvailableUsingRouteMinAmountOut,
       maxOtherTokenAvailableUsingRouteMinAmountOut,
       destination.tickLower,
       destination.tickUpper,
+      tickSpacing,
       new Fraction(slippageLimit, 10000).divide(20),
       10
     );
@@ -202,19 +207,23 @@ export const settleUniswapV4Migration = async ({
     }
 
     const maxPosition = generateMaxV4Position(
+      protocol,
       pool,
       settleAmountOut0,
       settleAmountOut1,
       destination.tickLower,
-      destination.tickUpper
+      destination.tickUpper,
+      tickSpacing
     );
 
     const maxPositionUsingSettleMinAmountsOut = generateMaxV4Position(
+      protocol,
       pool,
       settleMinAmountOut0,
       settleMinAmountOut1,
       destination.tickLower,
-      destination.tickUpper
+      destination.tickUpper,
+      tickSpacing
     );
 
     const expectedRefund = {

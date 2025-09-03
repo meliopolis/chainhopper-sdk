@@ -1,8 +1,9 @@
 import { computePoolAddress, type Pool as UniswapSDKV3Pool, type Position as V3Position } from '@uniswap/v3-sdk';
 import { Pool as UniswapSDKV4Pool, type Position as V4Position } from '@uniswap/v4-sdk';
-import type { Position, PathWithPosition, v3Pool, v4Pool } from '../types/sdk';
+import type { Position, PathWithPosition, v3Pool, v4Pool, aerodromePool } from '../types/sdk';
 import { NATIVE_ETH_ADDRESS, Protocol } from './constants';
 import type { ChainConfig } from '../chains';
+import { tickSpacingToFee } from './aerodrome';
 
 const Q192 = 2n ** 192n;
 
@@ -32,16 +33,28 @@ export const positionValue = (
   }
 };
 
-export const toSDKPool = (chainConfig: ChainConfig, pool: UniswapSDKV3Pool | UniswapSDKV4Pool): v3Pool | v4Pool => {
+export const toSDKPool = ({
+  chainConfig,
+  pool,
+  aerodromePoolAddress, // also implies this is aerodrome pool
+  aerodromeTickSpacing, // needed for aerodrome pool
+}: {
+  chainConfig: ChainConfig;
+  pool: UniswapSDKV3Pool | UniswapSDKV4Pool;
+  aerodromePoolAddress?: `0x${string}`;
+  aerodromeTickSpacing?: number;
+}): v3Pool | v4Pool | aerodromePool => {
   const isV4Pool = 'hooks' in pool;
-  const poolAddress = isV4Pool
-    ? ('0x' as `0x${string}`)
-    : computePoolAddress({
-        factoryAddress: chainConfig.v3FactoryAddress,
-        tokenA: pool.token0,
-        tokenB: pool.token1,
-        fee: pool.fee,
-      });
+  const poolAddress =
+    aerodromePoolAddress ||
+    (isV4Pool
+      ? ('0x' as `0x${string}`)
+      : computePoolAddress({
+          factoryAddress: chainConfig.v3FactoryAddress,
+          tokenA: pool.token0,
+          tokenB: pool.token1,
+          fee: pool.fee,
+        }));
 
   const poolId = isV4Pool
     ? UniswapSDKV4Pool.getPoolId(pool.token0, pool.token1, pool.fee, pool.tickSpacing, pool.hooks)
@@ -64,11 +77,11 @@ export const toSDKPool = (chainConfig: ChainConfig, pool: UniswapSDKV3Pool | Uni
       symbol: pool.token1.symbol,
       name: pool.token1.name,
     },
-    fee: pool.fee,
+    fee: aerodromeTickSpacing ? tickSpacingToFee(aerodromeTickSpacing) : pool.fee,
     sqrtPriceX96: BigInt(pool.sqrtRatioX96.toString()),
     liquidity: BigInt(pool.liquidity.toString()),
     tick: pool.tickCurrent,
-    tickSpacing: pool.tickSpacing,
+    tickSpacing: aerodromeTickSpacing || pool.tickSpacing,
     ...(isV4Pool && { hooks: pool.hooks }),
   };
   if (isV4Pool) {
@@ -77,6 +90,12 @@ export const toSDKPool = (chainConfig: ChainConfig, pool: UniswapSDKV3Pool | Uni
       ...sdkPool,
       poolId,
     } as v4Pool;
+  } else if (aerodromePoolAddress) {
+    return {
+      protocol: Protocol.Aerodrome,
+      ...sdkPool,
+      poolAddress,
+    } as aerodromePool;
   } else {
     return {
       protocol: Protocol.UniswapV3,
@@ -86,15 +105,24 @@ export const toSDKPool = (chainConfig: ChainConfig, pool: UniswapSDKV3Pool | Uni
   }
 };
 
-export const toSDKPosition = (
-  chainConfig: ChainConfig,
-  position: V3Position | V4Position,
-  slippagePosition?: V3Position | V4Position,
-  expectedRefund?: { amount0Refund: bigint; amount1Refund: bigint }
-): Position => {
+export const toSDKPosition = ({
+  chainConfig,
+  position,
+  aerodromePoolAddress,
+  aerodromeTickSpacing,
+  slippagePosition,
+  expectedRefund,
+}: {
+  chainConfig: ChainConfig;
+  position: V3Position | V4Position;
+  aerodromePoolAddress?: `0x${string}`;
+  aerodromeTickSpacing?: number;
+  slippagePosition?: V3Position | V4Position;
+  expectedRefund?: { amount0Refund: bigint; amount1Refund: bigint };
+}): Position => {
   const { pool, tickLower, tickUpper, liquidity, amount0, amount1 } = position;
   return {
-    pool: toSDKPool(chainConfig, pool),
+    pool: toSDKPool({ chainConfig, pool, aerodromePoolAddress, aerodromeTickSpacing }),
     tickLower,
     tickUpper,
     liquidity: BigInt(liquidity.toString()),

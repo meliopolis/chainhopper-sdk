@@ -55,6 +55,11 @@ export type UniswapV4Params = DestinationParams & {
   tickSpacing: number;
 };
 
+export type AerodromeParams = Omit<DestinationParams, 'fee'> & {
+  protocol: Protocol.Aerodrome;
+  tickSpacing: number;
+};
+
 // These types describe the parameters for a migration path
 export type ExactPath = {
   bridgeType: BridgeType;
@@ -69,24 +74,24 @@ export type PathFilter = {
 };
 
 export type RequestExactMigrationParams = BaseRequestMigrationParams & {
-  destination: UniswapV3Params | UniswapV4Params;
+  destination: UniswapV3Params | UniswapV4Params | AerodromeParams;
   exactPath: ExactPath;
 };
 
 export type RequestMigrationParams = BaseRequestMigrationParams & {
-  destination: UniswapV3Params | UniswapV4Params;
+  destination: UniswapV3Params | UniswapV4Params | AerodromeParams;
   path?: PathFilter;
 };
 
 export type RequestExactMigrationsParams = BaseRequestMigrationParams & {
   migrations: {
-    destination: UniswapV3Params | UniswapV4Params;
+    destination: UniswapV3Params | UniswapV4Params | AerodromeParams;
     exactPath: ExactPath;
   }[];
 };
 export type RequestMigrationsParams = BaseRequestMigrationParams & {
   migrations: {
-    destination: UniswapV3Params | UniswapV4Params;
+    destination: UniswapV3Params | UniswapV4Params | AerodromeParams;
     path?: PathFilter;
   }[];
 };
@@ -132,8 +137,13 @@ export type v4Pool = Pool & {
   poolId: `0x${string}`;
 };
 
+export type aerodromePool = Pool & {
+  protocol: Protocol.Aerodrome;
+  poolAddress: `0x${string}`;
+};
+
 export type Position = {
-  pool: v3Pool | v4Pool;
+  pool: v3Pool | v4Pool | aerodromePool;
   tickLower: number;
   tickUpper: number;
   liquidity: bigint;
@@ -221,7 +231,7 @@ export type PathWithPosition = {
 
 export type PathUnavailable = {
   exactPath: ExactPath;
-  destination: UniswapV3Params | UniswapV4Params;
+  destination: UniswapV3Params | UniswapV4Params | AerodromeParams;
   reasons: string[];
 };
 
