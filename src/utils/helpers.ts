@@ -655,17 +655,6 @@ export const generateDirectSettlerExecutionParams = ({
   message: `0x${string}`;
 }): DirectSettlerExecutionParams[] => {
   const destChainConfig = chainConfigs[destChainId];
-  let recipient: `0x${string}` | undefined;
-  if (destProtocol === Protocol.UniswapV3) {
-    recipient = destChainConfig.UniswapV3AcrossSettler;
-  } else if (destProtocol === Protocol.UniswapV4) {
-    recipient = destChainConfig.UniswapV4AcrossSettler;
-  } else {
-    throw new Error('Unable to generate AcrossSettlerExecutionParams');
-  }
-  if (!recipient) {
-    throw new Error('Settler not found');
-  }
   let directSettlerAddress: `0x${string}` | undefined;
   if (destProtocol === Protocol.UniswapV3) {
     directSettlerAddress = destChainConfig.UniswapV3DirectSettler;
