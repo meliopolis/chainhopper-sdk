@@ -158,6 +158,10 @@ export const startUniswapV4Migration = async ({
       throw new Error('Bridge type not supported');
     }
   } else if (exactPath.migrationMethod === MigrationMethod.DualToken) {
+    let flipTokens = false;
+    if (isToken0EthOrWeth)
+      flipTokens = destination.token0 != NATIVE_ETH_ADDRESS && destination.token0 != destinationChainConfig.wethAddress;
+    if (isToken1Weth) flipTokens = destination.token1 != destinationChainConfig.wethAddress;
     if (exactPath.bridgeType === BridgeType.Direct) {
       // For direct transfers on same chain, create simplified routes
       if (sourceChainConfig.chainId !== destination.chainId) {
@@ -169,8 +173,12 @@ export const startUniswapV4Migration = async ({
       // Create routes for both tokens
       if (totalToken0 > 0n) {
         routes.push({
-          inputToken: positionWithFees.pool.token0.address,
-          outputToken: destination.token0,
+          inputToken: pool.token0.address !== NATIVE_ETH_ADDRESS ? pool.token0.address : sourceChainConfig.wethAddress,
+          outputToken: isToken0EthOrWeth
+            ? destinationChainConfig.wethAddress
+            : flipTokens
+              ? destination.token1
+              : destination.token0,
           inputAmount: totalToken0,
           outputAmount: totalToken0,
           minOutputAmount: (totalToken0 * BigInt(10000 - exactPath.slippageInBps)) / BigInt(10000),
@@ -183,7 +191,11 @@ export const startUniswapV4Migration = async ({
       if (totalToken1 > 0n) {
         routes.push({
           inputToken: positionWithFees.pool.token1.address,
-          outputToken: destination.token1,
+          outputToken: isToken1Weth
+            ? destinationChainConfig.wethAddress
+            : flipTokens
+              ? destination.token0
+              : destination.token1,
           inputAmount: totalToken1,
           outputAmount: totalToken1,
           minOutputAmount: (totalToken1 * BigInt(10000 - exactPath.slippageInBps)) / BigInt(10000),
@@ -204,12 +216,6 @@ export const startUniswapV4Migration = async ({
         externalParams,
         positionWithFees.owner
       );
-
-      let flipTokens = false;
-      if (isToken0EthOrWeth)
-        flipTokens =
-          destination.token0 != NATIVE_ETH_ADDRESS && destination.token0 != destinationChainConfig.wethAddress;
-      if (isToken1Weth) flipTokens = destination.token1 != destinationChainConfig.wethAddress;
 
       const acrossQuote0 = await getAcrossQuote(
         sourceChainConfig,
