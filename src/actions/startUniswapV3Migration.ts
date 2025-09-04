@@ -72,11 +72,6 @@ export const startUniswapV3Migration = async ({
     }
 
     if (exactPath.bridgeType === BridgeType.Direct) {
-      // For direct transfers on same chain, create simplified routes
-      if (sourceChainConfig.chainId !== destination.chainId) {
-        throw new Error('Direct Transfer Bridge can only be used for same-chain migrations');
-      }
-
       const routes: DirectRoute[] = [];
 
       // Create route for WETH (the single token we're transferring)
@@ -142,11 +137,6 @@ export const startUniswapV3Migration = async ({
     }
   } else if (exactPath.migrationMethod === MigrationMethod.DualToken) {
     if (exactPath.bridgeType === BridgeType.Direct) {
-      // For direct transfers on same chain, create simplified dual token routes
-      if (sourceChainConfig.chainId !== destination.chainId) {
-        throw new Error('Direct Transfer Bridge can only be used for same-chain migrations');
-      }
-
       const routes: DirectRoute[] = [];
 
       // Create routes for both tokens

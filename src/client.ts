@@ -261,9 +261,7 @@ export class ChainHopperClient {
       reasons.push('destination protocol not supported');
     }
 
-    if (exactPath.bridgeType === undefined) {
-      exactPath.bridgeType = BridgeType.Across;
-    } else if (exactPath.bridgeType !== BridgeType.Across && exactPath.bridgeType !== BridgeType.Direct) {
+    if (!Object.values(BridgeType).includes(exactPath.bridgeType)) {
       reasons.push('bridge type not supported');
     }
 
