@@ -196,9 +196,8 @@ export class ChainHopperClient {
       migrationOptions.map(async (migrations) => {
         return (
           await Promise.all(
-            migrations.map(async (migration: InternalDestinationWithExactPath, index: number) => {
+            migrations.map(async (migration: InternalDestinationWithExactPath) => {
               try {
-                console.log('handleMigration', index, params, migration.destination, migration.exactPath);
                 return await this.handleMigration(
                   {
                     ...params,
@@ -209,7 +208,6 @@ export class ChainHopperClient {
                   migration
                 );
               } catch (e) {
-                console.log('handleMigration error', index, migration, e);
                 unavailableMigrations.push({
                   ...migration,
                   reasons: [e instanceof Error ? e.message : 'unexpected error in handleMigration'],
