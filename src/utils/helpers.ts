@@ -138,6 +138,10 @@ export const generateMigrationParams = async ({
     new Percent(exactPath.slippageInBps || DEFAULT_SLIPPAGE_IN_BPS, 10000)
   );
 
+  // use potentially adjusted ticks from maxPosition
+  destination.tickLower = maxPosition.tickLower;
+  destination.tickUpper = maxPosition.tickUpper;
+
   const { migratorMessage, settlerMessage } = encodeMigrationParams(
     {
       chainId: BigInt(destinationChainConfig.chainId),
@@ -164,7 +168,9 @@ export const generateMigrationParams = async ({
       migrator:
         externalParams.sourcePosition.protocol == Protocol.UniswapV3
           ? sourceChainConfig.UniswapV3AcrossMigrator || zeroAddress
-          : sourceChainConfig.UniswapV4AcrossMigrator || zeroAddress,
+          : externalParams.sourcePosition.protocol == Protocol.Aerodrome
+            ? sourceChainConfig.AerodromeAcrossMigrator || zeroAddress
+            : sourceChainConfig.UniswapV4AcrossMigrator || zeroAddress,
       nonce: BigInt(1), // hardcoded, as it doesn't matter
       mode: exactPath.migrationMethod!,
     }
