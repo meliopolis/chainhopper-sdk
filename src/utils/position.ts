@@ -1,6 +1,6 @@
 import { computePoolAddress, type Pool as UniswapSDKV3Pool, type Position as V3Position } from '@uniswap/v3-sdk';
 import { Pool as UniswapSDKV4Pool, type Position as V4Position } from '@uniswap/v4-sdk';
-import type { Position, PathWithPosition, v3Pool, v4Pool, aerodromePool } from '../types/sdk';
+import type { Position, PathWithPosition, v3Pool, v4Pool, aerodromePool, Pool } from '../types/sdk';
 import { NATIVE_ETH_ADDRESS, Protocol } from './constants';
 import type { ChainConfig } from '../chains';
 import { tickSpacingToFee } from './aerodrome';
@@ -43,7 +43,7 @@ export const toSDKPool = ({
   pool: UniswapSDKV3Pool | UniswapSDKV4Pool;
   aerodromePoolAddress?: `0x${string}`;
   aerodromeTickSpacing?: number;
-}): v3Pool | v4Pool | aerodromePool => {
+}): Pool => {
   const isV4Pool = 'hooks' in pool;
   const poolAddress =
     aerodromePoolAddress ||

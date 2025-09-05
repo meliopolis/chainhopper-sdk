@@ -4,7 +4,12 @@ import type { MigrationMethod } from '../utils/constants';
 
 // Migrator Params
 
-export type AcrossRoute = {
+export type ContractBaseTokenRoute = {
+  inputToken: `0x${string}`;
+  minAmountOut: bigint;
+};
+
+export type ContractAcrossTokenRoute = ContractBaseTokenRoute & {
   outputToken: `0x${string}`;
   maxFees: bigint;
   quoteTimestamp: number;
@@ -13,15 +18,12 @@ export type AcrossRoute = {
   exclusivityDeadline: number;
 };
 
-export type TokenRoute = AcrossRoute & {
-  inputToken: `0x${string}`;
-  minAmountOut: bigint;
-};
+export type ContractTokenRoute = ContractBaseTokenRoute | ContractAcrossTokenRoute;
 
 export type MigrationParams = {
   chainId: bigint;
   settler: `0x${string}`;
-  tokenRoutes: TokenRoute[];
+  tokenRoutes: ContractTokenRoute[];
   settlementParams: SettlementParams & (UniswapV3MintParams | UniswapV4MintParams | AerodromeMintParams);
 };
 
