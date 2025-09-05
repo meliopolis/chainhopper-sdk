@@ -118,10 +118,10 @@ export const chainConfigs: Record<number, ChainConfig> = {
     UniswapV3AcrossSettler: '0x04efac76263d0dd17c2acff3bf932c801d9ade78',
     UniswapV4AcrossMigrator: '0x6b19fdf76fc1eac6e10259855af85b7d5e1b5c6c',
     UniswapV4AcrossSettler: '0x76066eb0a660f2bca149757651dedb33487fdbb4',
-    UniswapV3DirectMigrator: '0x2ab8947736D3ECB47f95c4a1B798e02dC012e66D', // TODO: need to deploy
-    UniswapV3DirectSettler: '0xe1e5c975C577Ec251B065D6299f524E3fe47B261', // TODO: need to deploy
-    UniswapV4DirectMigrator: '0x0000000000000000000000000000000000000000', // TODO: need to deploy
-    UniswapV4DirectSettler: '0x0000000000000000000000000000000000000000', // TODO: need to deploy
+    UniswapV3DirectMigrator: '0xE0C99DC7D68664093f0A766962c6Cd720122279C',
+    UniswapV3DirectSettler: '0x3239ed4a77ad8aa03c20b23f91f0d9f3123a7cff',
+    UniswapV4DirectMigrator: '0x3AA349e54D68AB5BBe4ca35126d9d5e1A75d9B2F',
+    UniswapV4DirectSettler: '0x1fA1bA925075d7A46f8F946a3f6c2F962456975d',
   },
   10: {
     chainId: 10,
