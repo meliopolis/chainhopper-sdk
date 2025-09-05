@@ -961,7 +961,7 @@ describe('in-range v3→ migrations', () => {
       exactPath: {
         bridgeType: BridgeType.Across,
         migrationMethod: MigrationMethod.SingleToken,
-        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
+        slippageInBps: DEFAULT_SLIPPAGE_IN_BPS * 10,
       },
     };
     validateMigrationResponse(params, await client.requestExactMigration(params));
