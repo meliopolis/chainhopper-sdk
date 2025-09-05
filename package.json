@@ -46,7 +46,7 @@
   },
   "scripts": {
     "lint": "eslint --fix",
-    "format": "prettier --write --ignore-unknown",
+    "format": "prettier --write --ignore-unknown src/**/*.ts test/**/*.ts",
     "test": "bun test",
     "build": "tsc",
     "types": "tsc --emitDeclarationOnly --declaration --declarationDir ./dist",
