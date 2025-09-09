@@ -66,6 +66,10 @@ export type ChainConfig = {
   UniswapV4AcrossSettler?: `0x${string}`;
   AerodromeAcrossMigrator?: `0x${string}`;
   AerodromeAcrossSettler?: `0x${string}`;
+  UniswapV3DirectMigrator?: `0x${string}`;
+  UniswapV3DirectSettler?: `0x${string}`;
+  UniswapV4DirectMigrator?: `0x${string}`;
+  UniswapV4DirectSettler?: `0x${string}`;
 };
 
 const multicallAddress = '0xcA11bde05977b3631167028862bE2a173976CA11';
@@ -114,6 +118,10 @@ export const chainConfigs: Record<number, ChainConfig> = {
     UniswapV3AcrossSettler: '0x04efac76263d0dd17c2acff3bf932c801d9ade78',
     UniswapV4AcrossMigrator: '0x6b19fdf76fc1eac6e10259855af85b7d5e1b5c6c',
     UniswapV4AcrossSettler: '0x76066eb0a660f2bca149757651dedb33487fdbb4',
+    UniswapV3DirectMigrator: '0xe0c99dc7d68664093f0a766962c6cd720122279c',
+    UniswapV3DirectSettler: '0x3239ed4a77ad8aa03c20b23f91f0d9f3123a7cff',
+    UniswapV4DirectMigrator: '0x3aa349e54d68ab5bbe4ca35126d9d5e1a75d9b2f',
+    UniswapV4DirectSettler: '0x1fa1ba925075d7a46f8f946a3f6c2f962456975d',
   },
   10: {
     chainId: 10,
@@ -155,6 +163,10 @@ export const chainConfigs: Record<number, ChainConfig> = {
     UniswapV3AcrossSettler: '0x128efbbf6833004fcf6ef5a24c7f7e0684e71be2',
     UniswapV4AcrossMigrator: '0x78a61eb6a4ba589f214b0758e3d50610729ca15d',
     UniswapV4AcrossSettler: '0x66d187b107fdf8c67f3de26f717538f4a5df561e',
+    UniswapV3DirectMigrator: '0x72297f4df9f4e647d58cb30a38525b7c009cae18',
+    UniswapV3DirectSettler: '0xfad73b05c72188bc6Ea33e189222b6D33B2b9d63',
+    UniswapV4DirectMigrator: '0x4409a6647892b7eeca5bc3b819576395173cf722',
+    UniswapV4DirectSettler: '0x74da71857cede77b0ddcd659a45290cb266b6616',
   },
   130: {
     chainId: 130,
@@ -196,6 +208,10 @@ export const chainConfigs: Record<number, ChainConfig> = {
     UniswapV3AcrossSettler: '0x38593e48c2e8ac5bf6b07f60654fb40b2f45d453',
     UniswapV4AcrossMigrator: '0x228f3f2847c7411f9c854581da1c80d36df25af5',
     UniswapV4AcrossSettler: '0xabd86e13be6fd6ac358e014ef1b33700de05978a',
+    UniswapV3DirectMigrator: '0xd5d623f77422f528b6f44c7e6873a19c0608d942',
+    UniswapV3DirectSettler: '0xf86c1269e5b973fff2c90c6934bf3f2872bd1341',
+    UniswapV4DirectMigrator: '0x720c29075a1203edc0a6f1dd5485027615300deb',
+    UniswapV4DirectSettler: '0x630b8eda8004b2ba639ada072e56343efa4b6010',
   },
   8453: {
     chainId: 8453,
@@ -251,6 +267,10 @@ export const chainConfigs: Record<number, ChainConfig> = {
     UniswapV3AcrossSettler: '0xd640dd4a0549b3223414e62be90f4af179b6b7ab',
     UniswapV4AcrossMigrator: '0xd8ca296a9fd140d86109203b100f11f6060b7a8a',
     UniswapV4AcrossSettler: '0x5e2549ca01d4a97670ecdb72a90ed607f3aeb6db',
+    UniswapV3DirectMigrator: '0x3101633719f0d32e243156e5f3733381b1d9582c',
+    UniswapV3DirectSettler: '0xc69b473ce93c392ca2e208331f37cf259b61deda',
+    UniswapV4DirectMigrator: '0xa9905dbd4fe4bbb9a4c460adfa42292af6d11275',
+    UniswapV4DirectSettler: '0xffdf16ac6b524f54838e206e8bde03cd62d0e57c',
   },
   42161: {
     chainId: 42161,
@@ -292,6 +312,10 @@ export const chainConfigs: Record<number, ChainConfig> = {
     UniswapV3AcrossSettler: '0x3aa146f0a8df32b2a3c3d6a9e2eaf1a6797c0360',
     UniswapV4AcrossMigrator: '0x505ec9cb1eeb1102935c1ef53ccc8c84cdb8627e',
     UniswapV4AcrossSettler: '0x37a28c8beb48452ebf78fae41f0e3149891a457b',
+    UniswapV3DirectMigrator: '0xaf7748706fda85fec99fe963d78c12264a43c477',
+    UniswapV3DirectSettler: '0x2dc49f9c7f0ba33567318cc2e64d06e7bb03a0e9',
+    UniswapV4DirectMigrator: '0x5703b94763fcf85a285c9611b6fb5ef6950f4620',
+    UniswapV4DirectSettler: '0xfb5e54df3a6bb5c88f32300016449a3ced37361e',
   },
 
   // testnets

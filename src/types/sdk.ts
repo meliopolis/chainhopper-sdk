@@ -115,7 +115,7 @@ export type Token = {
   name?: string;
 };
 
-export type Pool = {
+export type CommonPoolParams = {
   chainId: number;
   token0: Token;
   token1: Token;
@@ -126,24 +126,26 @@ export type Pool = {
   tick?: number;
 };
 
-export type v3Pool = Pool & {
+export type v3Pool = CommonPoolParams & {
   protocol: Protocol.UniswapV3;
   poolAddress: `0x${string}`;
 };
 
-export type v4Pool = Pool & {
+export type v4Pool = CommonPoolParams & {
   protocol: Protocol.UniswapV4;
   hooks: `0x${string}`;
   poolId: `0x${string}`;
 };
 
-export type aerodromePool = Pool & {
+export type aerodromePool = CommonPoolParams & {
   protocol: Protocol.Aerodrome;
   poolAddress: `0x${string}`;
 };
 
+export type Pool = v3Pool | v4Pool | aerodromePool;
+
 export type Position = {
-  pool: v3Pool | v4Pool | aerodromePool;
+  pool: Pool;
   tickLower: number;
   tickUpper: number;
   liquidity: bigint;
@@ -163,7 +165,9 @@ export type PositionWithFees = Position & {
   feeAmount1: bigint;
 };
 
-export type Route = {
+export type Route = AcrossRoute | DirectRoute;
+
+export type AcrossRoute = {
   inputToken: `0x${string}`;
   outputToken: `0x${string}`;
   inputAmount: bigint;
@@ -178,6 +182,17 @@ export type Route = {
   destinationSlippageBps?: number;
 };
 
+export type DirectRoute = {
+  inputToken: `0x${string}`;
+  outputToken: `0x${string}`;
+  inputAmount: bigint;
+  outputAmount: bigint;
+  minOutputAmount: bigint;
+  destinationSettler: `0x${string}`;
+  sourceSlippageBps?: number;
+  destinationSlippageBps?: number;
+};
+
 export type MigratorExecutionParams = {
   address: `0x${string}`;
   abi: Abi;
@@ -185,7 +200,7 @@ export type MigratorExecutionParams = {
   args: [`0x${string}`, `0x${string}`, bigint, `0x${string}`];
 };
 
-export type SettlerExecutionParams = {
+export type AcrossSettlerExecutionParams = {
   address: `0x${string}`;
   abi: Abi;
   functionName: string;
@@ -207,6 +222,15 @@ export type SettlerExecutionParams = {
     bigint,
   ];
 };
+
+export type DirectSettlerExecutionParams = {
+  address: `0x${string}`;
+  abi: Abi;
+  functionName: 'handleDirectTransfer';
+  args: [`0x${string}`, bigint, `0x${string}`];
+};
+
+export type SettlerExecutionParams = AcrossSettlerExecutionParams | DirectSettlerExecutionParams;
 
 export type MigrationFees = {
   bps: number;

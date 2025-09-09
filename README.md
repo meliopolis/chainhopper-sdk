@@ -299,7 +299,7 @@ Calling `writeContract` open up a wallet window for signing the transaction and 
 
 ### Sender Fees
 
-ChainHopper protocol charges a 10bps (0.1%) fee for any completed migration. Additionally, integrators can specify their own fees, which the protocol will split with a percentage going to the specified recipient.
+ChainHopper protocol is designed to charge a protocol fee (currently set to 0) for any completed migration. Additionally, integrators can specify their own fees (for completed migrations), which the protocol will split with a percentage going to the specified recipient.
 
 ```typescript
 const migrationParams: RequestMigrationParams = {

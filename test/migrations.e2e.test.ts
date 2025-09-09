@@ -136,14 +136,26 @@ const validateMigrationResponse = (params: RequestExactMigrationParams, result: 
     expect(executionParams.address).toBe(
       client.chainConfigs[sourcePosition.chainId].v3NftPositionManagerContract.address
     );
-    expect(executionParams.args[1]).toBe(
-      client.chainConfigs[sourcePosition.chainId].UniswapV3AcrossMigrator as `0x${string}`
-    );
+    if (migration.exactPath.bridgeType === BridgeType.Direct) {
+      expect(executionParams.args[1]).toBe(
+        client.chainConfigs[sourcePosition.chainId].UniswapV3DirectMigrator as `0x${string}`
+      );
+    } else {
+      expect(executionParams.args[1]).toBe(
+        client.chainConfigs[sourcePosition.chainId].UniswapV3AcrossMigrator as `0x${string}`
+      );
+    }
   } else if (sourcePosition.protocol === Protocol.UniswapV4) {
     expect(executionParams.address).toBe(client.chainConfigs[sourcePosition.chainId].v4PositionManagerContract.address);
-    expect(executionParams.args[1]).toBe(
-      client.chainConfigs[sourcePosition.chainId].UniswapV4AcrossMigrator as `0x${string}`
-    );
+    if (migration.exactPath.bridgeType === BridgeType.Direct) {
+      expect(executionParams.args[1]).toBe(
+        client.chainConfigs[sourcePosition.chainId].UniswapV4DirectMigrator as `0x${string}`
+      );
+    } else {
+      expect(executionParams.args[1]).toBe(
+        client.chainConfigs[sourcePosition.chainId].UniswapV4AcrossMigrator as `0x${string}`
+      );
+    }
   } else if (sourcePosition.protocol === Protocol.Aerodrome) {
     expect(executionParams.address).toBe(
       client.chainConfigs[sourcePosition.chainId].aerodromeNftPositionManagerContract!.address
@@ -2185,6 +2197,528 @@ describe('out of range v4→ migrations', () => {
       expect(async () => await client.requestExactMigration(params)).toThrow(
         'Unsupported token address on given destination chain'
       );
+    });
+  });
+});
+
+describe('Direct Transfer bridging', () => {
+  describe('same-chain v3 → v3 migration', () => {
+    test('generate valid base v3 → base v3 single-token migration with Direct bridge', async () => {
+      const sourceChainId = 8453;
+      const destChainId = 8453;
+      const token0 = client.chainConfigs[sourceChainId].wethAddress;
+      const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+      const fee = 500;
+      const tickLower = -203450;
+      const tickUpper = -193130;
+
+      await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+        getV3Position: mock(() => {
+          const tickCurrent = -195000;
+          const liquidity = 100_000_000_000n;
+          const pool = new V3Pool(
+            new Token(sourceChainId, token0, 18, 'WETH'),
+            new Token(sourceChainId, token1, 6, 'USDC'),
+            fee,
+            BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+            liquidity.toString(),
+            tickCurrent
+          );
+          return {
+            owner: ownerAddress,
+            tokenId: 2825070n,
+            ...toSDKPosition({
+              chainConfig: client.chainConfigs[sourceChainId],
+              position: new V3Position({
+                pool,
+                liquidity: 100_000_000_000,
+                tickLower,
+                tickUpper,
+              }),
+            }),
+            feeAmount0: 10000000000000000n,
+            feeAmount1: 2000000000n,
+          };
+        }),
+      }));
+      const params: RequestExactMigrationParams = {
+        sourcePosition: {
+          chainId: sourceChainId,
+          tokenId: 2825070n,
+          protocol: Protocol.UniswapV3,
+        },
+        destination: {
+          chainId: destChainId,
+          protocol: Protocol.UniswapV3,
+          token0: token0,
+          token1: token1,
+          tickLower: 87670,
+          tickUpper: 298660,
+          fee,
+        },
+        exactPath: {
+          bridgeType: BridgeType.Direct,
+          migrationMethod: MigrationMethod.SingleToken,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
+        },
+        debug: true,
+      };
+
+      const result = await client.requestExactMigration(params);
+      validateMigrationResponse(params, result);
+
+      // Verify Direct Transfer specific properties
+      expect(result.migration.exactPath.bridgeType).toBe(BridgeType.Direct);
+      expect(result.migration.settlerExecutionParams?.[0]?.functionName).toBe('handleDirectTransfer');
+      expect(result.migration.routes[0]).not.toHaveProperty('fillDeadlineOffset');
+      expect(result.migration.routes[0]).not.toHaveProperty('exclusivityDeadline');
+      expect(result.migration.routes[0]).not.toHaveProperty('exclusiveRelayer');
+    });
+
+    test('generate valid base v3 → base v3 dual-token migration with Direct bridge', async () => {
+      const sourceChainId = 8453;
+      const destChainId = 8453;
+      const token0 = client.chainConfigs[sourceChainId].wethAddress;
+      const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+      const fee = 500;
+      const tickLower = -203450;
+      const tickUpper = -193130;
+
+      await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+        getV3Position: mock(() => {
+          const tickCurrent = -195000;
+          const liquidity = 100_000_000_000n;
+          const pool = new V3Pool(
+            new Token(sourceChainId, token0, 18, 'WETH'),
+            new Token(sourceChainId, token1, 6, 'USDC'),
+            fee,
+            BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+            liquidity.toString(),
+            tickCurrent
+          );
+          return {
+            owner: ownerAddress,
+            tokenId: 2825070n,
+            ...toSDKPosition({
+              chainConfig: client.chainConfigs[sourceChainId],
+              position: new V3Position({
+                pool,
+                liquidity: 100_000_000_000,
+                tickLower,
+                tickUpper,
+              }),
+            }),
+            feeAmount0: 10000000000000000n,
+            feeAmount1: 2000000000n,
+          };
+        }),
+      }));
+      const params: RequestExactMigrationParams = {
+        sourcePosition: {
+          chainId: sourceChainId,
+          tokenId: 2825070n,
+          protocol: Protocol.UniswapV3,
+        },
+        destination: {
+          chainId: destChainId,
+          protocol: Protocol.UniswapV3,
+          token0: token0,
+          token1: token1,
+          tickLower: 87670,
+          tickUpper: 298660,
+          fee,
+        },
+        exactPath: {
+          bridgeType: BridgeType.Direct,
+          migrationMethod: MigrationMethod.DualToken,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
+        },
+        debug: true,
+      };
+
+      const result = await client.requestExactMigration(params);
+      validateMigrationResponse(params, result);
+
+      // Verify Direct Transfer specific properties
+      expect(result.migration.exactPath.bridgeType).toBe(BridgeType.Direct);
+      expect(result.migration.settlerExecutionParams?.[0]?.functionName).toBe('handleDirectTransfer');
+      expect(result.migration.settlerExecutionParams?.[1]?.functionName).toBe('handleDirectTransfer');
+      expect(result.migration.routes.length).toBe(2);
+      result.migration.routes.forEach((route) => {
+        expect(route).not.toHaveProperty('fillDeadlineOffset');
+        expect(route).not.toHaveProperty('exclusivityDeadline');
+        expect(route).not.toHaveProperty('exclusiveRelayer');
+      });
+    });
+
+    test('reject cross-chain migration with Direct bridge', async () => {
+      const sourceChainId = 8453;
+      const destChainId = 130;
+      const token0 = client.chainConfigs[sourceChainId].wethAddress;
+      const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+      const fee = 500;
+      const tickLower = -203450;
+      const tickUpper = -193130;
+
+      await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+        getV3Position: mock(() => {
+          const tickCurrent = -195000;
+          const liquidity = 100_000_000_000n;
+          const pool = new V3Pool(
+            new Token(sourceChainId, token0, 18, 'WETH'),
+            new Token(sourceChainId, token1, 6, 'USDC'),
+            fee,
+            BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+            liquidity.toString(),
+            tickCurrent
+          );
+          return {
+            owner: ownerAddress,
+            tokenId: 2825070n,
+            ...toSDKPosition({
+              chainConfig: client.chainConfigs[sourceChainId],
+              position: new V3Position({
+                pool,
+                liquidity: 100_000_000_000,
+                tickLower,
+                tickUpper,
+              }),
+            }),
+            feeAmount0: 10000000000000000n,
+            feeAmount1: 2000000000n,
+          };
+        }),
+      }));
+      const params: RequestExactMigrationParams = {
+        sourcePosition: {
+          chainId: sourceChainId,
+          tokenId: 2825070n,
+          protocol: Protocol.UniswapV3,
+        },
+        destination: {
+          chainId: destChainId,
+          protocol: Protocol.UniswapV3,
+          token0: token0,
+          token1: token1,
+          tickLower: 87670,
+          tickUpper: 298660,
+          fee,
+        },
+        exactPath: {
+          bridgeType: BridgeType.Direct,
+          migrationMethod: MigrationMethod.SingleToken,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
+        },
+        debug: true,
+      };
+
+      await expect(client.requestExactMigration(params)).rejects.toThrow(
+        'DirectTransfer bridge only supports same-chain migrations'
+      );
+    });
+  });
+
+  describe('same-chain v4 → v4 migration', () => {
+    test('generate valid mainnet v4 → mainnet v4 single-token migration with Direct bridge', async () => {
+      const sourceChainId = 8453;
+      const destChainId = 8453; // Same chain for Direct Transfer
+      const token0 = zeroAddress;
+      const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+      const fee = 500;
+      const tickSpacing = 10;
+      const hooks = '0x0000000000000000000000000000000000000000';
+      const tickLower = -203450;
+      const tickUpper = -193130;
+      const v4TokenId = 1n;
+
+      await moduleMocker.mock('../src/actions/getV4Position.ts', () => ({
+        getV4Position: mock(() => {
+          const tickCurrent = -195000;
+          const liquidity = 100_000_000_000n;
+          const pool = new V4Pool(
+            new Token(sourceChainId, token0, 18, 'ETH'),
+            new Token(sourceChainId, token1, 6, 'USDC'),
+            fee,
+            tickSpacing,
+            hooks,
+            BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+            liquidity.toString(),
+            tickCurrent
+          );
+          return {
+            owner: ownerAddress,
+            tokenId: v4TokenId,
+            ...toSDKPosition({
+              chainConfig: client.chainConfigs[sourceChainId],
+              position: new V4Position({
+                pool,
+                liquidity: 100_000_000_000,
+                tickLower,
+                tickUpper,
+              }),
+            }),
+            feeAmount0: 100000000000000000n,
+            feeAmount1: 100000n,
+          };
+        }),
+      }));
+
+      const params: RequestExactMigrationParams = {
+        sourcePosition: {
+          chainId: sourceChainId,
+          tokenId: v4TokenId,
+          protocol: Protocol.UniswapV4,
+        },
+        destination: {
+          chainId: destChainId,
+          protocol: Protocol.UniswapV4,
+          token0: token0,
+          token1: token1,
+          tickLower: 87670,
+          tickUpper: 298660,
+          fee,
+          tickSpacing,
+          hooks,
+        },
+        exactPath: {
+          bridgeType: BridgeType.Direct,
+          migrationMethod: MigrationMethod.SingleToken,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
+        },
+        debug: true,
+      };
+
+      const result = await client.requestExactMigration(params);
+      validateMigrationResponse(params, result);
+
+      // Verify Direct Transfer specific properties
+      expect(result.migration.exactPath.bridgeType).toBe(BridgeType.Direct);
+      expect(result.migration.settlerExecutionParams?.[0]?.functionName).toBe('handleDirectTransfer');
+    });
+    test('generate valid mainnet v4 → mainnet v4 dual-token migration with Direct bridge', async () => {
+      const sourceChainId = 8453;
+      const destChainId = 8453; // Same chain for Direct Transfer
+      const token0 = zeroAddress;
+      const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+      const fee = 500;
+      const tickSpacing = 10;
+      const hooks = '0x0000000000000000000000000000000000000000';
+      const tickLower = -203450;
+      const tickUpper = -193130;
+      const v4TokenId = 1n;
+
+      await moduleMocker.mock('../src/actions/getV4Position.ts', () => ({
+        getV4Position: mock(() => {
+          const tickCurrent = -195000;
+          const liquidity = 100_000_000_000n;
+          const pool = new V4Pool(
+            new Token(sourceChainId, token0, 18, 'ETH'),
+            new Token(sourceChainId, token1, 6, 'USDC'),
+            fee,
+            tickSpacing,
+            hooks,
+            BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+            liquidity.toString(),
+            tickCurrent
+          );
+          return {
+            owner: ownerAddress,
+            tokenId: v4TokenId,
+            ...toSDKPosition({
+              chainConfig: client.chainConfigs[sourceChainId],
+              position: new V4Position({
+                pool,
+                liquidity: 100_000_000_000,
+                tickLower,
+                tickUpper,
+              }),
+            }),
+            feeAmount0: 100000000000000000n,
+            feeAmount1: 100000n,
+          };
+        }),
+      }));
+
+      const params: RequestExactMigrationParams = {
+        sourcePosition: {
+          chainId: sourceChainId,
+          tokenId: v4TokenId,
+          protocol: Protocol.UniswapV4,
+        },
+        destination: {
+          chainId: destChainId,
+          protocol: Protocol.UniswapV4,
+          token0: token0,
+          token1: token1,
+          tickLower: 87670,
+          tickUpper: 298660,
+          fee,
+          tickSpacing,
+          hooks,
+        },
+        exactPath: {
+          bridgeType: BridgeType.Direct,
+          migrationMethod: MigrationMethod.DualToken,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
+        },
+        debug: true,
+      };
+
+      const result = await client.requestExactMigration(params);
+      validateMigrationResponse(params, result);
+
+      // Verify Direct Transfer specific properties
+      expect(result.migration.exactPath.bridgeType).toBe(BridgeType.Direct);
+      expect(result.migration.settlerExecutionParams?.[0]?.functionName).toBe('handleDirectTransfer');
+      expect(result.migration.settlerExecutionParams?.[1]?.functionName).toBe('handleDirectTransfer');
+    });
+  });
+
+  describe('same-chain v3 → v4 migration', () => {
+    test('generate valid base v3 → base v4 single-token migration with Direct bridge', async () => {
+      const sourceChainId = 8453;
+      const destChainId = 8453;
+      const token0 = client.chainConfigs[sourceChainId].wethAddress;
+      const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+      const fee = 500;
+      const tickLower = -203450;
+      const tickUpper = -193130;
+      const tickSpacing = 10;
+      const hooks = '0x0000000000000000000000000000000000000000';
+
+      await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+        getV3Position: mock(() => {
+          const tickCurrent = -195000;
+          const liquidity = 100_000_000_000n;
+          const pool = new V3Pool(
+            new Token(sourceChainId, token0, 18, 'WETH'),
+            new Token(sourceChainId, token1, 6, 'USDC'),
+            fee,
+            BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+            liquidity.toString(),
+            tickCurrent
+          );
+          return {
+            owner: ownerAddress,
+            tokenId: 2825070n,
+            ...toSDKPosition({
+              chainConfig: client.chainConfigs[sourceChainId],
+              position: new V3Position({
+                pool,
+                liquidity: 100_000_000_000,
+                tickLower,
+                tickUpper,
+              }),
+            }),
+            feeAmount0: 10000000000000000n,
+            feeAmount1: 2000000000n,
+          };
+        }),
+      }));
+      const params: RequestExactMigrationParams = {
+        sourcePosition: {
+          chainId: sourceChainId,
+          tokenId: 2825070n,
+          protocol: Protocol.UniswapV3,
+        },
+        destination: {
+          chainId: destChainId,
+          protocol: Protocol.UniswapV4,
+          token0: token0,
+          token1: token1,
+          tickLower: 87670,
+          tickUpper: 298660,
+          fee,
+          tickSpacing,
+          hooks,
+        },
+        exactPath: {
+          bridgeType: BridgeType.Direct,
+          migrationMethod: MigrationMethod.SingleToken,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
+        },
+        debug: true,
+      };
+
+      const result = await client.requestExactMigration(params);
+      validateMigrationResponse(params, result);
+
+      // Verify Direct Transfer specific properties
+      expect(result.migration.exactPath.bridgeType).toBe(BridgeType.Direct);
+      expect(result.migration.settlerExecutionParams?.[0]?.functionName).toBe('handleDirectTransfer');
+    });
+    test('generate valid base v3 → base v4 dual-token migration with Direct bridge', async () => {
+      const sourceChainId = 8453;
+      const destChainId = 8453;
+      const token0 = client.chainConfigs[sourceChainId].wethAddress;
+      const token1 = client.chainConfigs[sourceChainId].usdcAddress;
+      const fee = 500;
+      const tickLower = -203450;
+      const tickUpper = -193130;
+      const tickSpacing = 10;
+      const hooks = '0x0000000000000000000000000000000000000000';
+
+      await moduleMocker.mock('../src/actions/getV3Position.ts', () => ({
+        getV3Position: mock(() => {
+          const tickCurrent = -195000;
+          const liquidity = 100_000_000_000n;
+          const pool = new V3Pool(
+            new Token(sourceChainId, token0, 18, 'WETH'),
+            new Token(sourceChainId, token1, 6, 'USDC'),
+            fee,
+            BigInt(TickMath.getSqrtRatioAtTick(tickCurrent).toString()).toString(),
+            liquidity.toString(),
+            tickCurrent
+          );
+          return {
+            owner: ownerAddress,
+            tokenId: 2825070n,
+            ...toSDKPosition({
+              chainConfig: client.chainConfigs[sourceChainId],
+              position: new V3Position({
+                pool,
+                liquidity: 100_000_000_000,
+                tickLower,
+                tickUpper,
+              }),
+            }),
+            feeAmount0: 10000000000000000n,
+            feeAmount1: 2000000000n,
+          };
+        }),
+      }));
+      const params: RequestExactMigrationParams = {
+        sourcePosition: {
+          chainId: sourceChainId,
+          tokenId: 2825070n,
+          protocol: Protocol.UniswapV3,
+        },
+        destination: {
+          chainId: destChainId,
+          protocol: Protocol.UniswapV4,
+          token0: token0,
+          token1: token1,
+          tickLower: 87670,
+          tickUpper: 298660,
+          fee,
+          tickSpacing,
+          hooks,
+        },
+        exactPath: {
+          bridgeType: BridgeType.Direct,
+          migrationMethod: MigrationMethod.DualToken,
+          slippageInBps: DEFAULT_SLIPPAGE_IN_BPS,
+        },
+        debug: true,
+      };
+
+      const result = await client.requestExactMigration(params);
+      validateMigrationResponse(params, result);
+
+      // Verify Direct Transfer specific properties
+      expect(result.migration.exactPath.bridgeType).toBe(BridgeType.Direct);
+      expect(result.migration.settlerExecutionParams?.[0]?.functionName).toBe('handleDirectTransfer');
+      expect(result.migration.settlerExecutionParams?.[1]?.functionName).toBe('handleDirectTransfer');
     });
   });
 });

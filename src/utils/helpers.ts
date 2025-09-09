@@ -1,18 +1,20 @@
 import { CurrencyAmount, Fraction, Percent, Price, Token, type Currency } from '@uniswap/sdk-core';
-import { DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, Protocol } from './constants';
+import { BridgeType, DEFAULT_FILL_DEADLINE_OFFSET, DEFAULT_SLIPPAGE_IN_BPS, Protocol } from './constants';
 import { Pool as V3Pool, SqrtPriceMath, TickMath, Position as V3Position } from '@uniswap/v3-sdk';
 import { Position as V4Position, Pool as V4Pool } from '@uniswap/v4-sdk';
 import type {
   MigratorExecutionParams,
   Position,
-  Route,
-  SettlerExecutionParams,
+  AcrossRoute,
+  AcrossSettlerExecutionParams,
   RequestMigrationParams,
   MigrationFees,
   UniswapV3Params,
   UniswapV4Params,
   AerodromeParams,
   v3Pool,
+  DirectSettlerExecutionParams,
+  DirectRoute,
 } from '../types/sdk';
 
 import {
@@ -33,13 +35,13 @@ import { getV4CombinedQuote } from '../actions/getV4CombinedQuote';
 import { NFTSafeTransferFrom } from '../abis/NFTSafeTransferFrom';
 import type { InternalDestinationWithExactPath, InternalGenerateMigrationParamsInput } from '../types/internal';
 import { toSDKPool, toSDKPosition } from './position';
-import { SpokePoolABI } from '../abis';
 import type {
   SettlementParams,
   UniswapV3MintParams,
   UniswapV4MintParams,
   AerodromeMintParams,
 } from '@/types/contracts';
+import { IDirectSettlerAbi, SpokePoolABI } from '../abis';
 
 export const generateSettlerData = (
   sourceChainConfig: ChainConfig,
@@ -145,7 +147,7 @@ export const generateMigrationParams = async ({
   const { migratorMessage, settlerMessage } = encodeMigrationParams(
     {
       chainId: BigInt(destinationChainConfig.chainId),
-      settler: resolveSettler(destination.protocol, destinationChainConfig),
+      settler: resolveSettler(destination.protocol, destinationChainConfig, exactPath.bridgeType),
       tokenRoutes: await Promise.all(
         routes.map(async (route) => ({
           ...route,
@@ -196,32 +198,19 @@ export const generateMigrationParams = async ({
   };
 };
 
-export const resolveSettler = (destinationProtocol: Protocol, destinationChainConfig: ChainConfig): `0x${string}` => {
-  let settler: `0x${string}`;
-  switch (destinationProtocol) {
-    case Protocol.UniswapV3:
-      if (destinationChainConfig.UniswapV3AcrossSettler) {
-        settler = destinationChainConfig.UniswapV3AcrossSettler;
-        break;
-      } else {
-        throw new Error('UniswapV3AcrossSettler not provided for destination chain.');
-      }
-    case Protocol.UniswapV4:
-      if (destinationChainConfig.UniswapV4AcrossSettler) {
-        settler = destinationChainConfig.UniswapV4AcrossSettler;
-        break;
-      } else {
-        throw new Error('UniswapV4AcrossSettler not provided for destination chain.');
-      }
-    case Protocol.Aerodrome:
-      if (destinationChainConfig.AerodromeAcrossSettler) {
-        settler = destinationChainConfig.AerodromeAcrossSettler;
-        break;
-      } else {
-        throw new Error('AerodromeAcrossSettler not provided for destination chain.');
-      }
+export const resolveSettler = (
+  destinationProtocol: Protocol,
+  destinationChainConfig: ChainConfig,
+  bridgeType: BridgeType
+): `0x${string}` => {
+  // Create a mapping key based on protocol and bridge type
+  const settlerKey = `${destinationProtocol}${bridgeType}Settler` as keyof ChainConfig;
+  const settlerAddress = destinationChainConfig[settlerKey] as `0x${string}` | undefined;
+
+  if (!settlerAddress) {
+    throw new Error(`${settlerKey} not provided for destination chain.`);
   }
-  return settler;
+  return settlerAddress;
 };
 
 export const generateMaxV3Position = (
@@ -392,7 +381,7 @@ export const generateMaxV3orV4PositionWithSwapAllowed = async (
         chainConfig,
         inputBalance.currency.wrapped,
         outputBalance.currency.wrapped,
-        toSDKPool({ chainConfig, pool }) as v3Pool,
+        toSDKPool({ chainConfig, pool }) as unknown as v3Pool,
         BigInt(currencyAmountToSwap.quotient.toString()),
         0n
       );
@@ -517,29 +506,42 @@ export const generateExecutionParams = ({
   protocol,
   tokenId,
   message,
+  bridgeType,
 }: {
   sourceChainId: number;
   owner: `0x${string}`;
   protocol: Protocol;
   tokenId: bigint;
   message: `0x${string}`;
+  bridgeType: BridgeType;
 }): MigratorExecutionParams => {
   let positionManagerAddress: `0x${string}` | undefined;
   let migratorAddress: `0x${string}` | undefined;
   const sourceChainConfig = chainConfigs[sourceChainId];
+
   if (protocol === Protocol.UniswapV3) {
     positionManagerAddress = sourceChainConfig.v3NftPositionManagerContract.address;
-    migratorAddress = sourceChainConfig.UniswapV3AcrossMigrator;
+    if (bridgeType === BridgeType.Direct) {
+      migratorAddress = sourceChainConfig.UniswapV3DirectMigrator;
+    } else {
+      migratorAddress = sourceChainConfig.UniswapV3AcrossMigrator;
+    }
   } else if (protocol === Protocol.UniswapV4) {
     positionManagerAddress = sourceChainConfig.v4PositionManagerContract.address;
-    migratorAddress = sourceChainConfig.UniswapV4AcrossMigrator;
+    if (bridgeType === BridgeType.Direct) {
+      migratorAddress = sourceChainConfig.UniswapV4DirectMigrator;
+    } else {
+      migratorAddress = sourceChainConfig.UniswapV4AcrossMigrator;
+    }
   } else if (protocol === Protocol.Aerodrome) {
     positionManagerAddress = sourceChainConfig.aerodromeNftPositionManagerContract!.address;
     migratorAddress = sourceChainConfig.AerodromeAcrossMigrator;
   }
+
   if (!positionManagerAddress || !migratorAddress) {
     throw new Error('Migrator or position manager not found');
   }
+
   return {
     address: positionManagerAddress,
     abi: NFTSafeTransferFrom,
@@ -548,7 +550,7 @@ export const generateExecutionParams = ({
   };
 };
 
-export const generateSettlerExecutionParams = ({
+export const generateAcrossSettlerExecutionParams = ({
   sourceChainId,
   destChainId,
   owner,
@@ -561,10 +563,10 @@ export const generateSettlerExecutionParams = ({
   destChainId: number;
   owner: `0x${string}`;
   destProtocol: Protocol;
-  routes: Route[];
+  routes: AcrossRoute[];
   fillDeadline: number;
   message: `0x${string}`;
-}): SettlerExecutionParams[] => {
+}): AcrossSettlerExecutionParams[] => {
   const destChainConfig = chainConfigs[destChainId];
   let recipient: `0x${string}` | undefined;
   if (destProtocol === Protocol.UniswapV3) {
@@ -574,7 +576,7 @@ export const generateSettlerExecutionParams = ({
   } else if (destProtocol === Protocol.Aerodrome) {
     recipient = destChainConfig.AerodromeAcrossSettler;
   } else {
-    throw new Error('Unable to generate SettlerExecutionParams');
+    throw new Error('Unable to generate AcrossSettlerExecutionParams');
   }
   if (!recipient) {
     throw new Error('Settler not found');
@@ -645,4 +647,35 @@ export const generateSettlementParams = (
   } else {
     throw new Error(`Unsupported protocol: ${(destination as { protocol: string }).protocol}`);
   }
+};
+
+export const generateDirectSettlerExecutionParams = ({
+  destChainId,
+  destProtocol,
+  routes,
+  message,
+}: {
+  destChainId: number;
+  destProtocol: Protocol;
+  routes: DirectRoute[];
+  message: `0x${string}`;
+}): DirectSettlerExecutionParams[] => {
+  const destChainConfig = chainConfigs[destChainId];
+  let directSettlerAddress: `0x${string}` | undefined;
+  if (destProtocol === Protocol.UniswapV3) {
+    directSettlerAddress = destChainConfig.UniswapV3DirectSettler;
+  } else if (destProtocol === Protocol.UniswapV4) {
+    directSettlerAddress = destChainConfig.UniswapV4DirectSettler;
+  } else {
+    throw new Error('Unable to generate DirectSettlerExecutionParams');
+  }
+  if (!directSettlerAddress) {
+    throw new Error('DirectSettler not found');
+  }
+  return routes.map((route) => ({
+    address: directSettlerAddress,
+    abi: IDirectSettlerAbi as Abi,
+    functionName: 'handleDirectTransfer',
+    args: [route.outputToken, route.outputAmount, message],
+  }));
 };

@@ -1,7 +1,7 @@
 import { test, describe, expect } from 'bun:test';
 import { ChainHopperClient } from '../src/client';
 import { configurePublicClients } from '../src/utils/configurePublicClients';
-import { WithdrawalParams } from '../src/types/sdk';
+import { RequestWithdrawalParams } from '../src/types/sdk';
 
 const rpcUrls = {
   1: Bun.env.MAINNET_RPC_URL!,
@@ -16,7 +16,7 @@ configurePublicClients(client.chainConfigs, rpcUrls);
 
 describe('requestWithdrawal', () => {
   test('should throw exception for invalid migrationId', async () => {
-    const params: WithdrawalParams = {
+    const params: RequestWithdrawalParams = {
       settler: client.chainConfigs[130].UniswapV4AcrossSettler!,
       migrationId: '0xinvalid',
     };
@@ -24,7 +24,7 @@ describe('requestWithdrawal', () => {
   });
   test('should return valid calldata for valid withdrawal request', async () => {
     const chainConfig = client.chainConfigs[130];
-    const params: WithdrawalParams = {
+    const params: RequestWithdrawalParams = {
       settler: chainConfig.UniswapV4AcrossSettler!,
       migrationId: '0x038253c0e0c452114fbb0bfe1fccf964d5b581f2470e1874bac9bcb0cf60f506',
     };
